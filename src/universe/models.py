@@ -13,16 +13,16 @@ import os
 import xlrd
 
 
-MAIN_PATH = 'c:\\DEV\\Sources\\seq_repository\\resources'
+MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
 LOGGER = logging.getLogger(__name__)
 
 def setup():
-    populate_attributes_from_xlsx('finale.models.Attributes', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_attributes_from_xlsx('finale.models.Dictionary', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_model_from_xlsx('finale.models.CompanyContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_model_from_xlsx('finale.models.AccountContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_model_from_xlsx('finale.models.PersonContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
+    populate_attributes_from_xlsx('universe.models.Attributes', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
+    populate_attributes_from_xlsx('universe.models.Dictionary', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.CompanyContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
 
 
 def populate_attributes_from_xlsx(model_name, xlsx_file):
@@ -78,6 +78,23 @@ def populate_model_from_xlsx(model_name, xlsx_file):
         row_index += 1
         
 def populate_security_from_lyxor(lyxor_file):
+    universe = Universe.objects.filter(short_name='LYXOR')
+    if universe.exists():
+        universe = universe[0]
+        universe.members.clear()
+        universe.save()
+    else:
+        universe = Universe()
+        universe.name = 'Lyxor Universe'
+        universe.short_name = 'LYXOR'
+        universe.type = Attributes.objects.get(identifier='CONT_UNIVERSE')
+        universe.inception_date = datetime.date.today()
+        universe.closed_date = None
+        universe.status = Attributes.objects.get(identifier='STATUS_ACTIVE')
+        universe.public = True
+        universe.owner = User.objects.get(id=3)
+        universe.description = "This universe contains all Lyxor B ETFs and trackers."
+        universe.save()
     SecurityContainer.objects.all().delete()
     security_type = Attributes.objects.get(identifier='CONT_SECURITY')
     workbook = xlrd.open_workbook(lyxor_file)
@@ -99,10 +116,9 @@ def populate_security_from_lyxor(lyxor_file):
                 update = [FundContainer.objects.get(id=security.id) for security in update]
                 [security.clean() for security in update]
             else:
-                update = [FundContainer]
+                update = [FundContainer()]
             LOGGER.info('Creating new entry ' + FundContainer.__name__)
             for i in range(1,sheet.ncols):
-                LOGGER.info("->" + HEADER[i-1])
                 value = sheet.cell_value(row_index,i)
                 if sheet.cell_type(row_index,i)==xlrd.XL_CELL_DATE:
                     value = datetime.date(*xldate_as_tuple(value, workbook.datemode)[:3])
@@ -113,6 +129,7 @@ def populate_security_from_lyxor(lyxor_file):
                     LOGGER.warn("Cannot find matching field for " + HEADER[i-1])
             [setattr(security,'type', security_type) for security in update]
             [security.finalize() for security in update]
+            [universe.members.add(security) for security in update]
         row_index += 1
 
 
@@ -337,6 +354,12 @@ class Container(CoreModel):
                 
     class Meta:
         ordering = ['name']
+
+class Universe(Container):
+    public = models.BooleanField()
+    members = models.ManyToManyField("FinancialContainer", related_name='universe_financial_rel')
+    owner = models.ForeignKey(User, related_name='universe_owner_rel')
+    description = models.TextField(null=True, blank=True)
             
 class FinancialContainer(Container):
     currency = models.ForeignKey(Attributes, limit_choices_to = {'type':'currency'}, related_name='container_currency_rel', null=True)
