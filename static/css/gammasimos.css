@@ -1,0 +1,26 @@
+thead tr th {
+    text-align: left;
+    background: #FFFFFF;
+}
+
+tbody tr.even td { 
+    background: #FFFFFF;
+    text-align: center;
+}
+
+tbody tr.odd td { 
+    background: #DA9694;
+    text-align: center;
+}
+
+#drop .info {
+  color: #999;
+  text-align: center;
+}
+
+#drop {
+  border: 3px dashed #ccc;
+  padding: 10px;
+  background: #fff;
+  min-height: 200px;
+}

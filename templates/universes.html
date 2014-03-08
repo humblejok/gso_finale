@@ -1,0 +1,42 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>FinaLE Universes</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="./static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+		<script src="./static/jquery-2.0.2.min.js" type="text/javascript"></script>
+		<script src="./static/jquery-ui.js" type="text/javascript"></script>
+	</head>
+	<body>
+
+	<div class="container" style="padding: 0 15px;">
+		{% if request.user.is_authenticated %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ request.user.first_name }} {{ request.user.last_name }}'s universes</h1>
+	  			<p class="lead">Manage and explore your universes from here<br/>
+			</div>
+			<a href="/accounts/logout" class="btn btn-primary btn-lg col-lg-1" role="button">Logout</a>
+		</div>
+		<table class="table table.striped col-lg-12">
+			<tr>
+				<th>Name</th>
+				<th>Public</th>
+				<th>Action</th>
+			</tr>
+			{% for universe in universes %}
+			<tr>
+				<td>{{universe.name}}</td>
+				<td>{{universe.public}}</td>
+				<td>{{universe.owner}}</td>
+			</tr>
+			{% endfor %}
+		</table>
+		{% else %}
+		<div class="row">
+    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
+    	</div>
+		{% endif %}
+	</body>
+</html>
