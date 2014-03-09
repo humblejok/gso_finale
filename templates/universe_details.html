@@ -1,0 +1,98 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>FinaLE Universes - {{universe.name}}</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+		<script src="/static/jquery-2.0.2.min.js" type="text/javascript"></script>
+		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+		<script>
+			$(document).ready(function () {
+				$(".btn").tooltip();
+			});
+
+		</script>
+	</head>
+	<body>
+
+	<div class="container" style="padding: 0 15px;">
+		{% if request.user.is_authenticated %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{universe.name}}</h1>
+	  			<p class="lead">Edit the content of this universe<br/>
+			</div>
+			<a href="/universes" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Back to universes list">
+				<span class="glyphicon glyphicon-home"></span>
+			</a>
+			<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+				<span class="glyphicon glyphicon-off"></span>
+			</a>
+		</div>
+		<div class="row">
+			<div class="col-lg-11">
+				<table class="table table.striped">
+					<tr>
+						<th>Security name</th>
+						<th>Security type</th>
+						<th>Action</th>
+					</tr>
+					{% for member in universe.members.all %}
+					<tr>
+						<td>{{member.name}}</td>
+						<td>{{member.security_type.name}}</td>
+						<td>
+							{% if request.user.id == universe.owner.id %}
+							<a href="#modal_delete_{{member.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Remove {{member.security_type.name}}">
+								<span class="glyphicon glyphicon-remove-sign"></span>
+							</a>
+							{% endif %}
+							<a href="#modal_explore_{{member.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Explore {{member.security_type.name}}">
+								<span class="glyphicon glyphicon-list-alt"></span>
+							</a>
+						</td>
+					</tr>
+					{% endfor %}
+				</table>
+			</div>
+			<a href="#" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Create a new universe">
+				<span class="glyphicon glyphicon-plus"></span>
+			</a>
+		</div>
+		{% for member in universe.members.all %}
+			<div class="modal fade" id="modal_explore_{{member.id}}" tabindex="-1" role="dialog" aria-labelledby="modal_explore_label_{{member.id}}" aria-hidden="true">
+				<div class="modal-dialog modal-lg">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+							<h4 class="modal-title" id="modal_explore_label_{{universe.id}}">{{member.name}}</h4>
+						</div>
+						<div class="modal-body">
+							<div class="row">
+								<div class="col-lg-2"><strong>Short name:</strong></div>
+								<div class="col-lg-7">{% if member.short_name %}{{member.short_name}}{% else %}None{% endif %}</div>
+								<div class="col-lg-1"><strong>Currency:</strong></div>
+								<div class="col-lg-2">{% if member.currency %}{{member.currency.name}}{% else %}None{% endif %}</div>
+							</div>
+							<div class="row">
+							</div>
+							<div class="row">
+							</div>
+							<div class="row">
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		{% endfor %}
+		{% else %}
+		<div class="row">
+    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
+    	</div>
+		{% endif %}
+	</body>
+</html>

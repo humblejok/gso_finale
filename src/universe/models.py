@@ -76,8 +76,41 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             instance.set_attribute('excel', field_info, value)
         instance.save()
         row_index += 1
-        
-def populate_security_from_lyxor(lyxor_file):
+
+def populate_track_from_lyxor(lyxor_file):
+    # Excel input
+    workbook = xlrd.open_workbook(lyxor_file)
+    sheet = workbook.sheet_by_name('Weekly NAV')
+    # Lyxor default
+    lyxor_company = CompanyContainer.objects.get(name='Lyxor Asset Management')
+    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
+    weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
+    tuesday = Attributes.objects.get(identifier='DT_REF_THURSDAY', active=True)
+    row_index = 9
+    while row_index<sheet.nrows:
+        full_date = datetime.datetime(*xldate_as_tuple(sheet.cell_value(row_index, 1), workbook.datemode))
+        simple_date = datetime.date(full_date.year, full_date.month, full_date.day)
+        LOGGER.info("DATE:" + str(simple_date))
+        for col_index in range(2,sheet.ncols):
+            if sheet.cell_type(row_index,col_index)!=xlrd.XL_CELL_EMPTY and sheet.cell_value(row_index,col_index)!=None and sheet.cell_value(row_index,col_index)!='':
+                isin = sheet.cell_value(5,col_index)
+                targets = FundContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin)
+                LOGGER.info("Updating " + str(len(targets)) + " entities with ISIN like " + str(isin));
+                for target in targets:
+                    new_nav_value = ContainerNumericValue()
+                    new_nav_value.effective_container  = target
+                    new_nav_value.type = nav_value
+                    new_nav_value.quality = official_type
+                    new_nav_value.source = lyxor_company
+                    new_nav_value.day = simple_date
+                    new_nav_value.time = None
+                    new_nav_value.frequency = weekly
+                    new_nav_value.frequency_reference = tuesday
+                    new_nav_value.value = float(sheet.cell_value(row_index,col_index))
+                    new_nav_value.save()
+        row_index += 1
+def populate_security_from_lyxor(lyxor_file, clean=True):
     universe = Universe.objects.filter(short_name='LYXOR')
     if universe.exists():
         universe = universe[0]
@@ -95,8 +128,10 @@ def populate_security_from_lyxor(lyxor_file):
         universe.owner = User.objects.get(id=3)
         universe.description = "This universe contains all Lyxor B ETFs and trackers."
         universe.save()
-    SecurityContainer.objects.all().delete()
+    if clean:
+        SecurityContainer.objects.all().delete()
     security_type = Attributes.objects.get(identifier='CONT_SECURITY')
+    fund_type = Attributes.objects.get(identifier='SECTYP_FUND')
     workbook = xlrd.open_workbook(lyxor_file)
     sheet = workbook.sheet_by_name('Lyxor Accounts')
     row_index = 6
@@ -114,10 +149,12 @@ def populate_security_from_lyxor(lyxor_file):
             if update.exists():
                 LOGGER.info('Found ' + len(update) + ' securities with identifier [' + value + ']')
                 update = [FundContainer.objects.get(id=security.id) for security in update]
-                [security.clean() for security in update]
             else:
                 update = [FundContainer()]
-            LOGGER.info('Creating new entry ' + FundContainer.__name__)
+                [security.save() for security in update]
+                LOGGER.info('Creating new entry ' + FundContainer.__name__)
+            for security in update:
+                security.many_fields = {}
             for i in range(1,sheet.ncols):
                 value = sheet.cell_value(row_index,i)
                 if sheet.cell_type(row_index,i)==xlrd.XL_CELL_DATE:
@@ -126,9 +163,11 @@ def populate_security_from_lyxor(lyxor_file):
                 if field_info.exists():
                     [security.set_attribute('lyxor', field_info[0], value) for security in update]
                 else:
-                    LOGGER.warn("Cannot find matching field for " + HEADER[i-1])
+                    LOGGER.debug("Cannot find matching field for " + HEADER[i-1])
             [setattr(security,'type', security_type) for security in update]
+            [setattr(security,'security_type', fund_type) for security in update]
             [security.finalize() for security in update]
+            [LOGGER.info("Aliases:" + str(len(security.aliases.all()))) for security in update]
             [universe.members.add(security) for security in update]
         row_index += 1
 
@@ -351,13 +390,20 @@ class Container(CoreModel):
                     setattr(self, field_name, [])
             except FieldDoesNotExist:
                 None
-                
+
+    def clone(self, _class):
+        _clone = _class()
+        [setattr(_clone, fld.name, getattr(self, fld.name)) for fld in self._meta.fields if fld.name != self._meta.pk and fld.name.find('_ptr')==-1]
+        _clone.id = None
+        _clone.pk = None
+        return _clone
+
     class Meta:
         ordering = ['name']
 
 class Universe(Container):
     public = models.BooleanField()
-    members = models.ManyToManyField("FinancialContainer", related_name='universe_financial_rel')
+    members = models.ManyToManyField("SecurityContainer", related_name='universe_financial_rel')
     owner = models.ForeignKey(User, related_name='universe_owner_rel')
     description = models.TextField(null=True, blank=True)
             
@@ -528,13 +574,6 @@ class SecurityContainer(FinancialContainer):
     def get_fields(self):
         return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','bb_security_type','industry_sector','industry_group','industry_sub_group','bics_name_level_1','bics_name_level_2','bics_name_level_3','country','bb_country','region','market_sector','exchange','parent_security','attached_account']
 
-    def clone(self, _class):
-        _clone = _class()
-        [setattr(_clone, fld.name, getattr(self, fld.name)) for fld in self._meta.fields if fld.name != self._meta.pk and fld.name.find('_ptr')==-1]
-        _clone.id = None
-        _clone.pk = None
-        return _clone
-
 class DerivativeContainer(SecurityContainer):
     contract_buy_date = models.DateTimeField()
     contract_buy_price = models.FloatField(null=True)
@@ -574,6 +613,8 @@ class ContainerNumericValue(CoreModel):
     effective_container_id = models.PositiveIntegerField()
     effective_container = generic.GenericForeignKey('container', 'effective_container_id')
     type = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_type'}, related_name='numeric_type_rel', null=True)
+    frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='numeric_frequency_rel')
+    frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='numeric_date_reference_rel')
     quality = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_quality'}, related_name='numeric_quality_rel', null=True)
     source = models.ForeignKey(CompanyContainer, related_name='data_source_rel', null=True)
     day = models.DateField()
