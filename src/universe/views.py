@@ -2,7 +2,7 @@
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.shortcuts import render, redirect
-from universe.models import Universe
+from universe.models import Universe, ContainerNumericValue
 
 
 def universes(request):
@@ -74,5 +74,12 @@ def get_universe(request):
     except:
         # TODO Return error message
         return redirect('universes')
-    context = {'universe': source}
+    context = {'universe': source, 'tracks': {}}
+    for member in source.members.all():
+        provider = member.associated_companies.filter(role__identifier='SCR_DP')
+        if provider.exists():
+            provider = provider[0]
+            # TODO Implement Intraday
+            context['tracks']['track_' + str(member.id)] = ContainerNumericValue.objects.filter(effective_container_id=member.id, source_id=provider.company.id, time__isnull=True).order_by('day', 'time')
+            print member.name + " loading track:" + str(len(context['tracks']['track_' + str(member.id)]))
     return render(request, 'universe_details.html', context)

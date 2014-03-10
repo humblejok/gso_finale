@@ -88,6 +88,7 @@ def populate_track_from_lyxor(lyxor_file):
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
     tuesday = Attributes.objects.get(identifier='DT_REF_THURSDAY', active=True)
     row_index = 9
+    isin_cache = {}
     while row_index<sheet.nrows:
         full_date = datetime.datetime(*xldate_as_tuple(sheet.cell_value(row_index, 1), workbook.datemode))
         simple_date = datetime.date(full_date.year, full_date.month, full_date.day)
@@ -95,7 +96,11 @@ def populate_track_from_lyxor(lyxor_file):
         for col_index in range(2,sheet.ncols):
             if sheet.cell_type(row_index,col_index)!=xlrd.XL_CELL_EMPTY and sheet.cell_value(row_index,col_index)!=None and sheet.cell_value(row_index,col_index)!='':
                 isin = sheet.cell_value(5,col_index)
-                targets = FundContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin)
+                if not isin_cache.has_key(isin):
+                    targets = FundContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin)
+                    isin_cache[isin] = targets
+                else:
+                    targets = isin_cache[isin]
                 LOGGER.info("Updating " + str(len(targets)) + " entities with ISIN like " + str(isin));
                 for target in targets:
                     new_nav_value = ContainerNumericValue()
@@ -110,6 +115,7 @@ def populate_track_from_lyxor(lyxor_file):
                     new_nav_value.value = float(sheet.cell_value(row_index,col_index))
                     new_nav_value.save()
         row_index += 1
+      
 def populate_security_from_lyxor(lyxor_file, clean=True):
     universe = Universe.objects.filter(short_name='LYXOR')
     if universe.exists():
@@ -130,6 +136,15 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
         universe.save()
     if clean:
         SecurityContainer.objects.all().delete()
+    
+    lyxor_company = CompanyContainer.objects.get(name='Lyxor Asset Management')
+    data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
+    lyxor_provider = RelatedCompany()
+    lyxor_provider.company = lyxor_company
+    lyxor_provider.role = data_provider
+    lyxor_provider.save()
+    weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
+    tuesday = Attributes.objects.get(identifier='DT_REF_THURSDAY', active=True)
     security_type = Attributes.objects.get(identifier='CONT_SECURITY')
     fund_type = Attributes.objects.get(identifier='SECTYP_FUND')
     workbook = xlrd.open_workbook(lyxor_file)
@@ -150,11 +165,9 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
                 LOGGER.info('Found ' + len(update) + ' securities with identifier [' + value + ']')
                 update = [FundContainer.objects.get(id=security.id) for security in update]
             else:
-                update = [FundContainer()]
+                update = [FundContainer.create()]
                 [security.save() for security in update]
                 LOGGER.info('Creating new entry ' + FundContainer.__name__)
-            for security in update:
-                security.many_fields = {}
             for i in range(1,sheet.ncols):
                 value = sheet.cell_value(row_index,i)
                 if sheet.cell_type(row_index,i)==xlrd.XL_CELL_DATE:
@@ -166,7 +179,11 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
                     LOGGER.debug("Cannot find matching field for " + HEADER[i-1])
             [setattr(security,'type', security_type) for security in update]
             [setattr(security,'security_type', fund_type) for security in update]
+            [setattr(security,'frequency', weekly) for security in update]
+            [setattr(security,'frequency_reference', tuesday) for security in update]
             [security.finalize() for security in update]
+            [security.associated_companies.add(lyxor_provider) for security in update]
+            [security.save() for security in update]
             [LOGGER.info("Aliases:" + str(len(security.aliases.all()))) for security in update]
             [universe.members.add(security) for security in update]
         row_index += 1
@@ -318,6 +335,12 @@ class Container(CoreModel):
     
     many_fields = {}
     
+    @classmethod
+    def create(cls):
+        entity = cls()
+        entity.many_fields = {}
+        return entity
+    
     def get_fields(self):
         return ['name','short_name','type','inception_date','closed_date','status']
     
@@ -412,6 +435,8 @@ class FinancialContainer(Container):
     owner_role = models.ForeignKey(Attributes, limit_choices_to={'type':'third_party_role'}, related_name='owner_role_rel', null=True)
     owner = models.ForeignKey(Container, limit_choices_to = {'type__identifier':'third_party'}, related_name='container_owner_rel', null=True)
     aliases = models.ManyToManyField(Alias, related_name='financial_alias_rel')
+    frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='financial_frequency_rel', null=True)
+    frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='financial_date_reference_rel', null=True)
     
     def get_fields(self):
         return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases']
