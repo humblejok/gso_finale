@@ -153,6 +153,8 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+BLOOMBERG_BROKER_URL = 'amqp://bloomberg:bloomberg@192.168.9.93:5672/bloomberg'
+
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
 # the site admins on every HTTP 500 error when DEBUG=False.

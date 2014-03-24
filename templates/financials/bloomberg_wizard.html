@@ -1,0 +1,55 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>FinaLE Universes</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+		<script src="/static/jquery-2.0.2.min.js" type="text/javascript"></script>
+		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+		<script>
+			$(document).ready(function () {
+		     	$(".btn").not('#comment').tooltip();
+		     	$("#comment").popover();
+			   });
+
+		</script>
+	</head>
+	<body>
+
+	<div class="container" style="padding: 0 15px;">
+			<div class="row">
+				<div class="col-lg-11">
+					<h1 class="">Expand your financial assets with Bloomberg</h1>
+					<p class="lead">Add financial assets using tickers and ISIN codes.<br/>
+				</div>
+				<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+					<span class="glyphicon glyphicon-off"></span>
+				</a>
+			</div>
+			<form id="bloomberg_wizard_form" role="form" class="form-horizontal" action="/execute_financials_bloomberg_wizard" method="POST">{% csrf_token %}
+				<div class="form-group">
+					<label for="bloombergSource" class="col-lg-2 control-label">Bloomberg source</label>
+					<div class="checkbox col-lg-offset-2">
+						<input id="bloombergSource" name="bloombergSource" type="checkbox">&nbsp;Use Bloomberg terminal</input>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="bloombergList" class="col-lg-2 control-label">Bloomberg list</label>
+					<div class="col-lg-2">
+						<textarea id="bloombergList" name="bloombergList" class="form-control" rows="20"></textarea>
+					</div>
+				</div>
+				<div class="form-group">
+					<div class="col-lg-offset-2">
+						<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm the list you entered and the Bloomberg method to use">Get information</a>
+					</div>
+				</div>
+			</form>
+		{% if request.user.is_authenticated %}
+		{% else %}
+		<div class="row">
+			<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
+		</div>
+		{% endif %}
+	</body>
