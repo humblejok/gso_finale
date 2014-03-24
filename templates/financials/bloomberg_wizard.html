@@ -16,7 +16,7 @@
 		</script>
 	</head>
 	<body>
-
+	{% if request.user.is_authenticated %}
 	<div class="container" style="padding: 0 15px;">
 			<div class="row">
 				<div class="col-lg-11">
@@ -46,7 +46,6 @@
 					</div>
 				</div>
 			</form>
-		{% if request.user.is_authenticated %}
 		{% else %}
 		<div class="row">
 			<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
