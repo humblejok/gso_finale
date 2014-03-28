@@ -6,6 +6,10 @@ from universe.models import Universe, ContainerNumericValue
 import re
 from providers.BloombergTasks import DEFAULT_GET_DATA_FIELDS
 from providers import BloombergTasks
+import uuid
+from django.core.cache import cache
+import threading
+from finale.threaded import bloomberg_wait_response
 
 
 def financials_bloomberg_wizard(request):
@@ -23,12 +27,11 @@ def execute_financials_bloomberg_wizard(request):
             prepared_entries.append(entry + '|ISIN|')
         else:
             prepared_entries.append(entry)
-            
-    fields = DEFAULT_GET_DATA_FIELDS
-    response =  BloombergTasks.send_bloomberg_get_data(prepared_entries, ticker_type='TICKER')
-    print response
-    
-    return render(request,'financials/bloomberg_wizard.html')
+    response_key = uuid.uuid4()
+    bb_thread = threading.Thread(None, bloomberg_wait_response, response_key, (response_key, prepared_entries))
+    bb_thread.start()
+    context = {'response_key': response_key}
+    return render(request,'financials/bloomberg_wizard_waiting.html')
 
 def universes(request):
     # TODO: Check user
