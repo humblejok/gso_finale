@@ -3,20 +3,19 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from universe.models import Universe, ContainerNumericValue
-import re
-from providers.BloombergTasks import DEFAULT_GET_DATA_FIELDS
-from providers import BloombergTasks
-import uuid
 from django.core.cache import cache
+from finale.threaded import bloomberg_data_query
+from django.http.response import HttpResponse
+
+import re
 import threading
-from finale.threaded import bloomberg_wait_response
+import uuid
 
-
-def financials_bloomberg_wizard(request):
+def bloomberg_wizard(request, entity):
     # TODO: Check user
-    return render(request,'financials/bloomberg_wizard.html')
+    return render(request, entity + '/bloomberg/wizard.html')
 
-def execute_financials_bloomberg_wizard(request):
+def bloomberg_wizard_execute(request, entity):
     # TODO: Check user
     # TODO: Check Bloomberg method
     entries = [str(entry).strip() for entry in request.POST['bloombergList'].split('\r')]
@@ -27,11 +26,20 @@ def execute_financials_bloomberg_wizard(request):
             prepared_entries.append(entry + '|ISIN|')
         else:
             prepared_entries.append(entry)
-    response_key = uuid.uuid4()
-    bb_thread = threading.Thread(None, bloomberg_wait_response, response_key, (response_key, prepared_entries))
+    response_key = uuid.uuid4().get_hex()
+    # TODO: Implement CONSTANTS and dynamic choice
+    if entity=='financials':
+        bb_thread = threading.Thread(None, bloomberg_data_query, response_key, (response_key, prepared_entries))
     bb_thread.start()
     context = {'response_key': response_key}
-    return render(request,'financials/bloomberg_wizard_waiting.html')
+    return render(request,entity + '/bloomberg/wizard_waiting.html', context)
+
+def check_execution(request):
+    response_key = request.POST['response_key']
+    if cache.get(response_key)==1.0:
+        return HttpResponse('{"result": true, "status": 1.0}',"json")
+    else:
+        return HttpResponse('{"result": false, "status":' + cache.get(response_key) + '}',"json")
 
 def universes(request):
     # TODO: Check user
@@ -39,7 +47,7 @@ def universes(request):
     context = {'universes': universes}
     return render(request, 'universes.html', context)
 
-def duplicate_universe(request):
+def universe_duplicate(request):
     source_id = request.GET['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -58,7 +66,7 @@ def duplicate_universe(request):
     # TODO: Return success message
     return redirect('universes')
 
-def delete_universe(request):
+def universe_delete(request):
     source_id = request.GET['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -71,7 +79,7 @@ def delete_universe(request):
     # TODO: Return success message
     return redirect('universes')
 
-def edit_base_information_universe(request):
+def universe_edit_base(request):
     source_id = request.POST['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -90,7 +98,7 @@ def edit_base_information_universe(request):
     # TODO: Return success message
     return redirect('/get_universe?universe_id=' + str(source_id))
 
-def get_universe(request):
+def universe_get(request):
     if request.POST.has_key('universe_id'):
         source_id = request.POST['universe_id']
     else:

@@ -105,7 +105,7 @@
 						</div>
 						<div class="modal-footer">
 							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-							<a href="/delete_universe?universe_id={{universe.id}}" class="btn btn-danger" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm universe deletion">Delete</a>
+							<a href="/universe_delete.html?universe_id={{universe.id}}" class="btn btn-danger" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm universe deletion">Delete</a>
 						</div>
 					</div>
 				</div>
@@ -118,7 +118,7 @@
 							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
 							<h4 class="modal-title" id="modal_edit_label_{{universe.id}}">Edit universe {{universe.name}}</h4>
 						</div>
-						<form id="edit_form_{{universe.id}}" role="form" action="/edit_base_information_universe" method="POST">{% csrf_token %}
+						<form id="edit_form_{{universe.id}}" role="form" action="/universe_edit_base.html" method="POST">{% csrf_token %}
 							<div class="modal-body">
 								<input type="hidden" id="universe_id" name="universe_id" value="{{universe.id}}"/>
 								<div class="form-group">

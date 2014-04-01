@@ -598,6 +598,43 @@ class SecurityContainer(FinancialContainer):
     
     def get_fields(self):
         return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','bb_security_type','industry_sector','industry_group','industry_sub_group','bics_name_level_1','bics_name_level_2','bics_name_level_3','country','bb_country','region','market_sector','exchange','parent_security','attached_account']
+    
+    @staticmethod
+    def read_bloomberg_proto_response(response):
+        securities = {}
+        for row in response.rows:
+            if row.errorCode==0:
+                if not securities.has_key(row.ticker):
+                    BloombergSecurityData.objects.filter(Q(isin=row.ticker) | Q(ticker=row.ticker) | Q(bloomberg_full_ticker=row.ticker)).delete()
+                    securities[row.ticker] = BloombergSecurityData()
+                    if row.ticker.find(' ')>=0:
+                        securities[row.ticker].bloomberg_full_ticker = row.ticker
+                    else:
+                        securities[row.ticker].bloomberg_full_ticker = None
+                if securities[row.ticker].FIELDS_BLOOMBERG.has_key(row.field):
+                    setattr(securities[row.ticker], securities[row.ticker].FIELDS_BLOOMBERG[row.field],row.valueString)
+                else:
+                    LOGGER.debug("No field called " + row.field + " on object")
+            else:
+                LOGGER.warn("Error on " + row.ticker)
+        for security in securities.values():
+            if security.bloomberg_full_ticker==None:
+                security.bloomberg_full_ticker = security.ticker + ' ' + security.primary_market_code + ' ' + security.market_sector
+            if security.name==None or security.name=='':
+                security.name = security.bloomberg_name
+            security.save()
+        return securities
+    
+    @staticmethod
+    def from_bloomberg_protobuf(data):
+        securities = {}
+        for row in data.rows:
+            if row.errorCode==0:
+                if not securities.has_key(row.ticker):
+                    securities[row.ticker] = SecurityContainer()
+                    securities[row.ticker].set_attribute('bloomberg_protobuf', field_info[0], value)
+                    securities[row.ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
+                    securities[row.ticker].save()
 
 class DerivativeContainer(SecurityContainer):
     contract_buy_date = models.DateTimeField()
