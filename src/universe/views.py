@@ -39,7 +39,7 @@ def check_execution(request):
     if cache.get(response_key)==1.0:
         return HttpResponse('{"result": true, "status": 1.0}',"json")
     else:
-        return HttpResponse('{"result": false, "status":' + cache.get(response_key) + '}',"json")
+        return HttpResponse('{"result": false, "status":' + str(cache.get(response_key)) + '}',"json")
 
 def universes(request):
     # TODO: Check user
