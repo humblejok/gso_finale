@@ -131,6 +131,7 @@ def populate_security_from_bloomberg_protobuf(data):
     for ticker in securities:
         securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
         securities[ticker].save()
+    return securities
 
 def populate_security_from_lyxor(lyxor_file, clean=True):
     universe = Universe.objects.filter(short_name='LYXOR')
@@ -604,10 +605,10 @@ class SecurityContainer(FinancialContainer):
     bics_name_level_2 = models.ForeignKey(Attributes, limit_choices_to={'type':'bics_name_level_2'}, related_name='bics_name_level_2_rel', null=True)
     bics_name_level_3 = models.ForeignKey(Attributes, limit_choices_to={'type':'bics_name_level_3'}, related_name='bics_name_level_3_rel', null=True)
     country = models.ForeignKey(Attributes, limit_choices_to={'type':'country_iso2'}, related_name='security_country_rel', null=True)
-    bb_country = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_exchange'}, related_name='bb_security_country_rel', null=True)
+    bb_country = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_country_lookup'}, related_name='bb_security_country_rel', null=True)
     region = models.CharField(max_length=128, null=True, blank=True)
     market_sector = models.CharField(max_length=128, null=True, blank=True)
-    exchange = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_exchange'}, related_name='bloomberg_exchange_rel', null=True)
+    exchange = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_exchange_lookup'}, related_name='bloomberg_exchange_rel', null=True)
     parent_security = models.ForeignKey('SecurityContainer', related_name='parent_security_rel', null=True)
     
     attached_account = models.ForeignKey('AccountContainer', related_name='financials_account_rel', null=True)

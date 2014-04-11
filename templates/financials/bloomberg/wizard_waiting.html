@@ -14,6 +14,7 @@
 			function progressHandler(e) {
 				if (e.result) {
 					$(".progress").attr("class","progress");
+					$(".progress-bar").text("Done");
 					clearInterval(currentInterval);
 				}
 			};

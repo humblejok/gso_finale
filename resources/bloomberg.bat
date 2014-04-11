@@ -1,0 +1,1 @@
+protoc C:\DEV\Sources\jok_bloomberg_tool\assets\bloomberg.proto --proto_path=C:\DEV\Sources\jok_bloomberg_tool\assets --java_out=. --python_out=.

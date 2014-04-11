@@ -46,13 +46,14 @@ def send_bloomberg_get_history(tickers, fields=['PX_LAST'], ticker_type = 'ISIN'
         None
     return sender.response_object
 
-def send_bloomberg_get_data(tickers, fields=DEFAULT_GET_DATA_FIELDS, ticker_type = 'ISIN'):
+def send_bloomberg_get_data(tickers, fields=DEFAULT_GET_DATA_FIELDS, ticker_type = 'ISIN', use_terminal = True):
     request = bloomberg_pb2.BloombergRequest()
     request.program = 'getData'
     request.rawmode = False
     request.tickertype = ticker_type
     [request.tickers.append(t) for t in tickers]
     [request.fields.append(f) for f in fields]
+    request.terminal = use_terminal
     
     sender = BloombergRequestSender(request)
     sender.start()
