@@ -121,7 +121,10 @@ def populate_security_from_bloomberg_protobuf(data):
     for row in data.rows:
         if row.errorCode==0:
             if not securities.has_key(row.ticker):
-                securities[row.ticker] = SecurityContainer()
+                if row.ticker.find('LX')>=0:
+                    securities[row.ticker] = FundContainer()
+                else:
+                    securities[row.ticker] = SecurityContainer()
             field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field)
             LOGGER.info(field_info)
             if field_info.exists():

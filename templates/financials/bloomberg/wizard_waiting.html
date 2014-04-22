@@ -10,31 +10,51 @@
 		<script src="/static/gammasimos.js"></script>
 		<script>
 			var currentInterval;
+			var htmlResults;
 
 			function progressHandler(e) {
 				if (e.result) {
 					$(".progress").attr("class","progress");
 					$(".progress-bar").text("Done");
 					clearInterval(currentInterval);
+					get_execution();
 				}
 			};
 
-			function check_execution() {
-				var tempForm = new FormData();
-				tempForm.append('response_key', '{{response_key}}');
-				$.ajax({
-			        url: '/check_execution.html',
-			        type: 'POST',
-			        data: tempForm,
-			        processData: false,
-			        contentType: false,
-			        success: progressHandler,
-			    });
+			function appendResults(e) {
+				$(".container").append(e);
 			}
+
+			function check_execution() {
+				var checkForm = new FormData();
+				checkForm.append('response_key', '{{response_key}}');
+				$.ajax({
+					url: '/check_execution.html',
+					type: 'POST',
+					data: checkForm,
+					processData: false,
+					contentType: false,
+					success: progressHandler,
+				});
+			}
+
+			function get_execution() {
+				var getForm = new FormData();
+				getForm.append('response_key', '{{response_key}}');
+				$.ajax({
+					url: '/get_execution.html',
+					type: 'POST',
+					data: getForm,
+					processData: false,
+					contentType: false,
+					success: appendResults,
+				});
+			}
+
 
 			$(document).ready(function () {
 				csrftoken = getCookie('csrftoken');
-		     	currentInterval = setInterval(check_execution, 10000);
+				currentInterval = setInterval(check_execution, 10000);
 			});
 
 		</script>

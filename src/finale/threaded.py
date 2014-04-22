@@ -10,8 +10,9 @@ from universe.models import populate_security_from_bloomberg_protobuf,\
 
 def bloomberg_data_query(response_key, prepared_entries):
     cache.set(response_key, 0.0)
-    response = BloombergTasks.send_bloomberg_get_data(prepared_entries, ticker_type='TICKER')
+    response = BloombergTasks.send_bloomberg_get_data(prepared_entries, ticker_type='TICKER', use_terminal=True)
     cache.set('data_' + response_key, response)
+    cache.set('type_' + response_key, 'securities')
     cache.set(response_key, 0.5)
     securities = populate_security_from_bloomberg_protobuf(response)
     cache.set(response_key, 1.0)

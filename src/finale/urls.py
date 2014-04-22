@@ -10,6 +10,7 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
     # Common views
     url(r'^check_execution.html', 'universe.views.check_execution', name='check_execution'),
+    url(r'^get_execution.html', 'universe.views.get_execution', name='get_execution'),
     
     # Universes related views
     url(r'^universes.html$', 'universe.views.universes', name='universes'),

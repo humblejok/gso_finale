@@ -14,7 +14,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='bloomberg.proto',
   package='org.jok.util.bloomberg.data',
-  serialized_pb='\n\x0f\x62loomberg.proto\x12\x1borg.jok.util.bloomberg.data\"x\n\x0c\x42loombergRow\x12\x0e\n\x06ticker\x18\x01 \x02(\t\x12\r\n\x05\x66ield\x18\x02 \x02(\t\x12\x0c\n\x04\x64\x61te\x18\x03 \x01(\x03\x12\x13\n\x0bvalueDouble\x18\x04 \x01(\x01\x12\x13\n\x0bvalueString\x18\x06 \x01(\t\x12\x11\n\terrorCode\x18\x07 \x01(\x05\"]\n\x11\x42loombergResponse\x12\x0f\n\x07request\x18\x01 \x02(\t\x12\x37\n\x04rows\x18\x02 \x03(\x0b\x32).org.jok.util.bloomberg.data.BloombergRow\"\xe6\x01\n\x10\x42loombergRequest\x12\x0f\n\x07rawmode\x18\x01 \x02(\x08\x12\x11\n\tstartdate\x18\x02 \x01(\x03\x12\x0f\n\x07\x65nddate\x18\x06 \x01(\x03\x12\x0f\n\x07tickers\x18\x03 \x03(\t\x12\x0e\n\x06\x66ields\x18\x04 \x03(\t\x12\x12\n\ncurrencies\x18\x07 \x03(\t\x12\x11\n\tfrequency\x18\x08 \x01(\t\x12\x12\n\nrawcontent\x18\x05 \x01(\t\x12\x0f\n\x07program\x18\t \x01(\t\x12\x1c\n\x14responsebuilderclass\x18\n \x01(\t\x12\x12\n\ntickertype\x18\x0b \x01(\t\"E\n\x19\x42loombergTickerDictionary\x12\x17\n\x0f\x62loombergticker\x18\x01 \x02(\t\x12\x0f\n\x07\x61liases\x18\x02 \x03(\t\"\xa5\x01\n\x13\x42loombergDictionary\x12?\n\x0ftickeroperation\x18\x01 \x02(\x0e\x32&.org.jok.util.bloomberg.data.Operation\x12M\n\rtickerentries\x18\x02 \x03(\x0b\x32\x36.org.jok.util.bloomberg.data.BloombergTickerDictionary*8\n\tOperation\x12\n\n\x06\x43REATE\x10\x00\x12\n\n\x06UPDATE\x10\x01\x12\t\n\x05\x43LEAR\x10\x02\x12\x08\n\x04NONE\x10\x03')
+  serialized_pb='\n\x0f\x62loomberg.proto\x12\x1borg.jok.util.bloomberg.data\"x\n\x0c\x42loombergRow\x12\x0e\n\x06ticker\x18\x01 \x02(\t\x12\r\n\x05\x66ield\x18\x02 \x02(\t\x12\x0c\n\x04\x64\x61te\x18\x03 \x01(\x03\x12\x13\n\x0bvalueDouble\x18\x04 \x01(\x01\x12\x13\n\x0bvalueString\x18\x06 \x01(\t\x12\x11\n\terrorCode\x18\x07 \x01(\x05\"]\n\x11\x42loombergResponse\x12\x0f\n\x07request\x18\x01 \x02(\t\x12\x37\n\x04rows\x18\x02 \x03(\x0b\x32).org.jok.util.bloomberg.data.BloombergRow\"\xf8\x01\n\x10\x42loombergRequest\x12\x0f\n\x07rawmode\x18\x01 \x02(\x08\x12\x11\n\tstartdate\x18\x02 \x01(\x03\x12\x0f\n\x07\x65nddate\x18\x06 \x01(\x03\x12\x0f\n\x07tickers\x18\x03 \x03(\t\x12\x0e\n\x06\x66ields\x18\x04 \x03(\t\x12\x12\n\ncurrencies\x18\x07 \x03(\t\x12\x11\n\tfrequency\x18\x08 \x01(\t\x12\x12\n\nrawcontent\x18\x05 \x01(\t\x12\x0f\n\x07program\x18\t \x01(\t\x12\x1c\n\x14responsebuilderclass\x18\n \x01(\t\x12\x12\n\ntickertype\x18\x0b \x01(\t\x12\x10\n\x08terminal\x18\x0c \x01(\x08\"E\n\x19\x42loombergTickerDictionary\x12\x17\n\x0f\x62loombergticker\x18\x01 \x02(\t\x12\x0f\n\x07\x61liases\x18\x02 \x03(\t\"\xa5\x01\n\x13\x42loombergDictionary\x12?\n\x0ftickeroperation\x18\x01 \x02(\x0e\x32&.org.jok.util.bloomberg.data.Operation\x12M\n\rtickerentries\x18\x02 \x03(\x0b\x32\x36.org.jok.util.bloomberg.data.BloombergTickerDictionary*8\n\tOperation\x12\n\n\x06\x43REATE\x10\x00\x12\n\n\x06UPDATE\x10\x01\x12\t\n\x05\x43LEAR\x10\x02\x12\x08\n\x04NONE\x10\x03')
 
 _OPERATION = _descriptor.EnumDescriptor(
   name='Operation',
@@ -41,8 +41,8 @@ _OPERATION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=737,
-  serialized_end=793,
+  serialized_start=755,
+  serialized_end=811,
 )
 
 Operation = enum_type_wrapper.EnumTypeWrapper(_OPERATION)
@@ -235,6 +235,13 @@ _BLOOMBERGREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='terminal', full_name='org.jok.util.bloomberg.data.BloombergRequest.terminal', index=11,
+      number=12, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -245,7 +252,7 @@ _BLOOMBERGREQUEST = _descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=266,
-  serialized_end=496,
+  serialized_end=514,
 )
 
 
@@ -279,8 +286,8 @@ _BLOOMBERGTICKERDICTIONARY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=498,
-  serialized_end=567,
+  serialized_start=516,
+  serialized_end=585,
 )
 
 
@@ -314,8 +321,8 @@ _BLOOMBERGDICTIONARY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=570,
-  serialized_end=735,
+  serialized_start=588,
+  serialized_end=753,
 )
 
 _BLOOMBERGRESPONSE.fields_by_name['rows'].message_type = _BLOOMBERGROW

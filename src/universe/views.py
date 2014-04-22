@@ -23,7 +23,7 @@ def bloomberg_wizard_execute(request, entity):
     prepared_entries = []
     for entry in entries:
         if isin.match(entry):
-            prepared_entries.append(entry + '|ISIN|')
+            prepared_entries.append('/isin/' + entry)
         else:
             prepared_entries.append(entry)
     response_key = uuid.uuid4().get_hex()
@@ -40,6 +40,18 @@ def check_execution(request):
         return HttpResponse('{"result": true, "status": 1.0}',"json")
     else:
         return HttpResponse('{"result": false, "status":' + str(cache.get(response_key)) + '}',"json")
+    
+def get_execution(request):
+    if request.POST.has_key('response_key'):
+        response_key = request.POST['response_key']
+    else:
+        response_key = request.GET['response_key']
+    print response_key
+    print cache.get('type_' + response_key)
+    execution_results = cache.get(cache.get('type_' + response_key) + '_' + response_key)
+    context = {'results': execution_results}
+    return render(request, 'rendition/wizard_securities_results.html', context)
+
 
 def universes(request):
     # TODO: Check user
