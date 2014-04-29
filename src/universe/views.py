@@ -1,16 +1,16 @@
 # Create your views here.
 from django.contrib.auth.models import User
-from django.db.models import Q
-from django.shortcuts import render, redirect
-from universe.models import Universe, ContainerNumericValue
 from django.core.cache import cache
-from finale.threaded import bloomberg_data_query
+from django.db.models import Q
 from django.http.response import HttpResponse
-
+from django.shortcuts import render, redirect
+from finale.threaded import bloomberg_data_query
+from universe.models import Universe, ContainerNumericValue, SecurityContainer
 import re
 import threading
 import uuid
 from finale.utils import is_isin
+
 
 def bloomberg_wizard(request, entity):
     # TODO: Check user
@@ -94,11 +94,11 @@ def universe_delete(request):
     return redirect('universes')
 
 def universe_edit_base(request):
-    source_id = request.POST['universe_id']
+    universe_id = request.POST['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     try:
-        source = Universe.objects.get(Q(id=source_id),Q(owner__id=request.user.id))
+        source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
         return redirect('universes')
@@ -110,17 +110,17 @@ def universe_edit_base(request):
         source.public = False
     source.save()
     # TODO: Return success message
-    return redirect('/get_universe?universe_id=' + str(source_id))
+    return redirect('/universe_get.html?universe_id=' + str(universe_id))
 
 def universe_get(request):
     if request.POST.has_key('universe_id'):
-        source_id = request.POST['universe_id']
+        universe_id = request.POST['universe_id']
     else:
-        source_id = request.GET['universe_id']
+        universe_id = request.GET['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     try:
-        source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
+        source = Universe.objects.get(Q(id=universe_id),Q(public=True)|Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
         return redirect('universes')
@@ -131,5 +131,30 @@ def universe_get(request):
             provider = provider[0]
             # TODO: Implement Intraday
             context['tracks']['track_' + str(member.id)] = ContainerNumericValue.objects.filter(effective_container_id=member.id, source_id=provider.company.id, time__isnull=True).order_by('day', 'time')
-            print member.name + " loading track:" + str(len(context['tracks']['track_' + str(member.id)]))
     return render(request, 'universe_details.html', context)
+
+def universe_member_delete(request):
+    try:
+        universe_id = request.GET['universe_id']
+        member_id = request.GET['member_id']
+        # TODO: Check user
+        user = User.objects.get(id=request.user.id)
+        source = Universe.objects.get(Q(id=universe_id),Q(public=True)|Q(owner__id=request.user.id))
+        member = SecurityContainer.objects.get(id=member_id)
+        source.members.remove(member)
+        source.save()
+    except:
+        # TODO: Return error message
+        return HttpResponse('{"result": false, "status": "Could not remove member!"}',"json")
+    # TODO: Return success message
+    return HttpResponse('{"result": true, "status": "Member removed", "member_id": ' + member_id + '}',"json")
+
+def security_search(request):
+    try:
+        searching = request.POST['searching']
+        # TODO: Check user
+        user = User.objects.get(id=request.user.id)
+        results = SecurityContainer.objects.filter(Q(name__icontains=searching) | Q(short_name__icontains=searching) | Q(aliases__alias_value__icontains=searching))
+        
+    except:
+        return HttpResponse('{"result": false, "status": "Error while querying for:"' + searching + '}',"json")

@@ -42,7 +42,7 @@ USE_I18N = True
 
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale.
-USE_L10N = True
+USE_L10N = False
 
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
@@ -142,6 +142,7 @@ INSTALLED_APPS = (
     # 'django.contrib.admindocs',
 )
 
+DATE_FORMAT = 'Y-m-d'
 
 LOGIN_REDIRECT_URL = '/universes'
 LOGOUT_REDIRECT_URL = '/universes'
