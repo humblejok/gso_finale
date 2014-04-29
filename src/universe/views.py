@@ -10,6 +10,7 @@ from django.http.response import HttpResponse
 import re
 import threading
 import uuid
+from finale.utils import is_isin
 
 def bloomberg_wizard(request, entity):
     # TODO: Check user
@@ -19,17 +20,20 @@ def bloomberg_wizard_execute(request, entity):
     # TODO: Check user
     # TODO: Check Bloomberg method
     entries = [str(entry).strip() for entry in request.POST['bloombergList'].split('\r')]
-    isin = re.compile("^[A-Z]{2}[0-9]{10}$")
+    try:
+        use_terminal = request.POST['bloombergSource']=='True'
+    except:
+        use_terminal = False
     prepared_entries = []
     for entry in entries:
-        if isin.match(entry):
+        if is_isin(entry):
             prepared_entries.append('/isin/' + entry)
         else:
             prepared_entries.append(entry)
     response_key = uuid.uuid4().get_hex()
     # TODO: Implement CONSTANTS and dynamic choice
     if entity=='financials':
-        bb_thread = threading.Thread(None, bloomberg_data_query, response_key, (response_key, prepared_entries))
+        bb_thread = threading.Thread(None, bloomberg_data_query, response_key, (response_key, prepared_entries, use_terminal))
     bb_thread.start()
     context = {'response_key': response_key}
     return render(request,entity + '/bloomberg/wizard_waiting.html', context)
@@ -46,8 +50,6 @@ def get_execution(request):
         response_key = request.POST['response_key']
     else:
         response_key = request.GET['response_key']
-    print response_key
-    print cache.get('type_' + response_key)
     execution_results = cache.get(cache.get('type_' + response_key) + '_' + response_key)
     context = {'results': execution_results}
     return render(request, 'rendition/wizard_securities_results.html', context)

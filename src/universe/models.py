@@ -12,7 +12,6 @@ import logging
 import os
 import xlrd
 
-
 MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
 LOGGER = logging.getLogger(__name__)
@@ -117,23 +116,33 @@ def populate_track_from_lyxor(lyxor_file):
         row_index += 1
     
 def populate_security_from_bloomberg_protobuf(data):
+    
     securities = {}
+   
     for row in data.rows:
         if row.errorCode==0:
             if not securities.has_key(row.ticker):
                 if row.ticker.find('LX')>=0:
-                    securities[row.ticker] = FundContainer()
+                    securities[row.ticker] = FundContainer.create()
                 else:
-                    securities[row.ticker] = SecurityContainer()
+                    securities[row.ticker] = SecurityContainer.create()
             field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field)
             LOGGER.info(field_info)
             if field_info.exists():
                 securities[row.ticker].set_attribute('bloomberg', field_info[0], row.valueString)
             else:
                 LOGGER.info("Cannot find matching field for " + row.field)
+    [security.finalize() for security in securities.values()]
+    [security.save() for security in securities.values()]
     for ticker in securities:
         securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
-        securities[ticker].save()
+        ticker_value = securities[ticker].aliases.filter(alias_type__name='BLOOMBERG')
+        if ticker_value.exists():
+            ticker_value = Alias.objects.get(id=ticker_value[0].id)
+            new_full_ticker = ticker_value.alias_value + ' ' + securities[ticker].market_sector
+            ticker_value.alias_value = new_full_ticker
+            ticker_value.save()
+    [security.save() for security in securities.values()]
     return securities
 
 def populate_security_from_lyxor(lyxor_file, clean=True):

@@ -1,15 +1,12 @@
 <div class='row'>
 	<table class='table table-bordered'>
-		<tr><th>Name</th><th>Currency</th><th>Ticker</th><th>ISIN</th><th>Duplicates?</th></tr>
-		{% for securities in results %}
+		<tr><th>Name</th><th>Currency</th><th>ISIN</th><th>Bloomberg</th></tr>
+		{% for security in results %}
 			<tr>
-				{% with security=securities|first securities_length=securities|length %}
 				<td>{{security.name}}</td>
 				<td>{{security.currency.short_name}}</td>
 				<td>{% for alias in security.aliases.all %}{% if alias.alias_type.identifier == 'ALIAS_ISIN' %}{{alias.alias_value}}{% endif %}{% endfor%}</td>
-				<td>{% for alias in security.aliases.all %}{% if alias.alias_type.identifier == 'ALIAS_TICKER' %}{{alias.alias_value}}{% endif %}{% endfor%}</td>
-				<td>{% if securities_length > 1 %}Yes{% else %}No{% endif %}</td>
-				{% endwith %}
+				<td>{% for alias in security.aliases.all %}{% if alias.alias_type.identifier == 'ALIAS_BLOOMBERG' %}{{alias.alias_value}}{% endif %}{% endfor%}</td>
 			</tr>
 		{% endfor %}
 	</table>

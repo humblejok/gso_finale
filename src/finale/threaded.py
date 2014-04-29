@@ -6,11 +6,11 @@ Created on Mar 27, 2014
 from django.core.cache import cache
 from providers import BloombergTasks
 from universe.models import populate_security_from_bloomberg_protobuf,\
-    FinancialContainer
+    FinancialContainer, SecurityContainer
 
-def bloomberg_data_query(response_key, prepared_entries):
+def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set(response_key, 0.0)
-    response = BloombergTasks.send_bloomberg_get_data(prepared_entries, ticker_type='TICKER', use_terminal=True)
+    response = BloombergTasks.send_bloomberg_get_data(prepared_entries, ticker_type='TICKER', use_terminal=use_terminal)
     cache.set('data_' + response_key, response)
     cache.set('type_' + response_key, 'securities')
     cache.set(response_key, 0.5)
@@ -18,13 +18,27 @@ def bloomberg_data_query(response_key, prepared_entries):
     cache.set(response_key, 1.0)
     result = []
     for security in securities.keys():
+        
+        with_isin = []
+        with_bloomberg = []
+        
         isin_field = securities[security].aliases.filter(alias_type__name='ISIN')
-        item = [securities[security]]
         if isin_field.exists():
-            look_alikes = FinancialContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin_field.alias_value).exclude(id=securities[security].id)
-            for alike in look_alikes:
-                item.append(alike)
-        result.append(item)
+            with_isin = sorted(SecurityContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin_field[0].alias_value), key=lambda x: x.id)
+        bloomberg_field = securities[security].aliases.filter(alias_type__name='BLOOMBERG')
+        if bloomberg_field.exists():
+            with_bloomberg = sorted(SecurityContainer.objects.filter(aliases__alias_type__name='BLOOMBERG', aliases__alias_value=bloomberg_field[0].alias_value), key=lambda x: x.id)
+        if len(with_isin)>1:
+            print 'ISIN'
+            securities[security].delete()
+            result.append(with_isin[0])
+        elif len(with_bloomberg)>1:
+            print 'BLOOMBERG'
+            securities[security].delete()
+            result.append(with_bloomberg[0])
+        else:
+            print 'NOPE'
+            result.append(securities[security])
     cache.set('securities_' + response_key, result)
     
 def from_cache(response_key):

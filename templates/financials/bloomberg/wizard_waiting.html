@@ -23,6 +23,8 @@
 
 			function appendResults(e) {
 				$(".container").append(e);
+				$("#waiting_title").text("Bloomberg query results");
+				$(".lead").text("Here are the results of your query. Please note that if a ticker or ISIN was not found on Bloomberg, no entry will be displayed for that code in the results.")
 			}
 
 			function check_execution() {
@@ -64,7 +66,7 @@
 		{% if request.user.is_authenticated %}
 			<div class="row">
 				<div class="col-lg-11">
-					<h1 class="">Waiting for Bloomberg response</h1>
+					<h1 id="waiting_title">Waiting for Bloomberg response</h1>
 					<p class="lead">Please do not close nor refresh the current page, the process can last up to 10 minutes.<br/>
 				</div>
 				<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
