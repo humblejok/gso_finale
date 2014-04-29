@@ -130,7 +130,7 @@ def universe_get(request):
         if provider.exists():
             provider = provider[0]
             # TODO: Implement Intraday
-            context['tracks']['track_' + str(member.id)] = ContainerNumericValue.objects.filter(effective_container_id=member.id, source_id=provider.company.id, time__isnull=True).order_by('day', 'time')
+            context['tracks']['track_' + str(member.id)] = ContainerNumericValue.objects.filter(effective_container__id=member.id, source__id=provider.company.id, time__isnull=True).order_by('day', 'time')
     return render(request, 'universe_details.html', context)
 
 def universe_member_delete(request):

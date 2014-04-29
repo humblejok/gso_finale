@@ -6,7 +6,10 @@ Created on Mar 27, 2014
 from django.core.cache import cache
 from providers import BloombergTasks
 from universe.models import populate_security_from_bloomberg_protobuf,\
-    FinancialContainer, SecurityContainer
+    FinancialContainer, SecurityContainer,\
+    populate_tracks_from_bloomberg_protobuf
+import uuid
+from ctypes.test.test_errno import threading
 
 def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set(response_key, 0.0)
@@ -29,17 +32,26 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
         if bloomberg_field.exists():
             with_bloomberg = sorted(SecurityContainer.objects.filter(aliases__alias_type__name='BLOOMBERG', aliases__alias_value=bloomberg_field[0].alias_value), key=lambda x: x.id)
         if len(with_isin)>1:
-            print 'ISIN'
             securities[security].delete()
             result.append(with_isin[0])
         elif len(with_bloomberg)>1:
-            print 'BLOOMBERG'
             securities[security].delete()
             result.append(with_bloomberg[0])
         else:
-            print 'NOPE'
             result.append(securities[security])
     cache.set('securities_' + response_key, result)
+    history_key = uuid.uuid4().get_hex()
+    bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, prepared_entries, use_terminal))
+    bb_thread.start()
+    
+def bloomberg_history_query(response_key, prepared_entries, use_terminal):
+    cache.set(response_key, 0.0)
+    response = BloombergTasks.send_bloomberg_get_history(prepared_entries, ticker_type='TICKER', use_terminal=use_terminal)
+    cache.set('data_' + response_key, response)
+    cache.set('type_' + response_key, 'historical')
+    cache.set(response_key, 0.5)
+    populate_tracks_from_bloomberg_protobuf(response)
+    cache.set(response_key, 1.0)
     
 def from_cache(response_key):
     securities = populate_security_from_bloomberg_protobuf(cache.get('data_' + response_key))

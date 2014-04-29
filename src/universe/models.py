@@ -11,6 +11,7 @@ import datetime
 import logging
 import os
 import xlrd
+import traceback
 
 MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
@@ -114,7 +115,50 @@ def populate_track_from_lyxor(lyxor_file):
                     new_nav_value.value = float(sheet.cell_value(row_index,col_index))
                     new_nav_value.save()
         row_index += 1
+
+def populate_tracks_from_bloomberg_protobuf(data):
+    LOGGER.info('Importing historical NAV from Bloomberg')
+    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
+    daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
+    reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
+    bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     
+    cache = {}
+    for row in data.rows:
+        if row.errorCode==0:
+            work_date = datetime.datetime.fromtimestamp(row.date/1000.0)
+            work_date = datetime.date(work_date.year, work_date.month, work_date.day)
+            target = None
+            with_isin = SecurityContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=row.ticker)
+            with_bloomberg = SecurityContainer.objects.filter(aliases__alias_type__name='BLOOMBERG', aliases__alias_value=row.ticker)
+            if cache.has_key(row.ticker):
+                target = cache[row.ticker]
+            elif with_isin.exists():
+                target = with_isin[0]
+                cache[row.ticker] = target
+            elif with_bloomberg.exists():
+                target = with_bloomberg[0]
+                cache[row.ticker] = target
+            if target==None:
+                LOGGER.warn('Could not find a container with ISIN or BLOOMBERG code equals to [' + str(row.ticker) + ']')
+            else:
+                try:
+                    new_value = ContainerNumericValue.objects.get(effective_container_id=target.id,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id,day=work_date)
+                except:
+                    new_value = ContainerNumericValue()
+                    new_value.effective_container = target
+                new_value.type = nav_value
+                new_value.quality = official_type
+                new_value.source = bloomberg_company
+                new_value.day = work_date
+                new_value.time = None
+                new_value.frequency = daily
+                new_value.frequency_reference = reference_days[work_date.weekday()]
+                new_value.value = row.valueDouble
+                new_value.save()
+    LOGGER.info('Historical NAV imported from Bloomberg')
+
 def populate_security_from_bloomberg_protobuf(data):
     
     securities = {}
@@ -127,7 +171,6 @@ def populate_security_from_bloomberg_protobuf(data):
                 else:
                     securities[row.ticker] = SecurityContainer.create()
             field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field)
-            LOGGER.info(field_info)
             if field_info.exists():
                 securities[row.ticker].set_attribute('bloomberg', field_info[0], row.valueString)
             else:
