@@ -5,7 +5,7 @@ from django.db import models
 from django.db.models import Q
 from django.db.models.fields import FieldDoesNotExist
 from openpyxl.reader.excel import load_workbook
-from seq_common.utils import classes
+from seq_common.utils import classes, dates
 from xlrd.xldate import xldate_as_tuple
 import datetime
 import logging
@@ -78,12 +78,51 @@ def populate_model_from_xlsx(model_name, xlsx_file):
         instance.save()
         row_index += 1
 
-def populate_track_from_track(container_id, track_type, track_source, source_frequency, target_frequency, frequency_reference = None):
-    track_tokens = ContainerNumericValue.objects.filter(effective_container_id=container_id,type__id=track_type.id, source__id=track_source.id, frequency__id=source_frequency.id).annotate(same_date_tokens=Count('quality')).order_by('day')
+def populate_monthly_track_from_track(container, track_type, track_quality, track_source, source_frequency):
+    LOGGER.info('Computing monthly track for ' + container.name)
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
+    estimated_status = Attributes.objects.get(identifier='NUM_STATUS_ESTIMATED', active=True)
+    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
+    reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
+    to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id)
+    LOGGER.info("Will delete " + str(len(to_delete)))
+    to_delete.delete()
+    track_tokens = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=source_frequency.id).order_by('day')
+    LOGGER.info('Working on ' + str(len(track_tokens)) + ' elements!' )
     previous_token = None
     for token in track_tokens:
-        None
-
+        if previous_token!=None:
+            current_eom = dates.GetEndOfMonth(previous_token.day)
+            if ((token.day-current_eom).days!=0 and previous_token.day.month!=token.day.month and previous_token.day!=dates.GetEndOfMonth(previous_token.day)) or token.day==current_eom:
+                new_value = ContainerNumericValue()
+                new_value.effective_container = container
+                new_value.type = track_type
+                new_value.quality = track_quality
+                new_value.source = track_source
+                new_value.day = current_eom
+                new_value.status = final_status
+                new_value.time = None
+                new_value.frequency = monthly
+                new_value.frequency_reference = reference_days[current_eom.weekday()]
+                new_value.value = token.value if token.day==current_eom else previous_token.value 
+                new_value.save()
+        else:
+            current_eom = dates.GetEndOfMonth(token.day)
+            if current_eom!=token.day:
+                new_value = ContainerNumericValue()
+                new_value.effective_container = container
+                new_value.type = track_type
+                new_value.quality = track_quality
+                new_value.source = track_source
+                new_value.day = dates.GetEndOfMonth(dates.AddMonth(token.day,-1))
+                new_value.status = final_status
+                new_value.time = None
+                new_value.frequency = monthly
+                new_value.frequency_reference = reference_days[new_value.day.weekday()]
+                new_value.value = token.value
+                new_value.save()
+        previous_token = token
+    LOGGER.info('Finished monthly track computation for ' + container.name)
 def populate_track_from_lyxor(lyxor_file):
     # Excel input
     workbook = xlrd.open_workbook(lyxor_file)
@@ -91,6 +130,7 @@ def populate_track_from_lyxor(lyxor_file):
     # Lyxor default
     lyxor_company = CompanyContainer.objects.get(name='Lyxor Asset Management')
     nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
     tuesday = Attributes.objects.get(identifier='DT_REF_THURSDAY', active=True)
@@ -116,6 +156,7 @@ def populate_track_from_lyxor(lyxor_file):
                     new_nav_value.quality = official_type
                     new_nav_value.source = lyxor_company
                     new_nav_value.day = simple_date
+                    new_nav_value.status = final_status
                     new_nav_value.time = None
                     new_nav_value.frequency = weekly
                     new_nav_value.frequency_reference = tuesday
@@ -128,9 +169,10 @@ def populate_tracks_from_bloomberg_protobuf(data):
     nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
+    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
-    
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     cache = {}
     for row in data.rows:
         if row.errorCode==0:
@@ -151,7 +193,7 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 LOGGER.warn('Could not find a container with ISIN or BLOOMBERG code equals to [' + str(row.ticker) + ']')
             else:
                 try:
-                    new_value = ContainerNumericValue.objects.get(effective_container_id=target.id,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id,day=work_date)
+                    new_value = ContainerNumericValue.objects.get(effective_container_id=target.id,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id,day=work_date, frequency__id=daily.id, status__id=final_status.id)
                 except:
                     new_value = ContainerNumericValue()
                     new_value.effective_container = target
@@ -160,11 +202,14 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 new_value.source = bloomberg_company
                 new_value.day = work_date
                 new_value.time = None
+                new_value.status = final_status
                 new_value.frequency = daily
                 new_value.frequency_reference = reference_days[work_date.weekday()]
                 new_value.value = row.valueDouble
                 new_value.save()
     LOGGER.info('Historical NAV imported from Bloomberg')
+    for container in cache.values():
+        populate_monthly_track_from_track(container, nav_value, official_type, bloomberg_company, daily)
 
 def populate_security_from_bloomberg_protobuf(data):
     
@@ -736,6 +781,7 @@ class ContainerNumericValue(CoreModel):
     frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='numeric_frequency_rel')
     frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='numeric_date_reference_rel')
     quality = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_quality'}, related_name='numeric_quality_rel', null=True)
+    status = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_status'}, related_name='numeric_status_rel', null=True)
     source = models.ForeignKey(CompanyContainer, related_name='data_source_rel', null=True)
     day = models.DateField()
     time = models.TimeField(null=True, blank=True)
