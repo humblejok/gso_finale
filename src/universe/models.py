@@ -12,6 +12,7 @@ import logging
 import os
 import xlrd
 import traceback
+from django.db.models.aggregates import Count
 
 MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
@@ -76,6 +77,12 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             instance.set_attribute('excel', field_info, value)
         instance.save()
         row_index += 1
+
+def populate_track_from_track(container_id, track_type, track_source, source_frequency, target_frequency, frequency_reference = None):
+    track_tokens = ContainerNumericValue.objects.filter(effective_container_id=container_id,type__id=track_type.id, source__id=track_source.id, frequency__id=source_frequency.id).annotate(same_date_tokens=Count('quality')).order_by('day')
+    previous_token = None
+    for token in track_tokens:
+        None
 
 def populate_track_from_lyxor(lyxor_file):
     # Excel input
@@ -162,14 +169,22 @@ def populate_tracks_from_bloomberg_protobuf(data):
 def populate_security_from_bloomberg_protobuf(data):
     
     securities = {}
-   
+        
     for row in data.rows:
         if row.errorCode==0:
-            if not securities.has_key(row.ticker):
-                if row.ticker.find('LX')>=0:
-                    securities[row.ticker] = FundContainer.create()
-                else:
+            if row.field=='SECURITY_TYP':
+                try:
+                    LOGGER.debug('Entity identified by [' + row.ticker + ',' + row.valueString + '] will be created as [' + Attributes.objects.get(type='bloomberg_security_model', name=row.valueString).short_name + ']')
+                    class_name = Attributes.objects.get(type='bloomberg_security_model', name=row.valueString).short_name
+                    if not class_name.startswith('universe.models.'):
+                        class_name = 'universe.models.' + class_name
+                    securities[row.ticker] = classes.my_class_import(class_name).create()
+                except:
+                    traceback.print_exc()
+                    LOGGER.warn('Entity identified by [' + row.ticker  + ',' + row.valueString + '] will be treated as a simple security')
                     securities[row.ticker] = SecurityContainer.create()
+    for row in data.rows:
+        if row.errorCode==0:
             field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field)
             if field_info.exists():
                 securities[row.ticker].set_attribute('bloomberg', field_info[0], row.valueString)
@@ -643,6 +658,7 @@ class PortfolioContainer(FinancialContainer):
 
 class CurrencyContainer(FinancialContainer):
     target = models.ForeignKey(Attributes, limit_choices_to={'type':'currency'}, related_name='source_currency_rel')
+    duration_unit = models.ForeignKey(Attributes, limit_choices_to={'type':'duration_unit'}, related_name='duration_unit_currency_rel')
     duration = models.FloatField(null=True, blank=True)
     
     def get_fields(self):
@@ -696,6 +712,13 @@ class FundContainer(SecurityContainer):
     def get_fields(self):
         return super(FundContainer, self).get_fields() + ['bb_geographical_focus','bb_asset_class_focus','bb_style','bb_strategy','bb_fund_type','bb_fund_domiciliation','bb_rating_class_focus']
 
+class IndexContainer(SecurityContainer):
+    data_type = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_type'}, related_name='numeric_type_data_index_rel', null=True)
+    data_period = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='frequency_data_index_rel', null=True)
+    
+    def get_fields(self):
+        return super(IndexContainer, self).get_fields() + ['data_type','data_period']
+    
 class BondContainer(SecurityContainer):
     issue_date = models.DateField()
     coupon_rate = models.FloatField()
