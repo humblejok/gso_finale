@@ -21,7 +21,9 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set(response_key, 0.5)
     securities = populate_security_from_bloomberg_protobuf(response)
     cache.set(response_key, 1.0)
+    
     result = []
+    
     for security in securities.keys():
         
         with_isin = []

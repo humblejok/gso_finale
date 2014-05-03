@@ -161,6 +161,13 @@ CACHES = {
     }
 }
 
+OPENCL_ENABLE = False
+OPENCL_DOUBLE_PRECISION_ENABLE = False
+OPENCL_PLATFORM = 0
+OPENCL_DEVICE = 1
+
+RESOURCES_MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
+
 BLOOMBERG_BROKER_URL = 'amqp://bloomberg:bloomberg@192.168.9.93:5672/bloomberg'
 
 # A sample logging configuration. The only tangible logging

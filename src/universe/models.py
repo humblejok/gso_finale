@@ -13,17 +13,19 @@ import os
 import xlrd
 import traceback
 from django.db.models.aggregates import Count
+from finale.settings import RESOURCES_MAIN_PATH
+from utilities import computing
 
-MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
+
 
 LOGGER = logging.getLogger(__name__)
 
 def setup():
-    populate_attributes_from_xlsx('universe.models.Attributes', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_attributes_from_xlsx('universe.models.Dictionary', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_model_from_xlsx('universe.models.CompanyContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
-    populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(MAIN_PATH,'Repository Setup.xlsx'))
+    populate_attributes_from_xlsx('universe.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_attributes_from_xlsx('universe.models.Dictionary', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.CompanyContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
 
 
 def populate_attributes_from_xlsx(model_name, xlsx_file):
@@ -78,6 +80,39 @@ def populate_model_from_xlsx(model_name, xlsx_file):
         instance.save()
         row_index += 1
 
+
+def populate_monthly_perf(container, track_type, track_quality, track_source):
+    LOGGER.info('Computing and saving monthly performances track for ' + container.name)
+    reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
+    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
+    perf_value = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
+    to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=perf_value.id, source__id=track_source.id, frequency__id=monthly.id)
+    LOGGER.info("Will delete " + str(len(to_delete)) + ' elements!')
+    to_delete.delete()
+    dates_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id).order_by('day').values_list('day', flat=True)
+    values_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id).order_by('day').values_list('value', flat=True)
+    computer = computing.get_tracks_computer()
+    LOGGER.info('Monthly performances computation starts for ' + container.name)
+    performances = computer.compute_performances(values_list)
+    LOGGER.info('Monthly performances computation ends for ' + container.name + '. Got ' + str(len(performances)) + ' elements!')
+    
+    for index in range(1,len(performances)):
+        new_value = ContainerNumericValue()
+        new_value.effective_container = container
+        new_value.type = perf_value
+        new_value.quality = track_quality
+        new_value.source = track_source
+        new_value.day = dates_list[index]
+        new_value.status = final_status
+        new_value.time = None
+        new_value.frequency = monthly
+        new_value.frequency_reference = reference_days[dates_list[index].weekday()]
+        new_value.value = values_list[index] 
+        new_value.save()
+    LOGGER.info('Monthly performances track is now in database for ' + container.name)
+    
+
 def populate_monthly_track_from_track(container, track_type, track_quality, track_source, source_frequency):
     LOGGER.info('Computing monthly track for ' + container.name)
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
@@ -85,7 +120,7 @@ def populate_monthly_track_from_track(container, track_type, track_quality, trac
     monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
     to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id)
-    LOGGER.info("Will delete " + str(len(to_delete)))
+    LOGGER.info("Will delete " + str(len(to_delete)) + " elements!")
     to_delete.delete()
     track_tokens = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=source_frequency.id).order_by('day')
     LOGGER.info('Working on ' + str(len(track_tokens)) + ' elements!' )
@@ -123,6 +158,8 @@ def populate_monthly_track_from_track(container, track_type, track_quality, trac
                 new_value.save()
         previous_token = token
     LOGGER.info('Finished monthly track computation for ' + container.name)
+    populate_monthly_perf(container, track_type, track_quality, track_source)
+    
 def populate_track_from_lyxor(lyxor_file):
     # Excel input
     workbook = xlrd.open_workbook(lyxor_file)
@@ -173,9 +210,10 @@ def populate_tracks_from_bloomberg_protobuf(data):
     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
+    not_found = []
     cache = {}
     for row in data.rows:
-        if row.errorCode==0:
+        if row.errorCode==0 and not not_found.__contains__(row.ticker):
             work_date = datetime.datetime.fromtimestamp(row.date/1000.0)
             work_date = datetime.date(work_date.year, work_date.month, work_date.day)
             target = None
@@ -191,6 +229,7 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 cache[row.ticker] = target
             if target==None:
                 LOGGER.warn('Could not find a container with ISIN or BLOOMBERG code equals to [' + str(row.ticker) + ']')
+                not_found.append(row.ticker)
             else:
                 try:
                     new_value = ContainerNumericValue.objects.get(effective_container_id=target.id,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id,day=work_date, frequency__id=daily.id, status__id=final_status.id)
@@ -213,8 +252,10 @@ def populate_tracks_from_bloomberg_protobuf(data):
 
 def populate_security_from_bloomberg_protobuf(data):
     
+    bloomberg_alias = Attributes.objects.get(identifier='ALIAS_BLOOMBERG')
+    
     securities = {}
-        
+    
     for row in data.rows:
         if row.errorCode==0:
             if row.field=='SECURITY_TYP':
@@ -241,10 +282,18 @@ def populate_security_from_bloomberg_protobuf(data):
         securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
         ticker_value = securities[ticker].aliases.filter(alias_type__name='BLOOMBERG')
         if ticker_value.exists():
+            LOGGER.info("Using Bloomberg information for ticker and exchange")
             ticker_value = Alias.objects.get(id=ticker_value[0].id)
             new_full_ticker = ticker_value.alias_value + ' ' + securities[ticker].market_sector
             ticker_value.alias_value = new_full_ticker
             ticker_value.save()
+        else:
+            LOGGER.info("Using user information for ticker and exchange")
+            ticker_value = Alias()
+            ticker_value.alias_type = bloomberg_alias
+            ticker_value.alias_value = ticker
+            ticker_value.save()
+            securities[ticker].aliases.add(ticker_value)
     [security.save() for security in securities.values()]
     return securities
 
