@@ -6,7 +6,7 @@ from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
 from finale.threaded import bloomberg_data_query
 from universe.models import Universe, ContainerNumericValue, SecurityContainer,\
-    Attributes
+    Attributes, FinancialContainer
 import threading
 import uuid
 from finale.utils import is_isin
@@ -56,6 +56,11 @@ def get_execution(request):
     context = {'results': execution_results,'universes': universes}
     return render(request, 'rendition/wizard_securities_results.html', context)
 
+def financial_container_get(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id']
+    container = FinancialContainer.objects.get(id=container_id)
 
 def universes(request):
     # TODO: Check user
