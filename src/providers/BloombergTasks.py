@@ -29,12 +29,12 @@ BLOOMBERG_PROGRAMS = (('getData','Static Data'),('getHistory','Historical Data')
 BLOOMBERG_ID_TYPES = (('ISIN','Isin'), ('TICKER', 'Ticker'))
 
 
-def send_bloomberg_get_history(tickers, fields=['PX_LAST'], ticker_type = 'ISIN', use_terminal = False):
+def send_bloomberg_get_history(tickers, fields=['PX_LAST'], ticker_type = 'ISIN', use_terminal = False, start_date = datetime.datetime(2009,1,1,0,0,0)):
     request = bloomberg_pb2.BloombergRequest()
     request.program = 'getHistory'
     request.rawmode = False
     request.tickertype = ticker_type
-    request.startdate = dates.epoch_time(datetime.datetime(1972,1,1,0,0,0))
+    request.startdate = dates.epoch_time(start_date)
     request.terminal = use_terminal
     [request.tickers.append(t) for t in tickers]
     [request.fields.append(f) for f in fields]

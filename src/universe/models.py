@@ -205,7 +205,6 @@ def populate_tracks_from_bloomberg_protobuf(data):
     nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
-    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
@@ -254,6 +253,17 @@ def populate_security_from_bloomberg_protobuf(data):
     
     bloomberg_alias = Attributes.objects.get(identifier='ALIAS_BLOOMBERG')
     
+    bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
+    data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
+    if not RelatedCompany.objects.filter(company=bloomberg_company).exists():
+        LOGGER.info("Creating Bloomberg LP as a data providing company.")
+        bloomberg_provider = RelatedCompany()
+        bloomberg_provider.company = bloomberg_company
+        bloomberg_provider.role = data_provider
+        bloomberg_provider.save()
+    else:
+        bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company)
+    
     securities = {}
     
     for row in data.rows:
@@ -277,6 +287,7 @@ def populate_security_from_bloomberg_protobuf(data):
             else:
                 LOGGER.info("Cannot find matching field for " + row.field)
     [security.finalize() for security in securities.values()]
+    [security.associated_companies.add(bloomberg_provider) for security in securities.values()]
     [security.save() for security in securities.values()]
     for ticker in securities:
         securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')

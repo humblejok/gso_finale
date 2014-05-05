@@ -12,12 +12,26 @@
 			var currentInterval;
 			var htmlResults;
 
+			// EVENT HANDLERS
+
+			function universeNotCreated(e) {
+				alert(e.status);
+			}
+
+			function universeCreated(e) {
+				if (e.result) {
+					$(".modal").modal('hide');
+				} else {
+					universeNotCreated(e);
+				}
+			}
+
 			function progressHandler(e) {
 				if (e.result) {
 					$(".progress").attr("class","progress");
 					$(".progress-bar").text("Done");
 					clearInterval(currentInterval);
-					get_execution();
+					getExecution();
 				}
 			};
 
@@ -27,7 +41,7 @@
 				$(".lead").text("Here are the results of your query. Please note that if a ticker or ISIN was not found on Bloomberg, no entry will be displayed for that code in the results.")
 			}
 
-			function check_execution() {
+			function checkExecution() {
 				var checkForm = new FormData();
 				checkForm.append('response_key', '{{response_key}}');
 				$.ajax({
@@ -40,7 +54,7 @@
 				});
 			}
 
-			function get_execution() {
+			function getExecution() {
 				var getForm = new FormData();
 				getForm.append('response_key', '{{response_key}}');
 				$.ajax({
@@ -53,10 +67,42 @@
 				});
 			}
 
+			function universeCreate(name, description, securities) {
+				var createForm = new FormData();
+				createForm.append('universe_name', name);
+				createForm.append('universe_short_name', 'From wizard...');
+				createForm.append('universe_description', description);
+				createForm.append('universe_securities', securities);
+				$.ajax({
+					url: '/universe_create.html',
+					type: 'POST',
+					data: createForm,
+					processData: false,
+					contentType: false,
+					success: universeCreated,
+					error: universeNotCreated
+				});
+			}
+
+			function universeUpdate(clean, universeId, securities) {
+				var updateForm = new FormData();
+				updateForm.append('universe_id', universeId);
+				updateForm.append('universe_clean', clean);
+				updateForm.append('universe_securities', securities);
+				$.ajax({
+					url: '/universe_change_members.html',
+					type: 'POST',
+					data: updateForm,
+					processData: false,
+					contentType: false,
+					success: universeCreated,
+					error: universeNotCreated
+				});
+			}
 
 			$(document).ready(function () {
 				csrftoken = getCookie('csrftoken');
-				currentInterval = setInterval(check_execution, 10000);
+				currentInterval = setInterval(checkExecution, 10000);
 			});
 
 		</script>

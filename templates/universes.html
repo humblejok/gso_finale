@@ -10,7 +10,7 @@
 		<script>
 			$(document).ready(function () {
 		     	$(".btn").not('#comment').tooltip();
-		     	$("#comment").popover();
+		     	$(".comment").popover();
 			   });
 
 		</script>
@@ -51,12 +51,12 @@
 							<a href="#modal_explore_{{universe.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Explore universe">
 								<span class="glyphicon glyphicon-list-alt"></span>
 							</a>
-							<a href="/duplicate_universe?universe_id={{universe.id}}" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Duplicate universe">
+							<a href="/duplicate_universe.html?universe_id={{universe.id}}" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Duplicate universe">
 								<span class="glyphicon glyphicon-floppy-disk"></span>
 							</a>
-							<button id="comment" class="btn btn-default" data-toggle="popover" data-placement="bottom" title="{{universe.description}}">
+							<button class="btn btn-default comment" data-toggle="popover" data-placement="bottom" title="{{universe.description}}">
 								<span class="glyphicon glyphicon-comment"></span>
-							</a>
+							</button>
 						</td>
 					</tr>
 					{% endfor %}
@@ -141,7 +141,7 @@
 							</div>
 							<div class="modal-footer">
 								<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-								<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm universe base information modifications and go to content edition">Continue</a>
+								<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm universe base information modifications and go to content edition">Continue</button>
 							</div>
 						</form>
 					</div>

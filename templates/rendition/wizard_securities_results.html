@@ -12,10 +12,72 @@
 	</table>
 </div>
 <div class='row'>
-	<button class='btn btn-primary' role="button" data-toggle="tooltip" data-placement="bottom" title="Append all results to selected universe">Append to universe</button>
-	<span>TEST</span>
+	<a href="#modal_append" class="btn btn-default col-lg-offset-8{% if universes|length == 0 %} invisible{% endif %}" role="button" data-toggle="modal" data-placement="bottom" title="Append all results to selected universe">
+		<span class="glyphicon glyphicon-log-in"></span>&nbsp;Append to universe
+	</a>
+	<span>&nbsp;</span>
+	<a href="#modal_save" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Save results in a new or existing universe">
+		<span class="glyphicon glyphicon-save"></span>&nbsp;Save as universe
+	</a>
 </div>
-<div class='row'>
-	<button class='btn btn-primary' role="button" data-toggle="tooltip" data-placement="bottom" title="Save all results as selected universe">Save as universe</button>
-	<span>TEST</span>
+<div class="modal fade" id="modal_append" tabindex="-1" role="dialog" aria-labelledby="modal_append" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<h4 class="modal-title" id="modal_append">Select a universe to update</h4>
+			</div>
+			<div class="modal-body">
+				{% if universes|length != 0 %}
+				<table class="table table.striped">
+					<tr>
+						<th>Available universe</th><th></th>
+					</tr>
+					{% for universe in universes %}
+					<tr>
+						<td>{{universe.name}}</td><td><a type="button" class="btn btn-xs btn-default" onclick="universeUpdate(false, {{universe.id}}, [{% for security in results %}{{security.id}}{% if not forloop.last %},{% endif %}{% endfor %}])">Update</a></td>
+					</tr>
+					{% endfor %}
+				</table>
+				{% endif %}
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+<div class="modal fade" id="modal_save" tabindex="-1" role="dialog" aria-labelledby="modal_save" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<h4 class="modal-title" id="modal_save">Save as new or existing universe</h4>
+			</div>
+			<div class="modal-body">
+				<form id="newUniverse" role="form" class="form-horizontal" action="/universe_edit_base.html" method="POST" onsubmit="">{% csrf_token %}
+					<div class="form-group">
+						<label for="universeName" class="col-lg-2 col-lg-offset-1">Name:</label>
+						<input id="universeName" class="col-lg-6" name="universeName" type="text" placeholder="Input a universe name here">
+						<a type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="universeCreate(newUniverse.universeName.value,'Created using Bloomberg wizard',[{% for security in results %}{{security.id}}{% if not forloop.last %},{% endif %}{% endfor %}])">Save</a>
+					</div>
+				</form>
+				{% if universes|length != 0 %}
+				<table class="table table.striped">
+					<tr>
+						<th>Available universe</th><th></th>
+					</tr>
+					{% for universe in universes %}
+					<tr>
+						<td>{{universe.name}}</td><td><a type="button" class="btn btn-xs btn-default" onclick="universeUpdate(true, {{universe.id}}, [{% for security in results %}{{security.id}}{% if not forloop.last %},{% endif %}{% endfor %}])">Update</a></td>
+					</tr>
+					{% endfor %}
+				</table>
+				{% endif %}
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
 </div>
