@@ -51,7 +51,11 @@ def get_execution(request):
     else:
         response_key = request.GET['response_key']
     execution_results = cache.get(cache.get('type_' + response_key) + '_' + response_key)
-    context = {'results': execution_results}
+    universes = Universe.objects.filter(Q(public=True)|Q(owner__id=request.user.id))
+    context = {'universes': universes}
+    rendition = render(request, 'rendition/universes/universes_list.json',context).content
+    rendition = rendition.replace('\r','').replace('\n','').replace('\t','')
+    context = {'results': execution_results,'universes': str(rendition)}
     return render(request, 'rendition/wizard_securities_results.html', context)
 
 
@@ -111,6 +115,13 @@ def universe_edit_base(request):
     source.save()
     # TODO: Return success message
     return redirect('/universe_get.html?universe_id=' + str(universe_id))
+
+def universe_get_writable(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    universes = Universe.objects.filter(Q(public=True)|Q(owner__id=request.user.id))
+    context = {'universes': universes}
+    return render(request, 'rendition/universes/universes_list.json', context)
 
 def universe_get(request):
     if request.POST.has_key('universe_id'):

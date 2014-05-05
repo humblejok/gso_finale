@@ -81,17 +81,16 @@ def populate_model_from_xlsx(model_name, xlsx_file):
         row_index += 1
 
 
-def populate_monthly_perf(container, track_type, track_quality, track_source):
+def populate_perf(container, frequency, track_type, track_quality, track_source):
     LOGGER.info('Computing and saving monthly performances track for ' + container.name)
     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
-    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
     perf_value = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
-    to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=perf_value.id, source__id=track_source.id, frequency__id=monthly.id)
+    to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=perf_value.id, source__id=track_source.id, frequency__id=frequency.id)
     LOGGER.info("Will delete " + str(len(to_delete)) + ' elements!')
     to_delete.delete()
-    dates_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id).order_by('day').values_list('day', flat=True)
-    values_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id).order_by('day').values_list('value', flat=True)
+    dates_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=frequency.id).order_by('day').values_list('day', flat=True)
+    values_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=frequency.id).order_by('day').values_list('value', flat=True)
     computer = computing.get_tracks_computer()
     LOGGER.info('Monthly performances computation starts for ' + container.name)
     performances = computer.compute_performances(values_list)
@@ -106,7 +105,7 @@ def populate_monthly_perf(container, track_type, track_quality, track_source):
         new_value.day = dates_list[index]
         new_value.status = final_status
         new_value.time = None
-        new_value.frequency = monthly
+        new_value.frequency = frequency
         new_value.frequency_reference = reference_days[dates_list[index].weekday()]
         new_value.value = values_list[index] 
         new_value.save()
@@ -158,7 +157,7 @@ def populate_monthly_track_from_track(container, track_type, track_quality, trac
                 new_value.save()
         previous_token = token
     LOGGER.info('Finished monthly track computation for ' + container.name)
-    populate_monthly_perf(container, track_type, track_quality, track_source)
+    populate_perf(container, monthly, track_type, track_quality, track_source)
     
 def populate_track_from_lyxor(lyxor_file):
     # Excel input
@@ -248,6 +247,7 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 new_value.save()
     LOGGER.info('Historical NAV imported from Bloomberg')
     for container in cache.values():
+        populate_perf(container, daily, nav_value, official_type, bloomberg_company)
         populate_monthly_track_from_track(container, nav_value, official_type, bloomberg_company, daily)
 
 def populate_security_from_bloomberg_protobuf(data):

@@ -1,0 +1,5 @@
+[
+{% for universe in universes %}
+{% templatetag openbrace %}'id': '{{universe.id}}', 'name':{{universe.name}}{% templatetag closebrace %},
+{% endfor %}
+]
