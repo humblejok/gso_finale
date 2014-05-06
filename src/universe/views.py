@@ -6,7 +6,8 @@ from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
 from finale.threaded import bloomberg_data_query
 from universe.models import Universe, ContainerNumericValue, SecurityContainer,\
-    Attributes, FinancialContainer
+    Attributes, FinancialContainer, FundContainer, IndexContainer, BondContainer,\
+    CurrencyContainer
 import threading
 import uuid
 from finale.utils import is_isin
@@ -61,8 +62,21 @@ def get_execution(request):
 def financial_container_get(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
-    container_id = request.POST['container_id']
-    container = FinancialContainer.objects.get(id=container_id)
+    container_id = request.GET['container_id']
+    container = SecurityContainer.objects.get(id=container_id)
+    if container.type.identifier=='CONT_FUND':
+        container = FundContainer.objects.get(id=container_id)
+    elif container.type.identifier=='CONT_INDEX':
+        container = IndexContainer.objects.get(id=container_id)
+    elif container.type.identifier=='CONT_BOND':
+        container = BondContainer.objects.get(id=container_id)
+    elif container.type.identifier=='CONT_SPOT':
+        container = CurrencyContainer.objects.get(id=container_id)
+    elif container.type.identifier=='CONT_FORWARD':
+        container = CurrencyContainer.objects.get(id=container_id)
+    tracks = ContainerNumericValue.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency').distinct('source','type','quality','frequency')
+    context = {'container': container, 'tracks': tracks}
+    return render(request,'container/' + container.type.identifier + '.html', context)
 
 def universes(request):
     # TODO: Check user

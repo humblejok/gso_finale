@@ -581,6 +581,7 @@ class Container(CoreModel):
     type = models.ForeignKey(Attributes, limit_choices_to={'type':'container_type'}, related_name='container_type_rel', null=True)
     inception_date = models.DateField(null=True)
     closed_date = models.DateField(null=True)
+    short_description = models.TextField(null=True, blank=True)
     status = models.ForeignKey(Attributes,limit_choices_to = {'type':'status'}, related_name='container_status_rel', null=True)
     
     many_fields = {}
