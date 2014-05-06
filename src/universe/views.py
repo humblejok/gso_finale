@@ -11,6 +11,8 @@ import threading
 import uuid
 from finale.utils import is_isin
 import datetime
+from reports import universe_reports
+import os
 
 
 def bloomberg_wizard(request, entity):
@@ -67,6 +69,30 @@ def universes(request):
     universes = Universe.objects.filter(Q(public=True)|Q(owner__id=request.user.id))
     context = {'universes': universes}
     return render(request, 'universes.html', context)
+
+def universe_report(request):
+    source_id = request.GET['universe_id']
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    
+    weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
+    reference = Attributes.objects.get(identifier='DT_REF_FRIDAY')
+    try:
+        source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
+    except:
+        # TODO: Return error message
+        return redirect('universes')
+    result, path = universe_reports.simple_price_report(user, source, weekly, reference, datetime.date(2014,4,25), 90)
+    xlsx_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    if not result:
+        return redirect('universes')
+    else:
+        with open(path,'rb') as f:
+            content = f.read()
+        response = HttpResponse(content,xlsx_mime)
+        split_path = os.path.split(path)
+        response['Content-Disposition'] = 'attachement; filename="' + split_path[len(split_path)-1] + '"'
+        return response 
 
 def universe_create(request):
     # TODO: Check user

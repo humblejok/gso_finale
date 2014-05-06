@@ -83,7 +83,7 @@ def populate_model_from_xlsx(model_name, xlsx_file):
 
 def populate_perf(container, frequency, track_type, track_quality, track_source, reference=None):
     LOGGER.info('Computing and saving ' + frequency.name + ' performances track for ' + container.name)
-    reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_THURSDAY','DT_REF_SUNDAY']).order_by('id')
+    reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_SUNDAY']).order_by('id')
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     perf_value = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
     if reference==None:
@@ -114,7 +114,7 @@ def populate_perf(container, frequency, track_type, track_quality, track_source,
         new_value.time = None
         new_value.frequency = frequency
         new_value.frequency_reference = reference_days[dates_list[index].weekday()]
-        new_value.value = values_list[index] 
+        new_value.value = performances[index] 
         new_value.save()
     LOGGER.info(frequency.name + ' performances track is now in database for ' + container.name)
 
@@ -122,12 +122,11 @@ def populate_weekly_track_from_track(container, track_type, track_quality, track
     LOGGER.info('Computing weekly prices track for ' + container.name)
     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY']).order_by('id')
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
-    perf_value = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
     for day in reference_days:
         LOGGER.info('Working on day:' + day.name)
-        to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=perf_value.id, source__id=track_source.id, frequency__id=weekly.id)
+        to_delete = ContainerNumericValue.objects.filter(frequency_reference=day, effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=weekly.id)
         LOGGER.info("Will delete " + str(len(to_delete)) + " elements!")
         to_delete.delete()
         start_date = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=daily.id, frequency_reference=day).aggregate(Min('day'))['day__min']

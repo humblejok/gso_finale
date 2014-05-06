@@ -168,6 +168,8 @@ OPENCL_DEVICE = 0
 
 RESOURCES_MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
+WORKING_PATH = 'u:\\DEV\\Tests\\FinaLE'
+
 BLOOMBERG_BROKER_URL = 'amqp://bloomberg:bloomberg@192.168.9.93:5672/bloomberg'
 
 # A sample logging configuration. The only tangible logging

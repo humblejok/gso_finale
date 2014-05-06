@@ -20,6 +20,8 @@ urlpatterns = patterns('',
     url(r'^universe_delete.html$', 'universe.views.universe_delete', name='universe_delete'),
     url(r'^universe_member_delete.html$', 'universe.views.universe_member_delete', name='universe_member_delete'),
     url(r'^universe_get_writable.html$', 'universe.views.universe_get_writable', name='universe_get_writable'),
+    url(r'^universe_report.html$', 'universe.views.universe_report', name='universe_report'),
+    
     
     url(r'^universe_edit_base.html', 'universe.views.universe_edit_base', name='universe_edit_base'),
     url(r'^universe_get.html', 'universe.views.universe_get', name='universe_get'),
