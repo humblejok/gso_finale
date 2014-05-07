@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
 from finale.threaded import bloomberg_data_query
-from universe.models import Universe, ContainerNumericValue, SecurityContainer,\
+from universe.models import Universe, TrackContainer, SecurityContainer,\
     Attributes, FinancialContainer, FundContainer, IndexContainer, BondContainer,\
     CurrencyContainer
 import threading
@@ -74,7 +74,7 @@ def financial_container_get(request):
         container = CurrencyContainer.objects.get(id=container_id)
     elif container.type.identifier=='CONT_FORWARD':
         container = CurrencyContainer.objects.get(id=container_id)
-    tracks = ContainerNumericValue.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency').distinct('source','type','quality','frequency')
+    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency').distinct('source','type','quality','frequency')
     context = {'container': container, 'tracks': tracks}
     return render(request,'container/' + container.type.identifier + '.html', context)
 
@@ -237,7 +237,7 @@ def universe_get(request):
         if provider.exists():
             provider = provider[0]
             # TODO: Implement Intraday
-            context['tracks']['track_' + str(member.id)] = ContainerNumericValue.objects.filter(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=monthly.id, status__id=final_status.id, time__isnull=True).order_by('day', 'time')
+            context['tracks']['track_' + str(member.id)] = TrackContainer.objects.filter(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=monthly.id, status__id=final_status.id, time__isnull=True).order_by('day', 'time')
     return render(request, 'universe_details.html', context)
 
 def universe_member_delete(request):

@@ -29,7 +29,7 @@ BLOOMBERG_PROGRAMS = (('getData','Static Data'),('getHistory','Historical Data')
 BLOOMBERG_ID_TYPES = (('ISIN','Isin'), ('TICKER', 'Ticker'))
 
 
-def send_bloomberg_get_history(tickers, fields=['PX_LAST'], ticker_type = 'ISIN', use_terminal = False, start_date = datetime.datetime(2008,1,1,0,0,0)):
+def send_bloomberg_get_history(tickers, fields=['PX_LAST'], ticker_type = 'ISIN', use_terminal = False, start_date = datetime.datetime(1972,1,1,0,0,0)):
     request = bloomberg_pb2.BloombergRequest()
     request.program = 'getHistory'
     request.rawmode = False

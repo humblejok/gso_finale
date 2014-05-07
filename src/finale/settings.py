@@ -166,6 +166,8 @@ OPENCL_DOUBLE_PRECISION_ENABLE = True
 OPENCL_PLATFORM = 1
 OPENCL_DEVICE = 0
 
+MONGO_URL = 'mongodb://localhost:27017/'
+
 RESOURCES_MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
 WORKING_PATH = 'u:\\DEV\\Tests\\FinaLE'
