@@ -14,6 +14,7 @@ from finale.utils import is_isin
 import datetime
 from reports import universe_reports
 import os
+from utilities.track_content import get_track_content, get_track_content_display
 
 
 def bloomberg_wizard(request, entity):
@@ -236,8 +237,14 @@ def universe_get(request):
         provider = member.associated_companies.filter(role__identifier='SCR_DP')
         if provider.exists():
             provider = provider[0]
-            # TODO: Implement Intraday
-            context['tracks']['track_' + str(member.id)] = TrackContainer.objects.filter(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=monthly.id, status__id=final_status.id, time__isnull=True).order_by('day', 'time')
+            track = TrackContainer.objects.get(
+                    effective_container_id=member.id,
+                    type__id=nav_value.id,
+                    quality__id=official_type.id,
+                    source__id=provider.company.id,
+                    frequency__id=monthly.id,
+                    status__id=final_status.id)
+            context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
     return render(request, 'universe_details.html', context)
 
 def universe_member_delete(request):

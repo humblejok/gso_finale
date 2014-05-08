@@ -21,6 +21,10 @@ def get_track_content(track, ascending = True):
     LOGGER.info('Track content loaded from ' + container_id + '.' + track_id + ' with ' + str(tracks[container_id][track_id].count()) + ' elements.')
     return [{'date':from_epoch(value[u'_id']), 'value': value[u'value']} for value in raw_values]
 
+def get_track_content_display(track, ascending = True, intraday = False):
+    content = get_track_content(track, ascending)
+    return [{'date':value['date'].strftime('%Y-%m-%d %H:%M:%S' if intraday else '%Y-%m-%d'), 'value':value['value']} for value in content]
+
 def set_track_content(track, values, clean):
     LOGGER.info('Storing track content')
     container_id = 'container_' + str(track.effective_container_id)

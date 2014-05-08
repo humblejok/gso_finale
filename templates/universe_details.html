@@ -135,7 +135,7 @@
 							<table class="table">
 								{% with track=tracks|track_content:member.id %}
 									{% for token in track %}
-										<tr><td>{{token.day}}</td><td>{{token.value}}</td></tr>
+										<tr><td>{{token.date}}</td><td>{{token.value}}</td></tr>
 									{% endfor %}
 								{% endwith %}
 							</table>
@@ -159,12 +159,7 @@
 									"graphs": [ { "id":"history","bullet": "round", "bulletSize":3, "lineThickness":2, "valueField": "value" } ],
 									"categoryField": "date",
 									"categoryAxis": { "parseDates": true, "dashLength": 1, "minorGridEnabled": true },
-									"dataProvider": [
-									{% with track=tracks|track_content:member.id %}
-										{% for token in track %}
-											{% templatetag openbrace %}"date": "{{token.day}}", "value":{{token.value}}{% templatetag closebrace %},
-										{% endfor %}
-								{% endwith %}
+									"dataProvider": {% with track=tracks|track_content:member.id %}{{track|safe}}{% endwith %}
 									]
 								}
 								);
