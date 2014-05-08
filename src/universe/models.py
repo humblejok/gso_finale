@@ -3,7 +3,7 @@ from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
-from django.db.models.fields import FieldDoesNotExist
+from django.db.models.fields import FieldDoesNotExist, DateTimeField
 from openpyxl.reader.excel import load_workbook
 from seq_common.utils import classes, dates
 from xlrd.xldate import xldate_as_tuple
@@ -17,7 +17,8 @@ import traceback
 from django.db.models.aggregates import Count, Min, Max
 from finale.settings import RESOURCES_MAIN_PATH
 from utilities import computing
-from utilities.track_content import set_track_content
+from utilities.track_content import set_track_content, get_track_content
+from universe.templatetags.universe_tags import track_content
 
 
 
@@ -84,136 +85,141 @@ def populate_model_from_xlsx(model_name, xlsx_file):
         row_index += 1
 
 
-def populate_perf(container, frequency, track_type, track_quality, track_source, reference=None):
-    None
-#     LOGGER.info('Computing and saving ' + frequency.name + ' performances track for ' + container.name)
-#     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_SUNDAY']).order_by('id')
-#     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
-#     perf_value = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
-#     if reference==None:
-#         to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=perf_value.id, source__id=track_source.id, frequency__id=frequency.id)
-#     else:
-#         to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=perf_value.id, source__id=track_source.id, frequency__id=frequency.id, frequency_reference=reference)
-#     LOGGER.info("Will delete " + str(len(to_delete)) + ' elements!')
-#     to_delete.delete()
-#     if reference==None:
-#         dates_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=frequency.id).order_by('day').values_list('day', flat=True)
-#         values_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=frequency.id).order_by('day').values_list('value', flat=True)
-#     else:
-#         dates_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=frequency.id, frequency_reference=reference).order_by('day').values_list('day', flat=True)
-#         values_list = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=frequency.id, frequency_reference=reference).order_by('day').values_list('value', flat=True)
-#     computer = computing.get_tracks_computer()
-#     LOGGER.info(frequency.name + ' performances computation starts for ' + container.name)
-#     performances = computer.compute_performances(values_list)
-#     LOGGER.info(frequency.name + ' performances computation ends for ' + container.name + '. Got ' + str(len(performances)) + ' elements!')
-#     
-#     for index in range(1,len(performances)):
-#         new_value = TrackContainer()
-#         new_value.effective_container = container
-#         new_value.type = perf_value
-#         new_value.quality = track_quality
-#         new_value.source = track_source
-#         new_value.day = dates_list[index]
-#         new_value.status = final_status
-#         new_value.time = None
-#         new_value.frequency = frequency
-#         new_value.frequency_reference = reference_days[dates_list[index].weekday()]
-#         new_value.value = performances[index] 
-#         new_value.save()
-#     LOGGER.info(frequency.name + ' performances track is now in database for ' + container.name)
+def populate_perf(container, source_track, reference=None):
+    LOGGER.info('Computing and saving ' + source_track.frequency.name + ' performances track for ' + container.name)
+    perf = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
+    try:
+        if reference==None:
+            track = TrackContainer.objects.get(
+                                effective_container_id=container.id,
+                                type__id=perf.id,
+                                quality__id=source_track.quality.id,
+                                source__id=source_track.source.id,
+                                frequency__id=source_track.frequency.id,
+                                status__id=source_track.status.id)
+        else:
+            track = TrackContainer.objects.get(
+                                effective_container_id=container.id,
+                                type__id=perf.id,
+                                quality__id=source_track.quality.id,
+                                source__id=source_track.source.id,
+                                frequency__id=source_track.frequency.id,
+                                status__id=source_track.status.id,
+                                frequency_reference=reference)
+        LOGGER.info("Track already exists")
+    except:
+        track = TrackContainer()
+        track.effective_container = SecurityContainer.objects.get(id=container.id)
+        track.type = perf
+        track.quality = source_track.quality
+        track.source = source_track.source
+        track.status = source_track.status
+        track.frequency = source_track.frequency
+        track.frequency_reference = reference
+        track.save()
+    computer = computing.get_tracks_computer()
+    LOGGER.info(source_track.frequency.name + ' performances computation starts for ' + container.name)
+    track_content = get_track_content(source_track, True)
+    performances = computer.compute_performances([value['value'] for value in track_content])
+    LOGGER.info(source_track.frequency.name + ' performances computation ends for ' + container.name + '. Got ' + str(len(performances)) + ' elements!')
+    performances_content = []
+    for index in range(1,len(performances)):
+        performances_content.append({'date':track_content[index]['date'],'value':performances[index]})
+    set_track_content(track, performances_content, True)
+    LOGGER.info(source_track.frequency.name + ' performances track is now in database for ' + container.name)
 
-def populate_weekly_track_from_track(container, track_type, track_quality, track_source):
-    None
-#     LOGGER.info('Computing weekly prices track for ' + container.name)
-#     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY']).order_by('id')
-#     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
-#     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
-#     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
-#     for day in reference_days:
-#         LOGGER.info('Working on day:' + day.name)
-#         to_delete = ContainerNumericValue.objects.filter(frequency_reference=day, effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=weekly.id)
-#         LOGGER.info("Will delete " + str(len(to_delete)) + " elements!")
-#         to_delete.delete()
-#         start_date = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=daily.id, frequency_reference=day).aggregate(Min('day'))['day__min']
-#         end_date = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=daily.id, frequency_reference=day).aggregate(Max('day'))['day__max']
-#         if start_date!=None:
-#             values = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=daily.id, frequency_reference=day).values_list('day','value')
-#             values = dict(values)
-#             previous_value = None
-#             while start_date<=end_date:
-#                 if not values.has_key(start_date):
-#                     LOGGER.debug("No value for date " + str(start_date))
-#                     history = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=daily.id, day__gte=dates.AddDay(start_date,-7), day__lte=start_date).order_by('-day')
-#                     if history.exists():
-#                         value = history[0].value
-#                     else:
-#                         LOGGER.debug("Using previous value")
-#                         value = previous_value
-#                 else:
-#                     value = values[start_date]
-#                 new_value = TrackContainer()
-#                 new_value.effective_container = container
-#                 new_value.type = track_type
-#                 new_value.quality = track_quality
-#                 new_value.source = track_source
-#                 new_value.day = start_date
-#                 new_value.status = final_status
-#                 new_value.time = None
-#                 new_value.frequency = weekly
-#                 new_value.frequency_reference = day
-#                 new_value.value = value 
-#                 new_value.save()
-#                 previous_value = value                    
-#                 start_date = dates.AddDay(start_date, 7)
-#             populate_perf(container, weekly, track_type, track_quality, track_source, day)
+def populate_weekly_track_from_track(container, source_track):
+    LOGGER.info('Computing weekly prices track for ' + container.name)
+    track_content = get_track_content(source_track, True)
+    reference_days = [Attributes.objects.get(identifier=day) for day in ['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY']]
+    weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
+    for day in reference_days:
+        LOGGER.info('Working on day:' + day.name)
+        try:
+            track = TrackContainer.objects.get(
+                                effective_container_id=container.id,
+                                type__id=source_track.type.id,
+                                quality__id=source_track.quality.id,
+                                source__id=source_track.source.id,
+                                frequency__id=weekly.id,
+                                frequency_reference=day,
+                                status__id=source_track.status.id)
+            LOGGER.info("Track already exists")
+        except:
+            track = TrackContainer()
+            track.effective_container = SecurityContainer.objects.get(id=container.id)
+            track.type = source_track.type
+            track.quality = source_track.quality
+            track.source = source_track.source
+            track.status = source_track.status
+            track.frequency = weekly
+            track.frequency_reference = day
+            track.save()
+        
+        started = False
+        
+        all_values = []
+        
+        previous = None
+        next_date = None
+        for token in track_content:
+            if started:
+                if token['date']==next_date:
+                    all_values.append(token)
+                    previous = token
+                    next_date = token['date'] + datetime.timedelta(days=7)
+                elif token['date']>next_date:
+                    all_values.append({'date': next_date, 'value':previous['value']})
+                    next_date = next_date + datetime.timedelta(days=7)
+            else:
+                if reference_days[token['date'].weekday()].id==day.id:
+                    started = True
+                    all_values.append(token)
+                    previous = token
+                    next_date = token['date'] + datetime.timedelta(days=7)
+        set_track_content(track, all_values, True)
+        populate_perf(container, track, day)
 
-def populate_monthly_track_from_track(container, track_type, track_quality, track_source, source_frequency):
-    None
-#     LOGGER.info('Computing monthly prices track for ' + container.name)
-#     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
-#     estimated_status = Attributes.objects.get(identifier='NUM_STATUS_ESTIMATED', active=True)
-#     monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
-#     reference_days = Attributes.objects.filter(identifier__in=['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_SUNDAY']).order_by('id')
-#     to_delete = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=monthly.id)
-#     LOGGER.info("Will delete " + str(len(to_delete)) + " elements!")
-#     to_delete.delete()
-#     track_tokens = ContainerNumericValue.objects.filter(effective_container_id=container.id, quality__id=track_quality.id, status__id=final_status.id, type__id=track_type.id, source__id=track_source.id, frequency__id=source_frequency.id).order_by('day')
-#     LOGGER.info('Working on ' + str(len(track_tokens)) + ' elements!' )
-#     previous_token = None
-#     for token in track_tokens:
-#         if previous_token!=None:
-#             current_eom = dates.GetEndOfMonth(previous_token.day)
-#             if ((token.day-current_eom).days!=0 and previous_token.day.month!=token.day.month and previous_token.day!=dates.GetEndOfMonth(previous_token.day)) or token.day==current_eom:
-#                 new_value = TrackContainer()
-#                 new_value.effective_container = container
-#                 new_value.type = track_type
-#                 new_value.quality = track_quality
-#                 new_value.source = track_source
-#                 new_value.day = current_eom
-#                 new_value.status = final_status
-#                 new_value.time = None
-#                 new_value.frequency = monthly
-#                 new_value.frequency_reference = reference_days[current_eom.weekday()]
-#                 new_value.value = token.value if token.day==current_eom else previous_token.value 
-#                 new_value.save()
-#         else:
-#             current_eom = dates.GetEndOfMonth(token.day)
-#             if current_eom!=token.day:
-#                 new_value = TrackContainer()
-#                 new_value.effective_container = container
-#                 new_value.type = track_type
-#                 new_value.quality = track_quality
-#                 new_value.source = track_source
-#                 new_value.day = dates.GetEndOfMonth(dates.AddMonth(token.day,-1))
-#                 new_value.status = final_status
-#                 new_value.time = None
-#                 new_value.frequency = monthly
-#                 new_value.frequency_reference = reference_days[new_value.day.weekday()]
-#                 new_value.value = token.value
-#                 new_value.save()
-#         previous_token = token
-#     LOGGER.info('Finished monthly prices track computation for ' + container.name)
-#     populate_perf(container, monthly, track_type, track_quality, track_source)
+
+def populate_monthly_track_from_track(container, source_track):
+    LOGGER.info('Computing monthly prices track for ' + container.name)
+    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
+    try:
+        track = TrackContainer.objects.get(
+                            effective_container_id=container.id,
+                            type__id=source_track.type.id,
+                            quality__id=source_track.quality.id,
+                            source__id=source_track.source.id,
+                            frequency__id=monthly.id,
+                            status__id=source_track.status.id)
+        LOGGER.info("Track already exists")
+    except:
+        track = TrackContainer()
+        track.effective_container = SecurityContainer.objects.get(id=container.id)
+        track.type = source_track.type
+        track.quality = source_track.quality
+        track.source = source_track.source
+        track.status = source_track.status
+        track.frequency = monthly
+        track.frequency_reference = None
+        track.save()
+    track_tokens = get_track_content(source_track, True)
+    LOGGER.info('Working on ' + str(len(track_tokens)) + ' elements!' )
+    all_values = []
+    previous_token = None
+    for token in track_tokens:
+        if previous_token!=None:
+            current_eom = datetime.datetime.combine(dates.GetEndOfMonth(previous_token['date']), dt.min.time())
+            if (token['date']-current_eom).days!=0 and previous_token['date'].month!=token['date'].month and previous_token['date']!=dates.GetEndOfMonth(previous_token['date']):
+                all_values.append({'date': current_eom, 'value':token['value'] if token['date']==current_eom else previous_token['value']})
+        else:
+            current_eom = datetime.datetime.combine(dates.GetEndOfMonth(token['date']), dt.min.time())
+            if current_eom!=token['date']:
+                all_values.append({'date': datetime.datetime.combine(dates.GetEndOfMonth(dates.AddMonth(token['date'],-1)), dt.min.time()), 'value':token['value'] })
+        previous_token = token
+    LOGGER.info('Finished monthly prices track computation for ' + container.name)
+    set_track_content(track, all_values, True)
+    populate_perf(container, track)
     
 def populate_track_from_lyxor(lyxor_file):
     # Excel input
@@ -278,7 +284,8 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 all_values[target.id].append({'date': dt.combine(work_date, dt.min.time()), 'value': row.valueDouble})
     for key in all_values.keys():
         try:
-            track = TrackContainer.objects.get(effective_container_id=key,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id,day=work_date, frequency__id=daily.id, status__id=final_status.id)
+            track = TrackContainer.objects.get(effective_container_id=key,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id, frequency__id=daily.id, status__id=final_status.id)
+            LOGGER.info("Track already exists")
         except:
             track = TrackContainer()
             track.effective_container = SecurityContainer.objects.get(id=key)
@@ -289,11 +296,13 @@ def populate_tracks_from_bloomberg_protobuf(data):
             track.frequency = daily
             track.frequency_reference = None
             track.save()
-        set_track_content(track, all_values[key])
-    LOGGER.info('Historical NAV imported from Bloomberg')
-#    for container in cache.values():
-#        populate_perf(container, daily, nav_value, official_type, bloomberg_company)
-#        populate_monthly_track_from_track(container, nav_value, official_type, bloomberg_company, daily)
+        set_track_content(track, all_values[key], True)
+        if len(all_values[key])>0:
+            LOGGER.info('Historical NAV imported from Bloomberg')
+            populate_perf(track.effective_container, track)
+            populate_monthly_track_from_track(track.effective_container, track)
+            populate_weekly_track_from_track(track.effective_container, track)
+
 #        populate_weekly_track_from_track(container, nav_value, official_type, bloomberg_company)
 
 def populate_security_from_bloomberg_protobuf(data):
@@ -898,9 +907,11 @@ class TrackContainer(CoreModel):
     quality = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_quality'}, related_name='numeric_quality_rel', null=True)
     status = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_status'}, related_name='numeric_status_rel', null=True)
     source = models.ForeignKey(CompanyContainer, related_name='data_source_rel', null=True)
+    start_date = DateTimeField(null=True)
+    end_date = DateTimeField(null=True)
     
     def get_identifier(self):
         return 'id'
     
     def get_fields(self):
-        return ['effective_container','type','quality','source']
+        return ['effective_container','type','quality','source','start_date','end_date']

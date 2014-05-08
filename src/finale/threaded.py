@@ -48,9 +48,8 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
             result.append(securities[security])
     cache.set('securities_' + response_key, result)
     history_key = uuid.uuid4().get_hex()
-    if new_securities_count>0:
-        bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, prepared_entries, use_terminal))
-        bb_thread.start()
+    bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, prepared_entries, use_terminal))
+    bb_thread.start()
     
 def bloomberg_history_query(response_key, prepared_entries, use_terminal):
     cache.set(response_key, 0.0)
