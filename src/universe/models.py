@@ -348,7 +348,10 @@ def populate_security_from_bloomberg_protobuf(data):
                 securities[row.ticker].set_attribute('bloomberg', field_info[0], row.valueString)
             else:
                 LOGGER.info("Cannot find matching field for " + row.field)
-    [security.finalize() for security in securities.values()]
+    for security in securities.values():
+        print security.name
+        security.finalize()
+    #[security.finalize() for security in securities.values()]
     [security.associated_companies.add(bloomberg_provider) for security in securities.values()]
     [security.save() for security in securities.values()]
     for ticker in securities:
@@ -825,14 +828,6 @@ class PortfolioContainer(FinancialContainer):
     def get_fields(self):
         return super(PortfolioContainer, self).get_fields() + ['accounts']
 
-class CurrencyContainer(FinancialContainer):
-    target = models.ForeignKey(Attributes, limit_choices_to={'type':'currency'}, related_name='source_currency_rel')
-    duration_unit = models.ForeignKey(Attributes, limit_choices_to={'type':'duration_unit'}, related_name='duration_unit_currency_rel')
-    duration = models.FloatField(null=True, blank=True)
-    
-    def get_fields(self):
-        return super(FinancialContainer, self).get_fields() + ['target', 'duration']
-
 class SecurityContainer(FinancialContainer):
     associated_companies = models.ManyToManyField(RelatedCompany)
     associated_thirds = models.ManyToManyField(RelatedThird)
@@ -855,6 +850,14 @@ class SecurityContainer(FinancialContainer):
     
     def get_fields(self):
         return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','bb_security_type','industry_sector','industry_group','industry_sub_group','bics_name_level_1','bics_name_level_2','bics_name_level_3','country','bb_country','region','market_sector','exchange','parent_security','attached_account']
+
+class CurrencyContainer(SecurityContainer):
+    target = models.ForeignKey(Attributes, limit_choices_to={'type':'currency'}, related_name='source_currency_rel')
+    duration_unit = models.ForeignKey(Attributes, limit_choices_to={'type':'duration_unit'}, related_name='duration_unit_currency_rel')
+    duration = models.FloatField(null=True, blank=True)
+    
+    def get_fields(self):
+        return super(FinancialContainer, self).get_fields() + ['target', 'duration']
 
 class DerivativeContainer(SecurityContainer):
     contract_buy_date = models.DateTimeField()
@@ -889,7 +892,7 @@ class IndexContainer(SecurityContainer):
         return super(IndexContainer, self).get_fields() + ['data_type','data_period']
     
 class BondContainer(SecurityContainer):
-    issue_date = models.DateField()
+    issue_date = models.DateField(null=True)
     coupon_rate = models.FloatField(null=True)
     coupon_frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='bond_frequency_rel', null=True)
     maturity_date = models.DateField(null=True)

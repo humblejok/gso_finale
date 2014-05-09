@@ -1,13 +1,7 @@
-{% load socialaccount %}
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<title>FinaLE Universes</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
-		<script src="/static/jquery-2.0.2.min.js" type="text/javascript"></script>
-		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
-		<script src="/static/gammasimos.js"></script>
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - Query results{% endblock %}
+{% block headeroptions %}
 		<script>
 			var currentInterval;
 			var htmlResults;
@@ -106,28 +100,17 @@
 			});
 
 		</script>
-	</head>
-	<body>
-		<div class="container" style="padding: 0 15px;">
-		{% if request.user.is_authenticated %}
+{% endblock %}
+{% block content %}
 			<div class="row">
 				<div class="col-lg-11">
 					<h1 id="waiting_title">Waiting for Bloomberg response</h1>
 					<p class="lead">Please do not close nor refresh the current page, the process can last up to 10 minutes.<br/>
 				</div>
-				<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
-					<span class="glyphicon glyphicon-off"></span>
-				</a>
 			</div>
 			<div class="row">
 				<div class="progress progress-striped active">
 					<div class="progress-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%;">Please wait...</div>
 				</div>
 			</div>
-		{% else %}
-			<div class="row">
-				<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
-			</div>
-		{% endif %}
-		</div>
-	</body>
+{% endblock %}

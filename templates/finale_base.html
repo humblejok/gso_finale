@@ -1,0 +1,82 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>{% block title %}Financial Lightweight Editor{% endblock %}</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="/static/css/gammasimos.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+		<script src="/static/jquery-2.1.0.min.js" type="text/javascript"></script>
+		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+		<script src="/static/amcharts/amcharts.js" type="text/javascript"></script>
+		<script src="/static/amcharts/serial.js" type="text/javascript"></script>
+		<script src="/static/amcharts/themes/light.js" type="text/javascript"></script>
+		<script src="/static/date.js" type="text/javascript"></script>
+		<script src="/static/gammasimos.js"></script>
+		
+		{% block headeroptions %}
+		{% endblock %}
+	</head>
+	<body>
+		<nav class="navbar navbar-default navbar-static-top clearfix" role="navigation">
+			<div class="container-fluid">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#finale-nav-bar">
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand" href="#">FinaLE</a>
+				</div>
+				<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+					<ul class="nav navbar-nav">
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Universes <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a href="/universes.html">Explore</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Securities <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a href="#">Explore</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Providers <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a href="/financials_bloomberg_wizard.html">Bloomberg</a></li>
+								<li><a href="#">Lyxor</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Tasks <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a href="#">None</a></li>
+								<li><a href="#">Check</a></li>
+							</ul>
+						</li>
+					</ul>
+
+					<ul class="nav navbar-nav navbar-right">
+						<li>
+							{% if request.user.is_authenticated %}
+							<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+								<span class="glyphicon glyphicon-off"></span>
+							</a>
+							{% else %}
+							<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
+							{% endif %}
+						</li>
+				</div>
+			</div>
+		</nav>
+		<div class="container" style="padding: 0 15px;">
+			{% if request.user.is_authenticated %}
+
+
+				{% block content %}
+				{% endblock%}
+			{% endif %}
+		</div>
+	</body>

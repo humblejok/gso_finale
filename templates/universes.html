@@ -1,12 +1,6 @@
-{% load socialaccount %}
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<title>FinaLE Universes</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
-		<script src="/static/jquery-2.0.2.min.js" type="text/javascript"></script>
-		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+{% extends "finale_base.html" %}
+{% block title %}Financial Lightweight Editor - Universes{% endblock %}
+{% block headeroptions %}
 		<script>
 			$(document).ready(function () {
 		     	$(".btn").not('#comment').tooltip();
@@ -14,19 +8,15 @@
 			   });
 
 		</script>
+{% endblock %}
 	</head>
 	<body>
-
-	<div class="container" style="padding: 0 15px;">
-		{% if request.user.is_authenticated %}
+{% block content %}
 		<div class="row">
 			<div class="col-lg-11">
 				<h1 class="">{{ request.user.first_name }} {{ request.user.last_name }}'s universes</h1>
 	  			<p class="lead">Manage and explore your universes from here<br/>
 			</div>
-			<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
-				<span class="glyphicon glyphicon-off"></span>
-			</a>
 		</div>
 		<div class="row">
 			<div class="col-lg-11">
@@ -152,10 +142,4 @@
 			</div>
 
 		{% endfor %}
-		{% else %}
-		<div class="row">
-    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
-    	</div>
-		{% endif %}
-	</body>
-</html>
+{% endblock %}

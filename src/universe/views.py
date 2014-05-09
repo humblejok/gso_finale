@@ -75,9 +75,20 @@ def financial_container_get(request):
         container = CurrencyContainer.objects.get(id=container_id)
     elif container.type.identifier=='CONT_FORWARD':
         container = CurrencyContainer.objects.get(id=container_id)
-    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency').distinct('source','type','quality','frequency')
+    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
     context = {'container': container, 'tracks': tracks}
     return render(request,'container/' + container.type.identifier + '.html', context)
+
+def track_get(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    try:
+        track_id = request.POST['track_id']
+    except:
+        track_id = request.GET['track_id']
+    track = TrackContainer.objects.get(id=track_id)
+    track_content = get_track_content_display(track, True)
+    return HttpResponse(str(track_content).replace("'",'"'),"json")
 
 def universes(request):
     # TODO: Check user
@@ -206,6 +217,20 @@ def universe_edit_base(request):
     source.save()
     # TODO: Return success message
     return redirect('/universe_get.html?universe_id=' + str(universe_id))
+
+def universe_edit_description(request):
+    universe_id = request.POST['universe_id']
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    try:
+        source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
+    except:
+        # TODO: Return error message
+        return redirect('universes')
+    source.description = request.POST['universe_description']
+    source.save()
+    # TODO: Return success message
+    return HttpResponse('{"result": true, "status": "Description changed", "member_id": ' + universe_id + '}',"json")
 
 def universe_get_writable(request):
     # TODO: Check user

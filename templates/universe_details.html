@@ -1,17 +1,7 @@
-{% load socialaccount %}
+{% extends "finale_base.html" %}
 {% load universe_tags %}
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<title>FinaLE Universes - {{universe.name}}</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
-		<script src="/static/jquery-2.0.2.min.js" type="text/javascript"></script>
-		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
-		<script src="./static/amcharts/amcharts.js" type="text/javascript"></script>
-		<script src="./static/amcharts/serial.js" type="text/javascript"></script>
-		<script src="./static/amcharts/themes/none.js" type="text/javascript"></script>
-		<script src="./static/date.js" type="text/javascript"></script>
+{% block title %}Financial Lightweight Editor - {{universe.name}}{% endblock %}
+{% block headeroptions %}
 		<script>
 			$(document).ready(function () {
 				$(".btn").tooltip();
@@ -20,7 +10,20 @@
 					chart_{{member.id}}.invalidateSize();
 				});
 				{% endfor %}
+				csrftoken = getCookie('csrftoken');
 			});
+
+			function onCallError(e) {
+				alert(e.status);
+			}
+
+			function updateDescriptionHandler(e) {
+				if (e.result) {
+
+				} else {
+					alert(e.status);
+				}
+			}
 
 			function removalHandler(e) {
 				if (e.result) {
@@ -40,12 +43,26 @@
 			    });
 			}
 
+			function updateDescription() {
+				var updateForm = new FormData();
+				updateForm.append('universe_id', '{{universe.id}}');
+				updateForm.append('universe_description', $("#description").val());
+				$.ajax({
+					url: '/universe_edit_description.html',
+					type: 'POST',
+					data: updateForm,
+					processData: false,
+					contentType: false,
+					success: updateDescriptionHandler,
+					error: onCallError
+				});
+			}
+
 		</script>
+{% endblock %}
 	</head>
 	<body>
-
-	<div class="container" style="padding: 0 15px;">
-		{% if request.user.is_authenticated %}
+{% block content %}
 		<div class="row">
 			<div class="col-lg-11">
 				<h1 class="">{{universe.name}}</h1>
@@ -54,10 +71,16 @@
 			<a href="/universes.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Back to universes list">
 				<span class="glyphicon glyphicon-home"></span>
 			</a>
-			<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
-				<span class="glyphicon glyphicon-off"></span>
-			</a>
 		</div>
+		<div class="row">
+			<div class="panel panel-default">
+				<div class="panel-heading clearfix"><h4 class="panel-title pull-left" style="padding-top: 7.5px;">Description</h4><button class="btn btn-default btn-sm pull-right" onclick="updateDescription()">Update</button></div>
+				<div class="panel-body">
+					<textarea id="description" name="description" class="form-control" rows="10" placeholder="Define the definition or description of this universe here...">{{universe.description}}</textarea>
+				</div>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
 		<div class="row">
 			<div class="col-lg-11">
 				<table class="table table.striped">
@@ -77,7 +100,7 @@
 							</button>
 							{% endif %}
 							<a href="#modal_view_history_{{member.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="View official historical track of {{member.security_type.name}}">
-								<span class="glyphicon glyphicon-random"></span>
+								<span class="glyphicon glyphicon-signal"></span>
 							</a>
 							<a href="/financial_container_get.html?container_id={{member.id}}" class="btn btn-default" role="button" data-placement="bottom" title="View all information of {{member.security_type.name}}">
 								<span class="glyphicon glyphicon-search"></span>
@@ -160,7 +183,6 @@
 									"categoryField": "date",
 									"categoryAxis": { "parseDates": true, "dashLength": 1, "minorGridEnabled": true },
 									"dataProvider": {% with track=tracks|track_content:member.id %}{{track|safe}}{% endwith %}
-									]
 								}
 								);
 						</script>
@@ -168,10 +190,4 @@
 				</div>
 			</div>
 		{% endfor %}
-		{% else %}
-		<div class="row">
-    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
-    	</div>
-		{% endif %}
-	</body>
-</html>
+{% endblock %}
