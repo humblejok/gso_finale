@@ -27,14 +27,17 @@ def get_track_content_display(track, ascending = True, intraday = False):
 
 def set_track_content(track, values, clean):
     LOGGER.info('Storing track content')
-    container_id = 'container_' + str(track.effective_container_id)
-    track_id = 'track_' + str(track.id)
-    proper_values = [{'_id': epoch_time(value['date']), 'value': value['value']} for value in values]
-    if clean:
-        tracks[container_id][track_id].drop()
-    tracks[container_id][track_id].insert(proper_values)
-    LOGGER.info('Track content stored as ' + container_id + '.' + track_id + ' with ' + str(tracks[container_id][track_id].count()) + ' elements.')
     if len(values)>0:
-        track.start_date = values[0]['date']
-        track.end_date = values[len(values)-1]['date']
-        track.save()
+        container_id = 'container_' + str(track.effective_container_id)
+        track_id = 'track_' + str(track.id)
+        proper_values = [{'_id': epoch_time(value['date']), 'value': value['value']} for value in values]
+        if clean:
+            tracks[container_id][track_id].drop()
+        tracks[container_id][track_id].insert(proper_values)
+        LOGGER.info('Track content stored as ' + container_id + '.' + track_id + ' with ' + str(tracks[container_id][track_id].count()) + ' elements.')
+        if len(values)>0:
+            track.start_date = values[0]['date']
+            track.end_date = values[len(values)-1]['date']
+            track.save()
+    else:
+        LOGGER.warn('Cannot store empty tracks into MongoDB')

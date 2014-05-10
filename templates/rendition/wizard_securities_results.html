@@ -1,9 +1,13 @@
+{% for error in errors %}
+<div class="alert alert-warning">{{error}}: could not get information from the selected provider.</div>
+{% endfor %}
 <div class='row'>
 	<table class='table table-bordered'>
-		<tr><th>Name</th><th>Currency</th><th>ISIN</th><th>Bloomberg</th></tr>
+		<tr><th>Name</th><th>Alias</th><th>Currency</th><th>ISIN</th><th>Bloomberg</th></tr>
 		{% for security in results %}
 			<tr>
 				<td>{{security.name}}</td>
+				<td>{{security.short_name}}</td>
 				<td>{{security.currency.short_name}}</td>
 				<td>{% for alias in security.aliases.all %}{% if alias.alias_type.identifier == 'ALIAS_ISIN' %}{{alias.alias_value}}{% endif %}{% endfor%}</td>
 				<td>{% for alias in security.aliases.all %}{% if alias.alias_type.identifier == 'ALIAS_BLOOMBERG' %}{{alias.alias_value}}{% endif %}{% endfor%}</td>

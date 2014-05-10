@@ -56,9 +56,11 @@ def get_execution(request):
     else:
         response_key = request.GET['response_key']
     execution_results = cache.get(cache.get('type_' + response_key) + '_' + response_key)
+    errors = cache.get('errors_' + response_key)
     universes = Universe.objects.filter(Q(public=True)|Q(owner__id=request.user.id))
-    context = {'results': execution_results,'universes': universes}
-    return render(request, 'rendition/wizard_securities_results.html', context)
+    context = {'results': execution_results,'universes': universes, 'errors':errors}
+    rendition = render(request, 'rendition/wizard_securities_results.html', context)
+    return rendition
 
 def financial_container_get(request):
     # TODO: Check user

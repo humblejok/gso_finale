@@ -20,8 +20,6 @@ from utilities import computing
 from utilities.track_content import set_track_content, get_track_content
 from universe.templatetags.universe_tags import track_content
 
-
-
 LOGGER = logging.getLogger(__name__)
 
 def setup():
@@ -297,8 +295,9 @@ def populate_tracks_from_bloomberg_protobuf(data):
             track.frequency_reference = None
             track.save()
         set_track_content(track, all_values[key], True)
+    LOGGER.info('Historical NAV imported from Bloomberg')
+    for key in all_values.keys():    
         if len(all_values[key])>0:
-            LOGGER.info('Historical NAV imported from Bloomberg')
             populate_perf(track.effective_container, track)
             populate_monthly_track_from_track(track.effective_container, track)
             populate_weekly_track_from_track(track.effective_container, track)
@@ -321,6 +320,7 @@ def populate_security_from_bloomberg_protobuf(data):
         bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company)
     
     securities = {}
+    with_errors = []
     
     for row in data.rows:
         if row.errorCode==0:
@@ -341,19 +341,21 @@ def populate_security_from_bloomberg_protobuf(data):
                     traceback.print_exc()
                     LOGGER.warn('Entity identified by [' + row.ticker  + ',' + row.valueString + '] will be treated as a simple security')
                     securities[row.ticker] = SecurityContainer.create()
+        else:
+            with_errors.append(row.ticker)
     for row in data.rows:
         if row.errorCode==0:
-            field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field)
+            field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field, active=True)
             if field_info.exists():
                 securities[row.ticker].set_attribute('bloomberg', field_info[0], row.valueString)
             else:
                 LOGGER.info("Cannot find matching field for " + row.field)
     for security in securities.values():
-        print security.name
         security.finalize()
     #[security.finalize() for security in securities.values()]
     [security.associated_companies.add(bloomberg_provider) for security in securities.values()]
     [security.save() for security in securities.values()]
+    final_tickers = []
     for ticker in securities:
         securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
         ticker_value = securities[ticker].aliases.filter(alias_type__name='BLOOMBERG')
@@ -362,6 +364,7 @@ def populate_security_from_bloomberg_protobuf(data):
             ticker_value = Alias.objects.get(id=ticker_value[0].id)
             new_full_ticker = ticker_value.alias_value + ' ' + securities[ticker].market_sector
             ticker_value.alias_value = new_full_ticker
+            final_tickers.append(new_full_ticker)
             ticker_value.save()
         else:
             LOGGER.info("Using user information for ticker and exchange")
@@ -369,9 +372,10 @@ def populate_security_from_bloomberg_protobuf(data):
             ticker_value.alias_type = bloomberg_alias
             ticker_value.alias_value = ticker
             ticker_value.save()
+            final_tickers.append(ticker)
             securities[ticker].aliases.add(ticker_value)
     [security.save() for security in securities.values()]
-    return securities
+    return securities, final_tickers, with_errors
 
 def populate_security_from_lyxor(lyxor_file, clean=True):
     universe = Universe.objects.filter(short_name='LYXOR')
@@ -604,49 +608,53 @@ class Container(CoreModel):
         return ['name','short_name','type','inception_date','closed_date','status']
     
     def set_attribute(self, source, field_info, string_value):
-        if string_value!='' and string_value!=None:
-            if self._meta.get_field(field_info.short_name).get_internal_type()=='ManyToManyField':
-                if not self.many_fields.has_key(field_info.short_name):
-                    self.many_fields[field_info.short_name] = []
-                foreign = self._meta.get_field(field_info.short_name).rel.to                
-                self.many_fields[field_info.short_name].append(foreign.retrieve_or_create(source, field_info.name, string_value))
-            elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
-                try:
-                    dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')
-                    if self._meta.get_field(field_info.short_name).get_internal_type()=='DateField':
-                        dt = datetime.date(dt.year, dt.month, dt.day)
-                except:
-                    dt = string_value # This is not a String???
-                setattr(self, field_info.short_name, dt)
-            elif self._meta.get_field(field_info.short_name).get_internal_type()=='ForeignKey':
-                linked_to = self._meta.get_field(field_info.short_name).rel.limit_choices_to
-                foreign = self._meta.get_field(field_info.short_name).rel.to
-                filtering_by_name = dict(linked_to)
-                filtering_by_name['name'] = string_value
-                by_name = foreign.objects.filter(**filtering_by_name)
-                filtering_by_short = dict(linked_to)
-                filtering_by_short['short_name'] = string_value
-                by_short = foreign.objects.filter(**filtering_by_short)
-                if by_name.exists():
-                    setattr(self, field_info.short_name, by_name[0])
-                elif by_short.exists():
-                    setattr(self, field_info.short_name, by_short[0])
-                else:
-                    dict_entry = Dictionary.objects.filter(name=linked_to['type'], auto_create=True)
-                    if dict_entry.exists():
-                        LOGGER.info('Creating new attribute for ' + linked_to['type'] + ' with value ' + string_value)
-                        new_attribute = Attributes()
-                        new_attribute.active = True
-                        new_attribute.identifier = dict_entry[0].identifier + str(string_value.upper()).replace(' ', '_')
-                        new_attribute.name = string_value
-                        new_attribute.short_name = string_value[0:32]
-                        new_attribute.type = linked_to['type']
-                        new_attribute.save()
-                        setattr(self, field_info.short_name, new_attribute)
+        try:
+            if string_value!='' and string_value!=None:
+                if self._meta.get_field(field_info.short_name).get_internal_type()=='ManyToManyField':
+                    if not self.many_fields.has_key(field_info.short_name):
+                        self.many_fields[field_info.short_name] = []
+                    foreign = self._meta.get_field(field_info.short_name).rel.to                
+                    self.many_fields[field_info.short_name].append(foreign.retrieve_or_create(source, field_info.name, string_value))
+                elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
+                    try:
+                        dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')
+                        if self._meta.get_field(field_info.short_name).get_internal_type()=='DateField':
+                            dt = datetime.date(dt.year, dt.month, dt.day)
+                    except:
+                        dt = string_value # This is not a String???
+                    setattr(self, field_info.short_name, dt)
+                elif self._meta.get_field(field_info.short_name).get_internal_type()=='ForeignKey':
+                    linked_to = self._meta.get_field(field_info.short_name).rel.limit_choices_to
+                    foreign = self._meta.get_field(field_info.short_name).rel.to
+                    filtering_by_name = dict(linked_to)
+                    filtering_by_name['name'] = string_value
+                    by_name = foreign.objects.filter(**filtering_by_name)
+                    filtering_by_short = dict(linked_to)
+                    filtering_by_short['short_name'] = string_value
+                    by_short = foreign.objects.filter(**filtering_by_short)
+                    if by_name.exists():
+                        setattr(self, field_info.short_name, by_name[0])
+                    elif by_short.exists():
+                        setattr(self, field_info.short_name, by_short[0])
                     else:
-                        LOGGER.warn('Cannot find foreign key instance on ' + str(self) + '.' + field_info.short_name + ' for value [' + string_value + '] and relation ' + str(linked_to))
-            else:
-                setattr(self, field_info.short_name, string_value)
+                        dict_entry = Dictionary.objects.filter(name=linked_to['type'], auto_create=True)
+                        if dict_entry.exists():
+                            LOGGER.info('Creating new attribute for ' + linked_to['type'] + ' with value ' + string_value)
+                            new_attribute = Attributes()
+                            new_attribute.active = True
+                            new_attribute.identifier = dict_entry[0].identifier + str(string_value.upper()).replace(' ', '_')
+                            new_attribute.name = string_value
+                            new_attribute.short_name = string_value[0:32]
+                            new_attribute.type = linked_to['type']
+                            new_attribute.save()
+                            setattr(self, field_info.short_name, new_attribute)
+                        else:
+                            LOGGER.warn('Cannot find foreign key instance on ' + str(self) + '.' + field_info.short_name + ' for value [' + string_value + '] and relation ' + str(linked_to))
+                else:
+                    setattr(self, field_info.short_name, string_value)
+        except FieldDoesNotExist:
+            traceback.print_exc()
+            LOGGER.error("Wrong security type for " + self.name + ", please check your settings...")
     
     def finalize(self):
         active = Attributes.objects.get(active=True, type='status', identifier='STATUS_ACTIVE')

@@ -10,7 +10,7 @@ from django.core.cache import cache
 
 from providers import BloombergTasks
 from universe.models import populate_security_from_bloomberg_protobuf, \
-    FinancialContainer, SecurityContainer, populate_tracks_from_bloomberg_protobuf
+    SecurityContainer, populate_tracks_from_bloomberg_protobuf
 
 
 def bloomberg_data_query(response_key, prepared_entries, use_terminal):
@@ -19,15 +19,13 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set('data_' + response_key, response)
     cache.set('type_' + response_key, 'securities')
     cache.set(response_key, 0.5)
-    securities = populate_security_from_bloomberg_protobuf(response)
-    cache.set(response_key, 1.0)
+    securities, final_tickers, errors = populate_security_from_bloomberg_protobuf(response)
     
     result = []
     
     new_securities_count = 0
     
     for security in securities.keys():
-        
         with_isin = []
         with_bloomberg = []
         
@@ -47,8 +45,10 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
             new_securities_count += 1
             result.append(securities[security])
     cache.set('securities_' + response_key, result)
+    cache.set('errors_' + response_key, errors)
+    cache.set(response_key, 1.0)
     history_key = uuid.uuid4().get_hex()
-    bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, prepared_entries, use_terminal))
+    bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, final_tickers, True))
     bb_thread.start()
     
 def bloomberg_history_query(response_key, prepared_entries, use_terminal):
