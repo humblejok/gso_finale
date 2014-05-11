@@ -7,28 +7,29 @@ from django.db.models.fields import FieldDoesNotExist, DateTimeField
 from openpyxl.reader.excel import load_workbook
 from seq_common.utils import classes, dates
 from xlrd.xldate import xldate_as_tuple
-
 from datetime import datetime as dt
+from finale.settings import RESOURCES_MAIN_PATH
+from utilities import computing
+from utilities.track_content import set_track_content, get_track_content
+
 import datetime
+import csv
 import logging
 import os
 import xlrd
 import traceback
-from django.db.models.aggregates import Count, Min, Max
-from finale.settings import RESOURCES_MAIN_PATH
-from utilities import computing
-from utilities.track_content import set_track_content, get_track_content
-from universe.templatetags.universe_tags import track_content
 
 LOGGER = logging.getLogger(__name__)
 
 def setup():
     populate_attributes_from_xlsx('universe.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_attributes_from_xlsx('universe.models.Dictionary', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_bloomberg_fields(os.path.join(RESOURCES_MAIN_PATH,'fields.csv'))
+    populate_model_from_xlsx('universe.models.BloombergDataContainerMapping', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('universe.models.BloombergTrackContainerMapping', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.CompanyContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
-
 
 def populate_attributes_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
@@ -57,6 +58,7 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
         row_index += 1
 
 def populate_model_from_xlsx(model_name, xlsx_file):
+    LOGGER.info("Loading data in " + model_name)
     model = classes.my_class_import(model_name)
     workbook = load_workbook(xlsx_file)
     sheet = workbook.get_sheet_by_name(name=model.__name__)
@@ -81,6 +83,45 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             instance.set_attribute('excel', field_info, value)
         instance.save()
         row_index += 1
+        
+def populate_bloomberg_fields(csv_file):
+    BloombergField.objects.all().delete()
+    with open(csv_file) as bb_fields:
+        reader = csv.reader(bb_fields,delimiter=',', quotechar='"', skipinitialspace=True)
+        first = True
+        for row in reader:
+            if first:
+                header = row
+                LOGGER.info('Using header:' + str(header))
+                first = False
+            else:
+                field = BloombergField()
+                field.identifier = row[header.index('Field ID')]
+                field.code = row[header.index('Field Mnemonic')]
+                field.name = row[header.index('Field Mnemonic')]
+                field.short_name = row[header.index('Field Mnemonic')]
+                field.descrition = row[header.index('Description')]
+                field.dl_category = row[header.index('Data License Category')]
+                field.category = row[header.index('Category')]
+                field.definition = row[header.index('Definition')]
+                field.commodity = row[header.index('Comdty')].strip()!=''
+                field.equity = row[header.index('Equity')].strip()!=''
+                field.municipal_bond = row[header.index('Muni')].strip()!=''
+                field.preferred_share = row[header.index('Pfd')].strip()!=''
+                field.money_market = row[header.index('M-Mkt')].strip()!=''
+                field.government_bond = row[header.index('Govt')].strip()!=''
+                field.corporate_bond = row[header.index('Corp')].strip()!=''
+                field.index = row[header.index('Index')].strip()!=''
+                field.currency = row[header.index('Curncy')].strip()!=''
+                field.mortgage = row[header.index('Mtge')].strip()!=''
+                field.width = row[header.index('Standard Width')]
+                field.decimals = row[header.index('Standard Decimal Places')]
+                field.type = row[header.index('Field Type')]
+                field.get_fundamentals = row[header.index('Getfundamentals')].strip()!=''
+                field.get_history = row[header.index('Gethistory')].strip()!=''
+                field.get_company = row[header.index('Getcompany')].strip()!=''
+                field.dl_2nd_category = row[header.index('Data License Category 2')]
+                field.save()
 
 
 def populate_perf(container, source_track, reference=None):
@@ -129,7 +170,7 @@ def populate_perf(container, source_track, reference=None):
 def populate_weekly_track_from_track(container, source_track):
     LOGGER.info('Computing weekly prices track for ' + container.name)
     track_content = get_track_content(source_track, True)
-    reference_days = [Attributes.objects.get(identifier=day) for day in ['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY']]
+    reference_days = [Attributes.objects.get(identifier=day) for day in ['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_SUNDAY']]
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
     for day in reference_days:
         LOGGER.info('Working on day:' + day.name)
@@ -249,8 +290,7 @@ def populate_track_from_lyxor(lyxor_file):
                     row_index += 1
 
 def populate_tracks_from_bloomberg_protobuf(data):
-    LOGGER.info('Importing historical NAV from Bloomberg')
-    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    LOGGER.info('Importing historical data from Bloomberg')
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
@@ -278,31 +318,40 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 not_found.append(row.ticker)
             else:
                 if not all_values.has_key(target.id):
-                    all_values[target.id] = []
-                all_values[target.id].append({'date': dt.combine(work_date, dt.min.time()), 'value': row.valueDouble})
+                    all_values[target.id] = {}
+                if not all_values[target.id].has_key(row.field):
+                    all_values[target.id][row.field] = []
+                all_values[target.id][row.field].append({'date': dt.combine(work_date, dt.min.time()), 'value': row.valueDouble})
     for key in all_values.keys():
-        try:
+        for field in all_values[key].keys():
+            current_type = BloombergTrackContainerMapping.objects.get(short_name__code=field).name
+            print BloombergTrackContainerMapping.objects.get(Q(short_name__code=field))
+            try:
+                track = TrackContainer.objects.get(effective_container_id=key,type__id=current_type.id,quality__id=official_type.id,source__id=bloomberg_company.id, frequency__id=daily.id, status__id=final_status.id)
+                LOGGER.info("Track already exists")
+            except:
+                track = TrackContainer()
+                track.effective_container = SecurityContainer.objects.get(id=key)
+                track.type = current_type
+                track.quality = official_type
+                track.source = bloomberg_company
+                track.status = final_status
+                track.frequency = daily
+                track.frequency_reference = None
+                track.save()
+            set_track_content(track, all_values[key][field], True)
+    LOGGER.info('Historical tracks imported from Bloomberg')
+    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    for key in all_values.keys():
+        # Not always correct, check about NUM_TYPE_NAV instead
+        if all_values[key].has_key('PX_LAST'):
             track = TrackContainer.objects.get(effective_container_id=key,type__id=nav_value.id,quality__id=official_type.id,source__id=bloomberg_company.id, frequency__id=daily.id, status__id=final_status.id)
-            LOGGER.info("Track already exists")
-        except:
-            track = TrackContainer()
-            track.effective_container = SecurityContainer.objects.get(id=key)
-            track.type = nav_value
-            track.quality = official_type
-            track.source = bloomberg_company
-            track.status = final_status
-            track.frequency = daily
-            track.frequency_reference = None
-            track.save()
-        set_track_content(track, all_values[key], True)
-    LOGGER.info('Historical NAV imported from Bloomberg')
-    for key in all_values.keys():    
-        if len(all_values[key])>0:
-            populate_perf(track.effective_container, track)
-            populate_monthly_track_from_track(track.effective_container, track)
-            populate_weekly_track_from_track(track.effective_container, track)
-
-#        populate_weekly_track_from_track(container, nav_value, official_type, bloomberg_company)
+            if len(all_values[key])>0:
+                populate_perf(track.effective_container, track)
+                populate_monthly_track_from_track(track.effective_container, track)
+                populate_weekly_track_from_track(track.effective_container, track)
+            else:
+                LOGGER.warn("Empty track for " + key + " no computation will be executed!")
 
 def populate_security_from_bloomberg_protobuf(data):
     
@@ -328,26 +377,42 @@ def populate_security_from_bloomberg_protobuf(data):
                 try:
                     LOGGER.debug('Entity identified by [' + row.ticker + ',' + row.valueString + '] will be created as [' + Attributes.objects.get(type='bloomberg_security_model', name=row.valueString).short_name + ']')
                     class_name = Attributes.objects.get(type='bloomberg_security_model', name=row.valueString).short_name
+                    full_class_name = class_name
                     sec_type_name = Attributes.objects.get(type='bloomberg_security_type', name=row.valueString).short_name
                     cont_type_name = Attributes.objects.get(type='bloomberg_container_type', name=row.valueString).short_name
                     container_type = Attributes.objects.get(identifier=cont_type_name)
                     security_type = Attributes.objects.get(identifier=sec_type_name)
-                    if not class_name.startswith('universe.models.'):
-                        class_name = 'universe.models.' + class_name
-                    securities[row.ticker] = classes.my_class_import(class_name).create()
+                    if not full_class_name.startswith('universe.models.'):
+                        full_class_name = 'universe.models.' + full_class_name
+                    securities[row.ticker] = classes.my_class_import(full_class_name).create()
                     securities[row.ticker].type = container_type
                     securities[row.ticker].security_type = security_type
                 except:
                     traceback.print_exc()
-                    LOGGER.warn('Entity identified by [' + row.ticker  + ',' + row.valueString + '] will be treated as a simple security')
+                    LOGGER.warn('Entity identified by [' + row.ticker  + ',' + row.valueString + ',' + sec_type_name + '] will be treated as a simple security')
                     securities[row.ticker] = SecurityContainer.create()
         else:
             with_errors.append(row.ticker)
     for row in data.rows:
         if row.errorCode==0:
-            field_info = Attributes.objects.filter(type='bloomberg_field', name=row.field, active=True)
+            field_info = BloombergDataContainerMapping.objects.filter(Q(short_name__code=row.field), Q(container__short_name=securities[row.ticker].__class__.__name__) | Q(container__short_name='SecurityContainer') , Q(active=True))
             if field_info.exists():
-                securities[row.ticker].set_attribute('bloomberg', field_info[0], row.valueString)
+                field_info = BloombergDataContainerMapping.objects.get(short_name__code=row.field, active=True)
+                new_value = BloombergSecurityData()
+                new_value.mapping = field_info
+                new_value.text_value = row.valueString
+                if field_info.short_name.type.find('Integer')>=0:
+                    new_value.integer_value = row.valueString
+                if field_info.short_name.type.find('Real')>=0:
+                    new_value.float_value = row.valueString
+                new_value.save()
+                securities[row.ticker].save()
+                securities[row.ticker].bloomberg_data.add(new_value)
+                if field_info.model_link!=None and field_info.model_link!='':
+                    info = Attributes()
+                    info.name = row.field
+                    info.short_name = field_info.model_link
+                    securities[row.ticker].set_attribute('bloomberg', info, row.valueString)
             else:
                 LOGGER.info("Cannot find matching field for " + row.field)
     for security in securities.values():
@@ -498,6 +563,55 @@ class CoreModel(models.Model):
     def __unicode__(self):
         return unicode(self.get_value())
     
+    def set_attribute(self, source, field_info, string_value):
+        try:
+            if string_value!='' and string_value!=None:
+                if self._meta.get_field(field_info.short_name).get_internal_type()=='ManyToManyField':
+                    if not self.many_fields.has_key(field_info.short_name):
+                        self.many_fields[field_info.short_name] = []
+                    foreign = self._meta.get_field(field_info.short_name).rel.to                
+                    self.many_fields[field_info.short_name].append(foreign.retrieve_or_create(source, field_info.name, string_value))
+                elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
+                    try:
+                        dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')
+                        if self._meta.get_field(field_info.short_name).get_internal_type()=='DateField':
+                            dt = datetime.date(dt.year, dt.month, dt.day)
+                    except:
+                        dt = string_value # This is not a String???
+                    setattr(self, field_info.short_name, dt)
+                elif self._meta.get_field(field_info.short_name).get_internal_type()=='ForeignKey':
+                    linked_to = self._meta.get_field(field_info.short_name).rel.limit_choices_to
+                    foreign = self._meta.get_field(field_info.short_name).rel.to
+                    filtering_by_name = dict(linked_to)
+                    filtering_by_name['name'] = string_value
+                    by_name = foreign.objects.filter(**filtering_by_name)
+                    filtering_by_short = dict(linked_to)
+                    filtering_by_short['short_name'] = string_value
+                    by_short = foreign.objects.filter(**filtering_by_short)
+                    if by_name.exists():
+                        setattr(self, field_info.short_name, by_name[0])
+                    elif by_short.exists():
+                        setattr(self, field_info.short_name, by_short[0])
+                    else:
+                        dict_entry = Dictionary.objects.filter(name=linked_to['type'], auto_create=True)
+                        if dict_entry.exists():
+                            LOGGER.info('Creating new attribute for ' + linked_to['type'] + ' with value ' + string_value)
+                            new_attribute = Attributes()
+                            new_attribute.active = True
+                            new_attribute.identifier = dict_entry[0].identifier + str(string_value.upper()).replace(' ', '_')
+                            new_attribute.name = string_value
+                            new_attribute.short_name = string_value[0:32]
+                            new_attribute.type = linked_to['type']
+                            new_attribute.save()
+                            setattr(self, field_info.short_name, new_attribute)
+                        else:
+                            LOGGER.warn('Cannot find foreign key instance on ' + str(self) + '.' + field_info.short_name + ' for value [' + string_value + '] and relation ' + str(linked_to))
+                else:
+                    setattr(self, field_info.short_name, string_value)
+        except FieldDoesNotExist:
+            traceback.print_exc()
+            LOGGER.error("Wrong security type for " + self.name + ", please check your settings...")
+    
     class Meta:
         ordering = ['id']
     
@@ -514,6 +628,33 @@ class Attributes(CoreModel):
     
     class Meta:
         ordering = ['name']
+        
+class BloombergField(CoreModel):
+    identifier = models.CharField(max_length=128)
+    code = models.CharField(max_length=128)
+    name = models.CharField(max_length=128)
+    short_name = models.CharField(max_length=128)
+    descrition = models.TextField()
+    dl_category = models.CharField(max_length=128, null=True, blank=True)
+    category = models.CharField(max_length=128, null=True, blank=True)
+    definition = models.TextField()
+    commodity = models.BooleanField(default=False)
+    equity = models.BooleanField(default=False)
+    municipal_bond = models.BooleanField(default=False)
+    preferred_share = models.BooleanField(default=False)
+    money_market = models.BooleanField(default=False)
+    government_bond = models.BooleanField(default=False)
+    corporate_bond = models.BooleanField(default=False)
+    index = models.BooleanField(default=False)
+    currency = models.BooleanField(default=False)
+    mortgage = models.BooleanField(default=False)
+    width = models.IntegerField(null=True)
+    decimals = models.IntegerField(null=True)
+    type = models.CharField(max_length=64)
+    get_fundamentals = models.BooleanField(default=False)
+    get_history = models.BooleanField(default=False)
+    get_company = models.BooleanField(default=False)
+    dl_2nd_category = models.CharField(max_length=128, null=True, blank=True)
     
 class Dictionary(CoreModel):
     identifier = models.CharField(max_length=128)
@@ -607,55 +748,6 @@ class Container(CoreModel):
     def get_fields(self):
         return ['name','short_name','type','inception_date','closed_date','status']
     
-    def set_attribute(self, source, field_info, string_value):
-        try:
-            if string_value!='' and string_value!=None:
-                if self._meta.get_field(field_info.short_name).get_internal_type()=='ManyToManyField':
-                    if not self.many_fields.has_key(field_info.short_name):
-                        self.many_fields[field_info.short_name] = []
-                    foreign = self._meta.get_field(field_info.short_name).rel.to                
-                    self.many_fields[field_info.short_name].append(foreign.retrieve_or_create(source, field_info.name, string_value))
-                elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
-                    try:
-                        dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')
-                        if self._meta.get_field(field_info.short_name).get_internal_type()=='DateField':
-                            dt = datetime.date(dt.year, dt.month, dt.day)
-                    except:
-                        dt = string_value # This is not a String???
-                    setattr(self, field_info.short_name, dt)
-                elif self._meta.get_field(field_info.short_name).get_internal_type()=='ForeignKey':
-                    linked_to = self._meta.get_field(field_info.short_name).rel.limit_choices_to
-                    foreign = self._meta.get_field(field_info.short_name).rel.to
-                    filtering_by_name = dict(linked_to)
-                    filtering_by_name['name'] = string_value
-                    by_name = foreign.objects.filter(**filtering_by_name)
-                    filtering_by_short = dict(linked_to)
-                    filtering_by_short['short_name'] = string_value
-                    by_short = foreign.objects.filter(**filtering_by_short)
-                    if by_name.exists():
-                        setattr(self, field_info.short_name, by_name[0])
-                    elif by_short.exists():
-                        setattr(self, field_info.short_name, by_short[0])
-                    else:
-                        dict_entry = Dictionary.objects.filter(name=linked_to['type'], auto_create=True)
-                        if dict_entry.exists():
-                            LOGGER.info('Creating new attribute for ' + linked_to['type'] + ' with value ' + string_value)
-                            new_attribute = Attributes()
-                            new_attribute.active = True
-                            new_attribute.identifier = dict_entry[0].identifier + str(string_value.upper()).replace(' ', '_')
-                            new_attribute.name = string_value
-                            new_attribute.short_name = string_value[0:32]
-                            new_attribute.type = linked_to['type']
-                            new_attribute.save()
-                            setattr(self, field_info.short_name, new_attribute)
-                        else:
-                            LOGGER.warn('Cannot find foreign key instance on ' + str(self) + '.' + field_info.short_name + ' for value [' + string_value + '] and relation ' + str(linked_to))
-                else:
-                    setattr(self, field_info.short_name, string_value)
-        except FieldDoesNotExist:
-            traceback.print_exc()
-            LOGGER.error("Wrong security type for " + self.name + ", please check your settings...")
-    
     def finalize(self):
         active = Attributes.objects.get(active=True, type='status', identifier='STATUS_ACTIVE')
         self.status = active
@@ -696,7 +788,13 @@ class Universe(Container):
     members = models.ManyToManyField("SecurityContainer", related_name='universe_financial_rel')
     owner = models.ForeignKey(User, related_name='universe_owner_rel')
     description = models.TextField(null=True, blank=True)
-            
+
+class BloombergSecurityData(CoreModel):
+    mapping = models.ForeignKey('BloombergDataContainerMapping', related_name='bloomberg_data_mapping')
+    text_value = models.TextField(null=True, blank=True)
+    float_value = models.FloatField(null=True)
+    integer_value = models.IntegerField(null=True)
+
 class FinancialContainer(Container):
     currency = models.ForeignKey(Attributes, limit_choices_to = {'type':'currency'}, related_name='container_currency_rel', null=True)
     owner_role = models.ForeignKey(Attributes, limit_choices_to={'type':'third_party_role'}, related_name='owner_role_rel', null=True)
@@ -704,6 +802,8 @@ class FinancialContainer(Container):
     aliases = models.ManyToManyField(Alias, related_name='financial_alias_rel')
     frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='financial_frequency_rel', null=True)
     frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='financial_date_reference_rel', null=True)
+    
+    bloomberg_data = models.ManyToManyField(BloombergSecurityData, related_name='bloomberg_data_rel')
     
     def get_fields(self):
         return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases']
@@ -836,28 +936,40 @@ class PortfolioContainer(FinancialContainer):
     def get_fields(self):
         return super(PortfolioContainer, self).get_fields() + ['accounts']
 
+class BloombergDataContainerMapping(CoreModel):
+    name = models.CharField(max_length=64)
+    short_name = models.ForeignKey(BloombergField, limit_choices_to={'get_history':False}, related_name='bloomberg_field_data_rel')
+    container = models.ForeignKey(Attributes, limit_choices_to={'type':'finale_target_container'}, related_name='bloomberg_container_data_rel')
+    model_link = models.CharField(max_length=128, null=True)
+    model_visible = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+
+    def get_fields(self):
+        return ['name','field','container','model_link','model_visible','active']
+
+class BloombergTrackContainerMapping(CoreModel):
+    name = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_type'}, related_name='bb_numeric_type_rel')
+    short_name = models.ForeignKey(BloombergField, limit_choices_to={'get_history':True}, related_name='bloomberg_field_track_rel')
+    container = models.ForeignKey(Attributes, limit_choices_to={'type':'finale_target_container'}, related_name='bloomberg_container_track_rel')
+    active = models.BooleanField(default=True)
+    def get_fields(self):
+        return ['name', 'field', 'container', 'active']
+
+
 class SecurityContainer(FinancialContainer):
     associated_companies = models.ManyToManyField(RelatedCompany)
     associated_thirds = models.ManyToManyField(RelatedThird)
     security_type = models.ForeignKey(Attributes, limit_choices_to={'type':'security_type'}, related_name='security_type_rel', null=True)
-    bb_security_type = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_security_type'}, related_name='bb_security_type_rel', null=True)
-    industry_sector = models.ForeignKey(Attributes, limit_choices_to={'type':'industry_sector'}, related_name='industry_sector_rel', null=True)
-    industry_group = models.ForeignKey(Attributes, limit_choices_to={'type':'industry_group'}, related_name='industry_group_rel', null=True)
-    industry_sub_group = models.ForeignKey(Attributes, limit_choices_to={'type':'industry_sub_group'}, related_name='industry_sub_group_rel', null=True)
-    bics_name_level_1 = models.ForeignKey(Attributes, limit_choices_to={'type':'bics_name_level_1'}, related_name='bics_name_level_1_rel', null=True)
-    bics_name_level_2 = models.ForeignKey(Attributes, limit_choices_to={'type':'bics_name_level_2'}, related_name='bics_name_level_2_rel', null=True)
-    bics_name_level_3 = models.ForeignKey(Attributes, limit_choices_to={'type':'bics_name_level_3'}, related_name='bics_name_level_3_rel', null=True)
     country = models.ForeignKey(Attributes, limit_choices_to={'type':'country_iso2'}, related_name='security_country_rel', null=True)
-    bb_country = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_country_lookup'}, related_name='bb_security_country_rel', null=True)
     region = models.CharField(max_length=128, null=True, blank=True)
     market_sector = models.CharField(max_length=128, null=True, blank=True)
-    exchange = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_exchange_lookup'}, related_name='bloomberg_exchange_rel', null=True)
+
     parent_security = models.ForeignKey('SecurityContainer', related_name='parent_security_rel', null=True)
     
     attached_account = models.ForeignKey('AccountContainer', related_name='financials_account_rel', null=True)
     
     def get_fields(self):
-        return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','bb_security_type','industry_sector','industry_group','industry_sub_group','bics_name_level_1','bics_name_level_2','bics_name_level_3','country','bb_country','region','market_sector','exchange','parent_security','attached_account']
+        return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','country','region','market_sector', 'parent_security','attached_account']
 
 class CurrencyContainer(SecurityContainer):
     target = models.ForeignKey(Attributes, limit_choices_to={'type':'currency'}, related_name='source_currency_rel')

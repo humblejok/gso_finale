@@ -6,7 +6,7 @@ from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
 from finale.threaded import bloomberg_data_query
 from universe.models import Universe, TrackContainer, SecurityContainer,\
-    Attributes, FinancialContainer, FundContainer, IndexContainer, BondContainer,\
+    Attributes, FundContainer, IndexContainer, BondContainer,\
     CurrencyContainer
 import threading
 import uuid
@@ -14,7 +14,10 @@ from finale.utils import is_isin
 import datetime
 from reports import universe_reports
 import os
-from utilities.track_content import get_track_content, get_track_content_display
+from utilities.track_content import get_track_content_display
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 def bloomberg_wizard(request, entity):
@@ -264,14 +267,18 @@ def universe_get(request):
         provider = member.associated_companies.filter(role__identifier='SCR_DP')
         if provider.exists():
             provider = provider[0]
-            track = TrackContainer.objects.get(
+            try:
+                track = TrackContainer.objects.get(
                     effective_container_id=member.id,
                     type__id=nav_value.id,
                     quality__id=official_type.id,
                     source__id=provider.company.id,
                     frequency__id=monthly.id,
                     status__id=final_status.id)
-            context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
+                context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
+            except:
+                LOGGER.warn("No track found for container [" + str(member.id) + "]")
+                context['tracks']['track_' + str(member.id)] = []
     return render(request, 'universe_details.html', context)
 
 def universe_member_delete(request):
