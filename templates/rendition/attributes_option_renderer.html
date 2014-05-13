@@ -1,0 +1,4 @@
+{% for item in selection %}
+<option value='{{item.identifier}}'
+	{% templatetag openblock %} if value == '{{item.identifier}}' {% templatetag closeblock %}selected{% templatetag openblock %} endif {% templatetag closeblock %}>{{item.name}}</option>
+{% endfor %}

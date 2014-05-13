@@ -101,6 +101,13 @@ def universes(request):
     context = {'universes': universes}
     return render(request, 'universes.html', context)
 
+def universe_backtest_wizard(request):
+    source_id = request.GET['universe_id']
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    return render(request, 'financials/backtest/wizard.html')
+    
+
 def universe_report(request):
     source_id = request.GET['universe_id']
     # TODO: Check user

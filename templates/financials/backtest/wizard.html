@@ -1,0 +1,96 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - Backtest wizard{% endblock %}
+{% block headeroptions %}
+		<script>
+			$(document).ready(function () {
+		     	$(".btn").not('#comment').tooltip();
+		     	$("#fromDate").datepicker({ dateFormat: "yy-mm-dd" });
+		     	$("#toDate").datepicker({ dateFormat: "yy-mm-dd" });
+			   });
+
+		</script>
+{% endblock %}
+{% block content %}
+			<div class="row">
+				<div class="col-lg-11">
+					<h1 class="">Backtest an universe</h1>
+					<p class="lead">Reload or create a backtest on a given universe<br/>
+				</div>
+			</div>
+			<form id="backtestWizard" role="form" class="form-horizontal" action="/financials_backtest_execute.html" method="POST">{% csrf_token %}
+				<div class="panel-group" id="wizard">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<h4 class="panel-title">
+								<a data-toggle="collapse" data-parent="#wizard" href="#step-one">Definition</a>
+							</h4>
+						</div>
+						<div id="step-one" class="panel-collapse collapse in">
+							<div class="panel-body">
+								<div class="form-group">
+									<label for="backtestName" class="col-lg-2 control-label">Name</label>
+									<div class="col-lg-4">
+										<input type="text" class="form-control" id="backtestName" placeholder="Backtest name">
+									</div>
+									<label class="col-lg-1 control-label">or</label>
+									<button class="btn btn-default col-lg-4" role="button" data-toggle="tooltip" data-placement="bottom" title="Select and load an existing backtest setup" onclick"">Load</button>
+								</div>
+								<div class="form-group">
+									<label for="fromDate" class="col-lg-2 control-label">From</label>
+									<div class="col-lg-4">
+										<input type="text" class="form-control col-lg-2" id="fromDate" name="fromDate" placeholder="Start date">
+									</div>
+									<label for="toDate" class="col-lg-1 control-label">to</label>
+									<div class="col-lg-4">
+										<input type="text" class="form-control col-lg-2" id="toDate" name="toDate" placeholder="End date, it can be empty!">
+									</div>
+								</div>
+								<div class="form-group">
+									<label for="frequency" class="col-lg-2 control-label">Frequency</label>
+									<div class="col-lg-4">
+										<select class='form-control' id='frequency' name='type'>
+											{% with value="FREQ_MONTHLY" %}
+												{% include 'statics/frequency_en.html' %}
+											{% endwith %}
+										</select>
+									</div>
+							</div>
+						</div>
+						<div class="panel panel-default">
+							<div class="panel-heading">
+								<h4 class="panel-title">
+									<a data-toggle="collapse" data-parent="#wizard" href="#step-two">Set securities weights</a>
+								</h4>
+							</div>
+							<div id="step-two" class="panel-collapse collapse">
+								<div class="panel-body">
+									<div class="form-group">
+										<label for="reweight" class="col-lg-2 control-label">Reweight policy</label>
+										<div class="checkbox col-lg-offset-2">
+											<input id="reweight" name="reweight" type="checkbox" value="True">&nbsp;Reweight on frequency period</input>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="panel panel-default">
+							<div class="panel-heading">
+								<h4 class="panel-title">
+									<a data-toggle="collapse" data-parent="#wizard" href="#step-three">Define your computation rules</a>
+								</h4>
+							</div>
+							<div id="step-three" class="panel-collapse collapse">
+								<div class="panel-body">
+									<div class="form-group">
+										<div class="col-lg-offset-2">
+											<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Launch the computation with selected parameters">Compute</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</form>
+{% endblock %}

@@ -4,7 +4,6 @@
 		<script>
 			$(document).ready(function () {
 		     	$(".btn").not('#comment').tooltip();
-		     	$(".comment").popover();
 			   });
 
 		</script>
@@ -47,9 +46,9 @@
 							<a href="/universe_report.html?universe_id={{universe.id}}" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Generate report on universe">
 								<span class="glyphicon glyphicon-file"></span>
 							</a>
-							<button class="btn btn-default comment" data-toggle="popover" data-placement="bottom" title="{{universe.description}}">
-								<span class="glyphicon glyphicon-comment"></span>
-							</button>
+							<a href="/universe_backtest_wizard.html?universe_id={{universe.id}}" class="btn btn-default" data-toggle="tooltip" data-placement="bottom" title="Launch the backtesting wizard for this universe">
+								<span class="glyphicon glyphicon-tasks"></span>
+							</a>
 						</td>
 					</tr>
 					{% endfor %}

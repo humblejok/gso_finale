@@ -18,6 +18,7 @@ urlpatterns = patterns('',
     
     # Universes related views
     url(r'^universes.html$', 'universe.views.universes', name='universes'),
+    url(r'^universe_backtest_wizard.html$', 'universe.views.universe_backtest_wizard', name='universe_backtest_wizard.html'),
     url(r'^universe_change_members.html$', 'universe.views.universe_change_members', name='universe_change_members.html'),
     url(r'^universe_create.html$', 'universe.views.universe_create', name='universe_create.html'),
     url(r'^universe_delete.html$', 'universe.views.universe_delete', name='universe_delete'),

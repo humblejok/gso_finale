@@ -4,11 +4,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 from django.db.models.fields import FieldDoesNotExist, DateTimeField
+from django.template import loader
 from openpyxl.reader.excel import load_workbook
 from seq_common.utils import classes, dates
 from xlrd.xldate import xldate_as_tuple
 from datetime import datetime as dt
-from finale.settings import RESOURCES_MAIN_PATH
+from finale.settings import RESOURCES_MAIN_PATH, STATICS_PATH
 from utilities import computing
 from utilities.track_content import set_track_content, get_track_content
 
@@ -18,6 +19,7 @@ import logging
 import os
 import xlrd
 import traceback
+from django.template.context import Context
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +32,19 @@ def setup():
     populate_model_from_xlsx('universe.models.CompanyContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    generate_attributes()
+
+def generate_attributes():
+    all_types = Attributes.objects.all().order_by('type').distinct('type')
+    for a_type in all_types:
+        all_elements = Attributes.objects.filter(type=a_type.type, active=True)
+        context = Context({"selection": all_elements})
+        template = loader.get_template('rendition/attributes_option_renderer.html')
+        rendition = template.render(context)
+        # TODO Implement multi-langage
+        outfile = os.path.join(STATICS_PATH, a_type.type + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
 
 def populate_attributes_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
