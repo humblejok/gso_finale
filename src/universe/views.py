@@ -113,7 +113,7 @@ def universe_report(request):
     except:
         # TODO: Return error message
         return redirect('universes')
-    result, path = universe_reports.simple_price_report(user, source, weekly, reference, datetime.date(2014,4,25), 90)
+    result, path = universe_reports.simple_price_report(user, source, weekly, reference, datetime.datetime(2014,4,25,0,0), 90)
     xlsx_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     if not result:
         return redirect('universes')
@@ -204,7 +204,7 @@ def universe_delete(request):
     # TODO: Return success message
     return redirect('universes')
 
-def universe_edit_base(request):
+def universe_base_edit(request):
     universe_id = request.POST['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -221,9 +221,9 @@ def universe_edit_base(request):
         source.public = False
     source.save()
     # TODO: Return success message
-    return redirect('/universe_get.html?universe_id=' + str(universe_id))
+    return redirect('/universe_details_edit.html?universe_id=' + str(universe_id))
 
-def universe_edit_description(request):
+def universe_description_edit(request):
     universe_id = request.POST['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -244,7 +244,7 @@ def universe_get_writable(request):
     context = {'universes': universes}
     return render(request, 'rendition/universes/universes_list.json', context)
 
-def universe_get(request):
+def universe_details(request):
     if request.POST.has_key('universe_id'):
         universe_id = request.POST['universe_id']
     else:
@@ -280,6 +280,43 @@ def universe_get(request):
                 LOGGER.warn("No track found for container [" + str(member.id) + "]")
                 context['tracks']['track_' + str(member.id)] = []
     return render(request, 'universe_details.html', context)
+
+def universe_details_edit(request):
+    if request.POST.has_key('universe_id'):
+        universe_id = request.POST['universe_id']
+    else:
+        universe_id = request.GET['universe_id']
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    try:
+        source = Universe.objects.get(Q(id=universe_id),Q(public=True)|Q(owner__id=request.user.id))
+    except:
+        # TODO: Return error message
+        return redirect('universes.html')
+    context = {'universe': source, 'tracks': {}}
+    
+    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
+    official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
+    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
+    
+    for member in source.members.all():
+        provider = member.associated_companies.filter(role__identifier='SCR_DP')
+        if provider.exists():
+            provider = provider[0]
+            try:
+                track = TrackContainer.objects.get(
+                    effective_container_id=member.id,
+                    type__id=nav_value.id,
+                    quality__id=official_type.id,
+                    source__id=provider.company.id,
+                    frequency__id=monthly.id,
+                    status__id=final_status.id)
+                context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
+            except:
+                LOGGER.warn("No track found for container [" + str(member.id) + "]")
+                context['tracks']['track_' + str(member.id)] = []
+    return render(request, 'universe_details_edit.html', context)
 
 def universe_member_delete(request):
     try:

@@ -55,7 +55,7 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
         if not all_containers.has_key(security.__class__.__name__):
             all_containers[security.__class__.__name__] = []
         all_containers[security.__class__.__name__].append(security.aliases.get(alias_type__name='BLOOMBERG').alias_value)
-    print all_containers
+    
     for key in all_containers.keys():
         fields = BloombergTrackContainerMapping.objects.filter(Q(container__short_name='SecurityContainer') | Q(container__short_name=key), Q(active=True)).values_list('short_name__code', flat=True)
         history_key = uuid.uuid4().get_hex()

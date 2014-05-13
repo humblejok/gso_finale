@@ -9,6 +9,9 @@ urlpatterns = patterns('',
     url(r'^accounts/', include('allauth.urls')),
     url(r'^admin/', include(admin.site.urls)),
     
+    # Main page
+    url(r'^index.html$', 'universe.views.universes', name='index'),
+    
     # Common views
     url(r'^check_execution.html', 'universe.views.check_execution', name='check_execution'),
     url(r'^get_execution.html', 'universe.views.get_execution', name='get_execution'),
@@ -18,10 +21,11 @@ urlpatterns = patterns('',
     url(r'^universe_change_members.html$', 'universe.views.universe_change_members', name='universe_change_members.html'),
     url(r'^universe_create.html$', 'universe.views.universe_create', name='universe_create.html'),
     url(r'^universe_delete.html$', 'universe.views.universe_delete', name='universe_delete'),
-    url(r'^universe_edit_base.html', 'universe.views.universe_edit_base', name='universe_edit_base'),
-    url(r'^universe_edit_description.html', 'universe.views.universe_edit_description', name='universe_edit_description'),
-    url(r'^universe_duplicate.html$', 'universe.views.universe_duplicate', name='universe_duplicate.html'),
-    url(r'^universe_get.html', 'universe.views.universe_get', name='universe_get'),
+    url(r'^universe_base_edit.html', 'universe.views.universe_base_edit', name='universe_edit_base'),
+    url(r'^universe_description_edit.html', 'universe.views.universe_description_edit', name='universe_edit_description'),
+    url(r'^universe_duplicate.html$', 'universe.views.universe_duplicate', name='universe_duplicate'),
+    url(r'^universe_details_edit.html', 'universe.views.universe_details_edit', name='universe_details_edit'),
+    url(r'^universe_details.html', 'universe.views.universe_details', name='universe_details'),
     url(r'^universe_member_delete.html$', 'universe.views.universe_member_delete', name='universe_member_delete'),
     url(r'^universe_report.html$', 'universe.views.universe_report', name='universe_report'),
 
@@ -33,6 +37,7 @@ urlpatterns = patterns('',
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),
+    
     
 
 )

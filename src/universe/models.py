@@ -205,11 +205,11 @@ def populate_weekly_track_from_track(container, source_track):
             if started:
                 if token['date']==next_date:
                     all_values.append(token)
-                    previous = token
                     next_date = token['date'] + datetime.timedelta(days=7)
                 elif token['date']>next_date:
                     all_values.append({'date': next_date, 'value':previous['value']})
                     next_date = next_date + datetime.timedelta(days=7)
+                previous = token
             else:
                 if reference_days[token['date'].weekday()].id==day.id:
                     started = True

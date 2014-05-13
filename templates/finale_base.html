@@ -28,7 +28,8 @@
 					</button>
 					<a class="navbar-brand" href="#">FinaLE</a>
 				</div>
-				<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+				<div class="collapse navbar-collapse" id="finale-nav-bar">
+					{% if request.user.is_authenticated %}
 					<ul class="nav navbar-nav">
 						<li class="dropdown">
 							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Universes <b class="caret"></b></a>
@@ -60,23 +61,21 @@
 
 					<ul class="nav navbar-nav navbar-right">
 						<li>
-							{% if request.user.is_authenticated %}
 							<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
 								<span class="glyphicon glyphicon-off"></span>
 							</a>
-							{% else %}
-							<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
-							{% endif %}
 						</li>
+					</ul>
+					{% endif %}
 				</div>
 			</div>
 		</nav>
 		<div class="container" style="padding: 0 15px;">
 			{% if request.user.is_authenticated %}
-
-
 				{% block content %}
 				{% endblock%}
+			{% else %}
+				<center><a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a></center>
 			{% endif %}
 		</div>
 	</body>

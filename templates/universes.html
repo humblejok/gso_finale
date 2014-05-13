@@ -38,7 +38,7 @@
 								<span class="glyphicon glyphicon-pencil"></span>
 							</a>
 							{% endif %}
-							<a href="#modal_explore_{{universe.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Explore universe">
+							<a href="/universe_details.html?universe_id={{universe.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Explore universe">
 								<span class="glyphicon glyphicon-list-alt"></span>
 							</a>
 							<a href="/universe_duplicate.html?universe_id={{universe.id}}" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Duplicate universe">
@@ -60,32 +60,6 @@
 			</a>
 		</div>
 		{% for universe in universes %}
-			<div class="modal fade" id="modal_explore_{{universe.id}}" tabindex="-1" role="dialog" aria-labelledby="modal_explore_label_{{universe.id}}" aria-hidden="true">
-				<div class="modal-dialog">
-					<div class="modal-content">
-						<div class="modal-header">
-							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-							<h4 class="modal-title" id="modal_explore_label_{{universe.id}}">{{universe.name}}</h4>
-						</div>
-						<div class="modal-body">
-							<table class="table table.striped">
-								<tr>
-									<th>Asset</th>
-								</tr>
-								{% for member in universe.members.all %}
-								<tr>
-									<td>{{member.name}}</td>
-								</tr>
-								{% endfor %}
-							</table>
-						</div>
-						<div class="modal-footer">
-							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</div>
-			</div>
-
 			<div class="modal fade" id="modal_delete_{{universe.id}}" tabindex="-1" role="dialog" aria-labelledby="modal_delete_label_{{universe.id}}" aria-hidden="true">
 				<div class="modal-dialog">
 					<div class="modal-content">
@@ -111,7 +85,7 @@
 							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
 							<h4 class="modal-title" id="modal_edit_label_{{universe.id}}">Edit universe {{universe.name}}</h4>
 						</div>
-						<form id="edit_form_{{universe.id}}" role="form" action="/universe_edit_base.html" method="POST">{% csrf_token %}
+						<form id="edit_form_{{universe.id}}" role="form" action="/universe_base_edit.html" method="POST">{% csrf_token %}
 							<div class="modal-body">
 								<input type="hidden" id="universe_id" name="universe_id" value="{{universe.id}}"/>
 								<div class="form-group">

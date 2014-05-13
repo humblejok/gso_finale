@@ -17,12 +17,38 @@
 				alert(e.status);
 			}
 
+			function updateDescriptionHandler(e) {
+				if (e.result) {
+
+				} else {
+					alert(e.status);
+				}
+			}
+
+			function removalHandler(e) {
+				if (e.result) {
+					$('#row_' + e.member_id).remove();
+				} else {
+					alert(e.status)
+				}
+			}
+
+			function removeMember(universeId, memberId) {
+				$.ajax({
+			        url: '/universe_member_delete.html?universe_id=' + universeId + '&member_id=' + memberId,
+			        type: 'GET',
+			        processData: false,
+			        contentType: false,
+			        success: removalHandler,
+			    });
+			}
+
 			function updateDescription() {
 				var updateForm = new FormData();
 				updateForm.append('universe_id', '{{universe.id}}');
 				updateForm.append('universe_description', $("#description").val());
 				$.ajax({
-					url: '/universe_edit_description.html',
+					url: '/universe_description_edit.html',
 					type: 'POST',
 					data: updateForm,
 					processData: false,
@@ -40,11 +66,19 @@
 		<div class="row">
 			<div class="col-lg-11">
 				<h1 class="">{{universe.name}}</h1>
-	  			<p class="lead">{{universe.description}}<br/>
+	  			<p class="lead">Edit the content of this universe<br/>
 			</div>
 			<a href="/universes.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Back to universes list">
 				<span class="glyphicon glyphicon-home"></span>
 			</a>
+		</div>
+		<div class="row">
+			<div class="panel panel-default">
+				<div class="panel-heading clearfix"><h4 class="panel-title pull-left" style="padding-top: 7.5px;">Description</h4><button class="btn btn-default btn-sm pull-right" onclick="updateDescription()">Update</button></div>
+				<div class="panel-body">
+					<textarea id="description" name="description" class="form-control" rows="10" placeholder="Define the definition or description of this universe here...">{{universe.description}}</textarea>
+				</div>
+			</div>
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">
@@ -60,6 +94,11 @@
 						<td>{{member.name}}</td>
 						<td>{{member.security_type.name}}</td>
 						<td>
+							{% if request.user.id == universe.owner.id %}
+							<button onclick="removeMember({{universe.id}},{{member.id}});" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Remove {{member.security_type.name}}">
+								<span class="glyphicon glyphicon-remove-sign"></span>
+							</button>
+							{% endif %}
 							<a href="#modal_view_history_{{member.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="View official historical track of {{member.security_type.name}}">
 								<span class="glyphicon glyphicon-signal"></span>
 							</a>
@@ -70,6 +109,31 @@
 					</tr>
 					{% endfor %}
 				</table>
+			</div>
+			<a href="#modal_add_security" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Add a security to universe">
+				<span class="glyphicon glyphicon-plus"></span>
+			</a>
+		</div>
+		<div class="modal fade" id="modal_add_security" tabindex="-1" role="dialog" aria-labelledby="modal_add_security_label" aria-hidden="true">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_add_security_label">Add security to universe</h4>
+					</div>
+					<div class="modal-body">
+						<form id="addSecurityForm" role="form" class="form-horizontal" action="/universe_edit_base.html" method="POST" onsubmit="">{% csrf_token %}
+							<div class="form-group">
+								<label for="securityData" class="col-lg-2 col-lg-offset-1">Looking for:</label>
+								<input id="securityData" class="col-lg-6" name="securityData" type="text" placeholder="Can be a name, ticker or isin">
+								<button type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="submit()">Search</button>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					</div>
+				</div>
 			</div>
 		</div>
 		{% for member in universe.members.all %}

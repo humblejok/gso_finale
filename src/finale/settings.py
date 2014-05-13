@@ -144,8 +144,8 @@ INSTALLED_APPS = (
 
 DATE_FORMAT = 'Y-m-d'
 
-LOGIN_REDIRECT_URL = '/universes'
-LOGOUT_REDIRECT_URL = '/universes'
+LOGIN_REDIRECT_URL = '/universes.html'
+LOGOUT_REDIRECT_URL = '/universes.html'
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_PROVIDERS = {
     'facebook': {

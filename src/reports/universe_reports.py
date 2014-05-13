@@ -5,11 +5,13 @@ Created on May 6, 2014
 '''
 from finale.settings import WORKING_PATH
 import datetime
+from datetime import datetime as dt
 import os
 import xlsxwriter
 from universe.models import Attributes, TrackContainer
 from seq_common.utils import dates
 import logging
+from utilities.track_content import get_track_content
 
 LOGGER = logging.getLogger(__name__)
 
@@ -119,17 +121,18 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
     
     if rolling!=None:
         if start_date==None:
-            start_date = dates.AddDay(today, -rolling)
+            start_date = dt.combine(dates.AddDay(today, -rolling), dt.min.time())
         else:
-            effective_start_date = dates.AddDay(today, -rolling)
+            effective_start_date = dt.combine(dates.AddDay(today, -rolling), dt.min.time())
             if effective_start_date>start_date:
                 start_date = effective_start_date
         LOGGER.debug("Rolling enabled - Start date = " + str(start_date))        
-
-    if reference==None:
-        all_dates = TrackContainer.objects.filter(day__gte=start_date, effective_container_id__in=[member.id for member in universe.members.all()], type__id=nav_value.id,quality__id=official_type.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).distinct('day').order_by('day').values_list('day', flat=True)
+        
+    all_tracks = TrackContainer.objects.filter(effective_container_id__in=[member.id for member in universe.members.all()], type__id=nav_value.id,quality__id=official_type.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
+    if start_date==None:
+        all_dates = sorted(list(set([token['date'] for track in all_tracks for token in get_track_content(track)])))
     else:
-        all_dates = TrackContainer.objects.filter(day__gte=start_date, frequency_reference=reference, effective_container_id__in=[member.id for member in universe.members.all()], type__id=nav_value.id,quality__id=official_type.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).distinct('day').order_by('day').values_list('day', flat=True)
+        all_dates = sorted(list(set([token['date'] for track in all_tracks for token in get_track_content(track) if token['date']>=start_date])))
     if len(all_dates)==0:
         LOGGER.warn("Universe members do not have track content")
         return False, None
@@ -151,13 +154,14 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
     first = True    
     for day in all_dates:
         row_index = 0
-        ws.write(row_index, col_index, 'Closing price on the ' + str(day), formats['main_format_normal'])
-        ws.write(row_index, col_index + 1, 'WTD on the ' + str(day), formats['main_format_normal'])
-        ws.write(row_index, col_index + 2, 'MTD on the ' + str(day), formats['main_format_normal'])
-        ws.write(row_index, col_index + 3, 'YTD on the ' + str(day), formats['main_format_normal'])
+        print_day = day.strftime('%d, %b %Y')
+        ws.write(row_index, col_index, 'Closing price on the ' + print_day, formats['main_format_normal'])
+        ws.write(row_index, col_index + 1, 'WTD on the ' + print_day, formats['main_format_normal'])
+        ws.write(row_index, col_index + 2, 'MTD on the ' + print_day, formats['main_format_normal'])
+        ws.write(row_index, col_index + 3, 'YTD on the ' + print_day, formats['main_format_normal'])
         ws.set_column(col_index,col_index+3,15)
-        eom = dates.AddDay(dates.GetStartOfMonth(day),-1)
-        eoy = datetime.date(day.year-1,12,31)
+        eom = dt.combine(dates.AddDay(dates.GetStartOfMonth(day),-1),dt.min.time())
+        eoy = dt.combine(datetime.date(day.year-1,12,31),dt.min.time())
         row_index += 1
         # CONTENT
         for member in universe.members.all():
@@ -169,21 +173,16 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
                 provider = member.associated_companies.filter(role__identifier='SCR_DP')
                 if provider.exists():
                     provider = provider[0]
-                    monthlies = all_values = dict(TrackContainer.objects.filter(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=monthly.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
+                    monthly_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=monthly.id, status__id=final_status.id)
+                    monthlies = {token['date']:token['value'] for token in get_track_content(monthly_track)}
+                    values_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
+                    perfs_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
                     if start_date==None:
-                        if reference==None:
-                            all_values = dict(TrackContainer.objects.filter(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
-                            all_performances = dict(TrackContainer.objects.filter(effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
-                        else:
-                            all_values = dict(TrackContainer.objects.filter(frequency_reference=reference, effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
-                            all_performances = dict(TrackContainer.objects.filter(frequency_reference=reference, effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
+                        all_values = {token['date']:token['value'] for token in get_track_content(values_track)}
+                        all_performances = {token['date']:token['value'] for token in get_track_content(perfs_track)}
                     else:
-                        if reference==None:
-                            all_values = dict(TrackContainer.objects.filter(day__gte=start_date, effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
-                            all_performances = dict(TrackContainer.objects.filter(day__gte=start_date, effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
-                        else:
-                            all_values = dict(TrackContainer.objects.filter(day__gte=start_date, frequency_reference=reference, effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
-                            all_performances = dict(TrackContainer.objects.filter(day__gte=start_date, frequency_reference=reference, effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, time__isnull=True).values_list('day','value'))
+                        all_values = {token['date']:token['value'] for token in get_track_content(values_track) if token['date']>=start_date}
+                        all_performances = {token['date']:token['value'] for token in get_track_content(perfs_track) if token['date']>=start_date}
                     all_data[member.id]['VALUES'] = all_values
                     all_data[member.id]['PERFORMANCES'] = all_performances
                     all_data[member.id]['MONTHLY'] = monthlies
