@@ -1,0 +1,12 @@
+{% for member in universe.members.all %}
+{% if forloop.counter0|divisibleby:2 %}
+<div class='form-group'>
+{% endif %}
+	<label for='member_{{member.id}}' class='col-lg-4 control-label'>{{member.name}}</label>
+	<div class='col-lg-2'>
+		<input type='text' class='form-control text-right weight-field' id='member_{{member.id}}' name='member_{{member.id}}' value='0.0'>
+	</div>
+{% if forloop.counter|divisibleby:2 or forloop.last %}
+</div>
+{% endif %}
+{% endfor %}

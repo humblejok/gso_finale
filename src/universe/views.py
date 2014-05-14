@@ -101,7 +101,13 @@ def universe_backtest_wizard(request):
     source_id = request.GET['universe_id']
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
-    return render(request, 'financials/backtest/wizard.html')
+    try:
+        source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
+    except:
+        # TODO: Return error message
+        return redirect('universes')
+    context = {'universe': source}
+    return render(request, 'financials/backtest/wizard.html', context)
     
 
 def universe_report(request):
