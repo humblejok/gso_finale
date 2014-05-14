@@ -10,7 +10,7 @@ from universe.models import Universe, TrackContainer, SecurityContainer,\
     CurrencyContainer
 import threading
 import uuid
-from finale.utils import is_isin
+from finale.utils import to_bloomberg_code
 import datetime
 from reports import universe_reports
 import os
@@ -32,12 +32,8 @@ def bloomberg_wizard_execute(request, entity):
         use_terminal = request.POST['bloombergSource']=='True'
     except:
         use_terminal = False
-    prepared_entries = []
-    for entry in entries:
-        if is_isin(entry):
-            prepared_entries.append('/isin/' + entry)
-        else:
-            prepared_entries.append(entry)
+    prepared_entries = [to_bloomberg_code(entry,use_terminal) for entry in entries]
+
     response_key = uuid.uuid4().get_hex()
     # TODO: Implement CONSTANTS and dynamic choice
     if entity=='financials':

@@ -10,8 +10,10 @@ from providers import BloombergTasks
 from universe.models import populate_security_from_bloomberg_protobuf, \
     SecurityContainer, populate_tracks_from_bloomberg_protobuf,\
     BloombergDataContainerMapping, BloombergTrackContainerMapping
+from finale.utils import to_bloomberg_code
     
 import uuid
+
 
 def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set(response_key, 0.0)
@@ -58,6 +60,7 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     
     for key in all_containers.keys():
         fields = BloombergTrackContainerMapping.objects.filter(Q(container__short_name='SecurityContainer') | Q(container__short_name=key), Q(active=True)).values_list('short_name__code', flat=True)
+        all_containers[key] = [to_bloomberg_code(ticker,use_terminal) for ticker in all_containers[key]]
         history_key = uuid.uuid4().get_hex()
         bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, all_containers[key], fields, True))
         bb_thread.start()
