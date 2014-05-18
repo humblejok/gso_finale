@@ -13,7 +13,9 @@ from universe.models import populate_security_from_bloomberg_protobuf, \
 from finale.utils import to_bloomberg_code
     
 import uuid
+import logging
 
+LOGGER = logging.getLogger(__name__)
 
 def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set(response_key, 0.0)
@@ -74,3 +76,28 @@ def bloomberg_history_query(response_key, prepared_entries, fields, use_terminal
     cache.set(response_key, 0.5)
     populate_tracks_from_bloomberg_protobuf(response)
     cache.set(response_key, 1.0)
+    
+def bloomberg_update_query(response_key, bulk_information, use_terminal):
+    awaited = 0
+    for field in bulk_information.keys():
+        awaited += len(bulk_information[field].keys())
+    step = 1.0 / float(awaited)
+    LOGGER.info("Waiting for " + str(awaited) + " responses from Bloomberg")
+    cache.set(response_key, 0.0)
+    for field in bulk_information.keys():
+        for start_date in bulk_information[field].keys():
+            if str(start_date)=='None':
+                response = BloombergTasks.send_bloomberg_get_history(bulk_information[field][start_date], [field], 'TICKER', use_terminal)
+            else:
+                response = BloombergTasks.send_bloomberg_get_history(bulk_information[field][start_date], [field], 'TICKER', use_terminal, start_date)
+            cache.set('data_' + response_key, response)
+            cache.set('type_' + response_key, 'historical')
+            populate_tracks_from_bloomberg_protobuf(response, True)
+            cache.set(response_key, cache.get(response_key) + step)
+        
+        
+        
+        
+        
+        
+    

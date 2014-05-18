@@ -142,13 +142,14 @@ def populate_bloomberg_fields(csv_file):
 def populate_perf(container, source_track, reference=None):
     LOGGER.info('Computing and saving ' + source_track.frequency.name + ' performances track for ' + container.name)
     perf = Attributes.objects.get(identifier='NUM_TYPE_PERF', active=True)
+    computing_company = CompanyContainer.objects.get(name='FinaLE Engine')
     try:
         if reference==None:
             track = TrackContainer.objects.get(
                                 effective_container_id=container.id,
                                 type__id=perf.id,
                                 quality__id=source_track.quality.id,
-                                source__id=source_track.source.id,
+                                source__id=computing_company.id,
                                 frequency__id=source_track.frequency.id,
                                 status__id=source_track.status.id)
         else:
@@ -156,7 +157,7 @@ def populate_perf(container, source_track, reference=None):
                                 effective_container_id=container.id,
                                 type__id=perf.id,
                                 quality__id=source_track.quality.id,
-                                source__id=source_track.source.id,
+                                source__id=computing_company.id,
                                 frequency__id=source_track.frequency.id,
                                 status__id=source_track.status.id,
                                 frequency_reference=reference)
@@ -166,7 +167,7 @@ def populate_perf(container, source_track, reference=None):
         track.effective_container = SecurityContainer.objects.get(id=container.id)
         track.type = perf
         track.quality = source_track.quality
-        track.source = source_track.source
+        track.source = computing_company
         track.status = source_track.status
         track.frequency = source_track.frequency
         track.frequency_reference = reference
@@ -187,14 +188,15 @@ def populate_weekly_track_from_track(container, source_track):
     track_content = get_track_content(source_track, True)
     reference_days = [Attributes.objects.get(identifier=day) for day in ['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_SUNDAY']]
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
-    for day in reference_days:
+    computing_company = CompanyContainer.objects.get(name='FinaLE Engine')
+    for day in reference_days[0,5]:
         LOGGER.info('Working on day:' + day.name)
         try:
             track = TrackContainer.objects.get(
                                 effective_container_id=container.id,
                                 type__id=source_track.type.id,
                                 quality__id=source_track.quality.id,
-                                source__id=source_track.source.id,
+                                source__id=computing_company.id,
                                 frequency__id=weekly.id,
                                 frequency_reference=day,
                                 status__id=source_track.status.id)
@@ -204,7 +206,7 @@ def populate_weekly_track_from_track(container, source_track):
             track.effective_container = SecurityContainer.objects.get(id=container.id)
             track.type = source_track.type
             track.quality = source_track.quality
-            track.source = source_track.source
+            track.source = computing_company
             track.status = source_track.status
             track.frequency = weekly
             track.frequency_reference = day
@@ -238,12 +240,13 @@ def populate_weekly_track_from_track(container, source_track):
 def populate_monthly_track_from_track(container, source_track):
     LOGGER.info('Computing monthly prices track for ' + container.name)
     monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
+    computing_company = CompanyContainer.objects.get(name='FinaLE Engine')
     try:
         track = TrackContainer.objects.get(
                             effective_container_id=container.id,
                             type__id=source_track.type.id,
                             quality__id=source_track.quality.id,
-                            source__id=source_track.source.id,
+                            source__id=computing_company.id,
                             frequency__id=monthly.id,
                             status__id=source_track.status.id)
         LOGGER.info("Track already exists")
@@ -252,7 +255,7 @@ def populate_monthly_track_from_track(container, source_track):
         track.effective_container = SecurityContainer.objects.get(id=container.id)
         track.type = source_track.type
         track.quality = source_track.quality
-        track.source = source_track.source
+        track.source = computing_company
         track.status = source_track.status
         track.frequency = monthly
         track.frequency_reference = None
@@ -304,7 +307,8 @@ def populate_track_from_lyxor(lyxor_file):
                 for target in targets:
                     row_index += 1
 
-def populate_tracks_from_bloomberg_protobuf(data):
+
+def populate_tracks_from_bloomberg_protobuf(data, update=False):
     LOGGER.info('Importing historical data from Bloomberg')
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
@@ -354,7 +358,7 @@ def populate_tracks_from_bloomberg_protobuf(data):
                 track.frequency = daily
                 track.frequency_reference = None
                 track.save()
-            set_track_content(track, all_values[key][field], True)
+            set_track_content(track, all_values[key][field], not update)
     LOGGER.info('Historical tracks imported from Bloomberg')
     nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
     for key in all_values.keys():

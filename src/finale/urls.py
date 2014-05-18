@@ -31,7 +31,7 @@ urlpatterns = patterns('',
     url(r'^universe_report.html$', 'universe.views.universe_report', name='universe_report'),
 
     # Financials related views
-    
+    url(r'^bloomberg_update.html', 'universe.views.bloomberg_update', name='bloomberg_update'),
     url(r'^financials_bloomberg_wizard.html', 'universe.views.bloomberg_wizard', name='bloomberg_wizard', kwargs={'entity':'financials'}),
     url(r'^financials_bloomberg_wizard_execute.html', 'universe.views.bloomberg_wizard_execute', name='bloomberg_wizard_execute', kwargs={'entity':'financials'}),
     url(r'^financial_container_get.html', 'universe.views.financial_container_get', name='financial_container_get'),

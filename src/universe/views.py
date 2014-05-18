@@ -4,18 +4,20 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
-from finale.threaded import bloomberg_data_query
-from universe.models import Universe, TrackContainer, SecurityContainer,\
-    Attributes, FundContainer, IndexContainer, BondContainer,\
-    CurrencyContainer
+from finale.threaded import bloomberg_data_query, bloomberg_update_query
+from finale.utils import to_bloomberg_code
+from reports import universe_reports
+from universe.models import Universe, TrackContainer, SecurityContainer, \
+    Attributes, FundContainer, IndexContainer, BondContainer, CurrencyContainer, \
+    CompanyContainer, BloombergTrackContainerMapping
+from utilities.track_content import get_track_content_display
+import datetime
+import logging
+import os
 import threading
 import uuid
-from finale.utils import to_bloomberg_code
-import datetime
-from reports import universe_reports
-import os
-from utilities.track_content import get_track_content_display
-import logging
+import traceback
+from seq_common.utils import dates
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +44,47 @@ def bloomberg_wizard_execute(request, entity):
     context = {'response_key': response_key}
     return render(request,entity + '/bloomberg/wizard_waiting.html', context)
 
+def bloomberg_update(request):
+    # TODO: Check user
+    # TODO: Check Bloomberg method (Terminal/DL)
+    bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
+    bloomberg_fields = {entry[0]: entry[1] for entry in BloombergTrackContainerMapping.objects.values_list('name__name', 'short_name__name')}
+    print bloomberg_fields
+    try:
+        universe_id = request.GET['universe_id']
+    except:
+        universe_id = None
+    if universe_id!=None:
+        universe = Universe.objects.filter(Q(id=universe_id), Q(public=True)|Q(owner__id=request.user.id))
+        if universe.exists():
+            universe = universe[0]
+            all_tracks = TrackContainer.objects.filter(effective_container_id__in=universe.members.all().values_list('id', flat=True), source__id=bloomberg_company.id).order_by('end_date')
+    else:
+        all_tracks = TrackContainer.objects.filter(source__id=bloomberg_company.id).order_by('end_date')
+    print all_tracks
+    bulk_information = {}
+    for track in all_tracks:
+        if track.end_date!=None:
+            key = dates.AddDay(track.end_date,1)
+        else:
+            key = 'None'
+        if bloomberg_fields.has_key(track.type.name):
+            track_field = bloomberg_fields[track.type.name]
+            if not bulk_information.has_key(track_field):
+                bulk_information[track_field] = {}
+            if not bulk_information[track_field].has_key(key):
+                bulk_information[track_field][key] = []
+            try:
+                bulk_information[track_field][key].append(to_bloomberg_code(track.effective_container.aliases.get(alias_type__name='BLOOMBERG').alias_value, True))
+            except:
+                traceback.print_exc()
+                LOGGER.error("No associated BLOOMBERG information for " + str(track.effective_container.name))
+    history_key = uuid.uuid4().get_hex()
+    update_thread = threading.Thread(None, bloomberg_update_query, history_key, (history_key, bulk_information, True))
+    update_thread.start()
+    # TODO: Return error message
+    return redirect('universes.html')
+    
 def check_execution(request):
     response_key = request.POST['response_key']
     if cache.get(response_key)==1.0:
@@ -189,7 +232,7 @@ def universe_duplicate(request):
         source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
-        return redirect('universes')
+        return redirect('universes.html')
     destination = source.clone(Universe)
     destination.name = destination.name + ' (copy)'
     destination.owner = user
@@ -198,7 +241,7 @@ def universe_duplicate(request):
         destination.members.add(member)
     destination.save()
     # TODO: Return success message
-    return redirect('universes')
+    return redirect('universes.html')
 
 def universe_delete(request):
     source_id = request.GET['universe_id']
@@ -208,10 +251,10 @@ def universe_delete(request):
         source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
-        return redirect('universes')
+        return redirect('universes.html')
     source.delete()
     # TODO: Return success message
-    return redirect('universes')
+    return redirect('universes.html')
 
 def universe_base_edit(request):
     universe_id = request.POST['universe_id']
@@ -221,7 +264,7 @@ def universe_base_edit(request):
         source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
-        return redirect('universes')
+        return redirect('universes.html')
     source.name = request.POST['name']
     source.short_name = request.POST['short_name']
     if request.POST.has_key('public'):
