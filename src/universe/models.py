@@ -189,7 +189,7 @@ def populate_weekly_track_from_track(container, source_track):
     reference_days = [Attributes.objects.get(identifier=day) for day in ['DT_REF_MONDAY','DT_REF_TUESDAY','DT_REF_WEDNESDAY','DT_REF_THURSDAY','DT_REF_FRIDAY','DT_REF_SATURDAY','DT_REF_SUNDAY']]
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
     computing_company = CompanyContainer.objects.get(name='FinaLE Engine')
-    for day in reference_days[0,5]:
+    for day in reference_days[0:5]:
         LOGGER.info('Working on day:' + day.name)
         try:
             track = TrackContainer.objects.get(

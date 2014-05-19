@@ -8,7 +8,7 @@ import datetime
 from datetime import datetime as dt
 import os
 import xlsxwriter
-from universe.models import Attributes, TrackContainer
+from universe.models import Attributes, TrackContainer, CompanyContainer
 from seq_common.utils import dates
 import logging
 from utilities.track_content import get_track_content
@@ -151,7 +151,9 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
     col_index = 1
     
     all_data = {}
-    first = True    
+    first = True
+    computing_company = CompanyContainer.objects.get(name='FinaLE Engine')
+    
     for day in all_dates:
         row_index = 0
         print_day = day.strftime('%d, %b %Y')
@@ -170,22 +172,19 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
                 ws.write(row_index, 0, member.short_name, formats['main_format_normal'])
             if not all_data.has_key(member.id):
                 all_data[member.id] = {}
-                provider = member.associated_companies.filter(role__identifier='SCR_DP')
-                if provider.exists():
-                    provider = provider[0]
-                    monthly_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=monthly.id, status__id=final_status.id)
-                    monthlies = {token['date']:token['value'] for token in get_track_content(monthly_track)}
-                    values_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
-                    perfs_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=provider.company.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
-                    if start_date==None:
-                        all_values = {token['date']:token['value'] for token in get_track_content(values_track)}
-                        all_performances = {token['date']:token['value'] for token in get_track_content(perfs_track)}
-                    else:
-                        all_values = {token['date']:token['value'] for token in get_track_content(values_track) if token['date']>=start_date}
-                        all_performances = {token['date']:token['value'] for token in get_track_content(perfs_track) if token['date']>=start_date}
-                    all_data[member.id]['VALUES'] = all_values
-                    all_data[member.id]['PERFORMANCES'] = all_performances
-                    all_data[member.id]['MONTHLY'] = monthlies
+                monthly_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=computing_company.id, frequency__id=monthly.id, status__id=final_status.id)
+                monthlies = {token['date']:token['value'] for token in get_track_content(monthly_track)}
+                values_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=nav_value.id,quality__id=official_type.id, source__id=computing_company.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
+                perfs_track = TrackContainer.objects.get(effective_container_id=member.id, type__id=perf_value.id,quality__id=official_type.id, source__id=computing_company.id, frequency__id=frequency.id, status__id=final_status.id, frequency_reference=reference)
+                if start_date==None:
+                    all_values = {token['date']:token['value'] for token in get_track_content(values_track)}
+                    all_performances = {token['date']:token['value'] for token in get_track_content(perfs_track)}
+                else:
+                    all_values = {token['date']:token['value'] for token in get_track_content(values_track) if token['date']>=start_date}
+                    all_performances = {token['date']:token['value'] for token in get_track_content(perfs_track) if token['date']>=start_date}
+                all_data[member.id]['VALUES'] = all_values
+                all_data[member.id]['PERFORMANCES'] = all_performances
+                all_data[member.id]['MONTHLY'] = monthlies
             if all_values.has_key(day):
                 ws.write(row_index, col_index, all_data[member.id]['VALUES'][day], formats['main_format_normal'])
                 ws.write(row_index, col_index + 1, all_data[member.id]['PERFORMANCES'][day], formats['main_format_percent'])
