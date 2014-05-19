@@ -5,6 +5,11 @@
 		<script>
 			$(document).ready(function () {
 				$(".btn").not('#comment').tooltip();
+				$(".no-enter").keydown( function(e) {
+					if (e.keyCode == 13) {
+						e.preventDefault();
+					}
+				});
 				$("#fromDate").datepicker({ dateFormat: "yy-mm-dd" });
 				$("#toDate").datepicker({ dateFormat: "yy-mm-dd" });
 				$("#organicDate").datepicker({ dateFormat: "yy-mm-dd" });
@@ -16,16 +21,89 @@
 						$(".organic").attr("class","hidden");
 					}
 				});
+				$("#gotoStepTwo").click(function(e) {
+					e.preventDefault();
+					$("#step-one").collapse("toggle");
+					$("#step-two").collapse("toggle");
+					return false; // IE
+				});
+
+				$("#gotoStepThree").click(function(e) {
+					e.preventDefault();
+					$("#step-two").collapse("toggle");
+					$("#step-three").collapse("toggle");
+					return false; // IE
+				});
 				
 				$(".weight-field").keydown( function(e) {
-					if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 || (e.keyCode == 65 && e.ctrlKey === true) || (e.keyCode >= 35 && e.keyCode <= 39)) {
-						return;
-					}
-					if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+					if (e.keyCode==13) {
 						e.preventDefault();
+					} else {
+						if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 || (e.keyCode == 65 && e.ctrlKey === true) || (e.keyCode >= 35 && e.keyCode <= 39)) {
+							return;
+						}
+						if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+							e.preventDefault();
+						}
 					}
 				});
+				checkAllSteps();
+				updateTotalAllocation();
 			});
+
+			function executeGotoStepTwo(e) {
+				alert("ttsts");
+				e.preventDefault();
+				return false;
+			}
+
+			function updateTotalAllocation() {
+				var total = 0.0;
+				$(".weight-field").each(function() {
+					total += Number($(this).val());
+				});
+				$("#totalAllocation").val(total);
+				checkStepTwo();
+			}
+
+			function checkAllSteps() {
+				var completed = checkStepOne() && checkStepTwo() && checkStepThree();
+				if (completed) {
+					$("#launchButton").attr("class","btn btn-success col-lg-12");
+				} else {
+					$("#launchButton").attr("class","btn btn-success col-lg-12 disabled");
+				}
+				return completed;
+			}
+
+			function checkStepOne() {
+				if ($("#backtestName").val() && $("#fromDate").val()) {
+					$("#gotoStepTwo").attr("class","btn btn-success col-lg-offset-10 col-lg-1");
+					return true;
+				} else {
+					$("#gotoStepTwo").attr("class","btn btn-success col-lg-offset-10 col-lg-1 disabled");
+					return false;
+				}
+			}
+
+			function checkStepTwo() {
+				var allocation = Number($("#totalAllocation").val());
+				if ($("#backtestName").val() && $("#fromDate").val() && allocation>0 && allocation<=100) {
+					$("#gotoStepThree").attr("class","btn btn-success col-lg-offset-10 col-lg-1");
+					return true;
+				} else {
+					$("#gotoStepThree").attr("class","btn btn-success col-lg-offset-10 col-lg-1 disabled");
+					return false;
+				}
+			}
+
+			function checkStepThree() {
+				if ($("#backtestName").val() && $("#fromDate").val()) {
+					return true;
+				} else {
+					return false;
+				}
+			}
 
 		</script>
 {% endblock %}
@@ -49,7 +127,7 @@
 								<div class="form-group">
 									<label for="backtestName" class="col-lg-2 control-label">Name</label>
 									<div class="col-lg-4">
-										<input type="text" class="form-control" id="backtestName" placeholder="Backtest name">
+										<input type="text" class="form-control no-enter" id="backtestName" placeholder="Backtest name" onchange="checkAllSteps()">
 									</div>
 									<label class="col-lg-1 control-label">or</label>
 									<button class="btn btn-default col-lg-4" role="button" data-toggle="tooltip" data-placement="bottom" title="Select and load an existing backtest setup" onclick"">Load</button>
@@ -57,22 +135,25 @@
 								<div class="form-group">
 									<label for="fromDate" class="col-lg-2 control-label">From</label>
 									<div class="col-lg-4">
-										<input type="text" class="form-control" id="fromDate" name="fromDate" placeholder="Start date">
+										<input type="text" class="form-control no-enter" id="fromDate" name="fromDate" placeholder="Start date" onchange="checkAllSteps()">
 									</div>
 									<label for="toDate" class="col-lg-1 control-label">to</label>
 									<div class="col-lg-4">
-										<input type="text" class="form-control" id="toDate" name="toDate" placeholder="End date, it can be empty!">
+										<input type="text" class="form-control no-enter" id="toDate" name="toDate" placeholder="End date, it can be empty!" onchange="checkAllSteps()">
 									</div>
 								</div>
 								<div class="form-group">
 									<label for="frequency" class="col-lg-2 control-label">Frequency</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='frequency' name='type'>
+										<select class='form-control no-enter' id='frequency' name='type' onchange="checkAllSteps()">
 											{% with value="FREQ_MONTHLY" %}
 												{% include 'statics/frequency_en.html' %}
 											{% endwith %}
 										</select>
 									</div>
+								</div>
+								<div class="row">
+									<button id="gotoStepTwo" class="btn btn-success col-lg-offset-10 col-lg-1 disabled">Next</button>
 								</div>
 							</div>
 						</div>
@@ -88,15 +169,22 @@
 								<div class="form-group">
 									<label for="reweight" class="col-lg-2 control-label">Reweight policy</label>
 									<div class="checkbox col-lg-3">
-										<input id="reweight" name="reweight" type="checkbox" value="True">&nbsp;Reweight on frequency period
+										<input id="reweight" name="reweight" type="checkbox" value="True" onchange="checkAllSteps()">&nbsp;Reweight on frequency period
 									</div>
 									<label for="organicDate" class="col-lg-3 control-label organic">Allow organic growth as of</label>
 									<div class="col-lg-2">
-										<input type="text" class="form-control organic" id="organicDate" name="organicDate" placeholder="Date">
+										<input type="text" class="form-control organic no-enter" id="organicDate" name="organicDate" placeholder="Date" onchange="checkAllSteps()">
 									</div>
 								</div>
 							</div>
 							{% include 'rendition/wizard_backtest_form_weights.html' %}
+							<div class="form-group">
+								<label for="totalAllocation" class="col-lg-4 control-label">Allocation</label>
+								<div class="col-lg-2">
+									<input id="totalAllocation" name="totalAllocation" type="text" class="form-control text-right no-enter" disabled="disabled">
+								</div>
+								<button id="gotoStepThree" class="btn btn-success col-lg-offset-4 col-lg-1 disabled">Next</button>
+							</div>
 						</div>
 					</div>
 					<div class="panel panel-default">
@@ -110,28 +198,36 @@
 								<div class="form-group">
 									<label for="hedgingMethod" class="col-lg-2 control-label">Hedging method</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='hedgingMethod' name='hedgingMethod'>
-											<option>None</option>
+										<select class='form-control' id='hedgingMethod' name='hedgingMethod' onchange="checkAllSteps()">
+											{% with value="HEDGING_METHOD_NONE" %}
+												{% include 'statics/hedging_method_en.html' %}
+											{% endwith %}
 										</select>
 									</div>
 									<label for="feesScheme" class="col-lg-2 control-label">Fees scheme</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='feesScheme' name='feesScheme'>
-											<option>None</option>
+										<select class='form-control' id='feesScheme' name='feesScheme' onchange="checkAllSteps()">
+											{% with value="FEES_SCHEME_NONE" %}
+												{% include 'statics/fees_scheme_en.html' %}
+											{% endwith %}
 										</select>
 									</div>
 								</div>
 								<div class="form-group">
 									<label for="leverage" class="col-lg-2 control-label">Leverage</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='leverage' name='leverage'>
-											<option>None</option>
+										<select class='form-control' id='leverage' name='leverage' onchange="checkAllSteps()">
+											{% with value="LEVERAGE_NONE" %}
+												{% include 'statics/leverage_en.html' %}
+											{% endwith %}
 										</select>
 									</div>
 									<label for="historyScheme" class="col-lg-2 control-label">History completion</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='historyScheme' name='historyScheme'>
-											<option>None</option>
+										<select class='form-control' id='historyScheme' name='historyScheme' onchange="checkAllSteps()">
+											{% with value="HISTORY_COMPLETION_NONE" %}
+												{% include 'statics/history_completion_en.html' %}
+											{% endwith %}
 										</select>
 									</div>
 								</div>
@@ -140,7 +236,7 @@
 					</div>
 				</div>
 				<div class="form-group">
-					<button type="submit" class="btn btn-success col-lg-12" role="button" data-toggle="tooltip" data-placement="bottom" title="Launch the computation with selected parameters">Compute</button>
+					<button id="launchButton" type="submit" class="btn btn-success col-lg-12 disabled" role="button" data-toggle="tooltip" data-placement="bottom" title="Launch the computation with selected parameters">Compute</button>
 				</div>
 			</form>
 {% endblock %}
