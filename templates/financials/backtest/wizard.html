@@ -98,7 +98,7 @@
 			}
 
 			function checkStepThree() {
-				if ($("#backtestName").val() && $("#fromDate").val()) {
+				if ($("#backtestName").val()!='' && $("#fromDate").val()!='') {
 					return true;
 				} else {
 					return false;
@@ -114,7 +114,7 @@
 					<p class="lead">Reload or create a backtest on the given universe: {{universe.name}}<br/>
 				</div>
 			</div>
-			<form id="backtestWizard" role="form" class="form-horizontal" action="/financials_backtest_execute.html" method="POST">{% csrf_token %}
+			<form id="backtestWizard" role="form" class="form-horizontal" action="/backtest_wizard_execute.html" method="POST">{% csrf_token %}
 				<div class="panel-group" id="wizard">
 					<div class="panel panel-default">
 						<div class="panel-heading">
@@ -127,7 +127,8 @@
 								<div class="form-group">
 									<label for="backtestName" class="col-lg-2 control-label">Name</label>
 									<div class="col-lg-4">
-										<input type="text" class="form-control no-enter" id="backtestName" placeholder="Backtest name" onchange="checkAllSteps()">
+										<input type="hidden" id="universeId" name="universeId" value="{{universe.id}}">
+										<input type="text" class="form-control no-enter" id="backtestName" name="backtestName" placeholder="Backtest name" onchange="checkAllSteps()">
 									</div>
 									<label class="col-lg-1 control-label">or</label>
 									<button class="btn btn-default col-lg-4" role="button" data-toggle="tooltip" data-placement="bottom" title="Select and load an existing backtest setup" onclick"">Load</button>
@@ -145,9 +146,17 @@
 								<div class="form-group">
 									<label for="frequency" class="col-lg-2 control-label">Frequency</label>
 									<div class="col-lg-4">
-										<select class='form-control no-enter' id='frequency' name='type' onchange="checkAllSteps()">
+										<select class='form-control no-enter' id='frequency' name='frequency' onchange="checkAllSteps()">
 											{% with value="FREQ_MONTHLY" %}
 												{% include 'statics/frequency_en.html' %}
+											{% endwith %}
+										</select>
+									</div>
+									<label for="currency" class="col-lg-1 control-label">Currency</label>
+									<div class="col-lg-4">
+										<select class='form-control no-enter' id='currency' name='currency' onchange="checkAllSteps()">
+											{% with value="CURR_EUR" %}
+												{% include 'statics/currency_en.html' %}
 											{% endwith %}
 										</select>
 									</div>
@@ -198,7 +207,7 @@
 								<div class="form-group">
 									<label for="hedgingMethod" class="col-lg-2 control-label">Hedging method</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='hedgingMethod' name='hedgingMethod' onchange="checkAllSteps()">
+										<select class='form-control no-enter' id='hedgingMethod' name='hedgingMethod' onchange="checkAllSteps()">
 											{% with value="HEDGING_METHOD_NONE" %}
 												{% include 'statics/hedging_method_en.html' %}
 											{% endwith %}
@@ -206,7 +215,7 @@
 									</div>
 									<label for="feesScheme" class="col-lg-2 control-label">Fees scheme</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='feesScheme' name='feesScheme' onchange="checkAllSteps()">
+										<select class='form-control no-enter' id='feesScheme' name='feesScheme' onchange="checkAllSteps()">
 											{% with value="FEES_SCHEME_NONE" %}
 												{% include 'statics/fees_scheme_en.html' %}
 											{% endwith %}
@@ -216,19 +225,29 @@
 								<div class="form-group">
 									<label for="leverage" class="col-lg-2 control-label">Leverage</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='leverage' name='leverage' onchange="checkAllSteps()">
+										<select class='form-control no-enter' id='leverage' name='leverage' onchange="checkAllSteps()">
 											{% with value="LEVERAGE_NONE" %}
 												{% include 'statics/leverage_en.html' %}
 											{% endwith %}
 										</select>
 									</div>
-									<label for="historyScheme" class="col-lg-2 control-label">History completion</label>
+									<label for="leverageLevel" class="col-lg-2 control-label">Leverage level</label>
 									<div class="col-lg-4">
-										<select class='form-control' id='historyScheme' name='historyScheme' onchange="checkAllSteps()">
+										<input id="leverageLevel" name="leverageLevel" type="text" class="form-control text-right no-enter" disabled="disabled">
+									</div>
+								</div>
+								<div class="form-group">
+									<label for="historyCompletion" class="col-lg-2 control-label">History completion</label>
+									<div class="col-lg-4">
+										<select class='form-control no-enter' id='historyCompletion' name='historyCompletion' onchange="checkAllSteps()">
 											{% with value="HISTORY_COMPLETION_NONE" %}
 												{% include 'statics/history_completion_en.html' %}
 											{% endwith %}
 										</select>
+									</div>
+									<label for="initialAUM" class="col-lg-2 control-label">Initial AUM</label>
+									<div class="col-lg-4">
+										<input id="initialAUM" name="initialAUM" type="text" class="form-control text-right no-enter" value="1000000">
 									</div>
 								</div>
 							</div>

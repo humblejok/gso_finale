@@ -9,7 +9,7 @@ from finale.utils import to_bloomberg_code
 from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
     Attributes, FundContainer, IndexContainer, BondContainer, CurrencyContainer, \
-    CompanyContainer, BloombergTrackContainerMapping
+    CompanyContainer, BloombergTrackContainerMapping, BacktestContainer
 from utilities.track_content import get_track_content_display
 import datetime
 import logging
@@ -21,6 +21,51 @@ from seq_common.utils import dates
 
 LOGGER = logging.getLogger(__name__)
 
+def backtest_wizard_execute(request):
+    # TODO: Check user
+    # TODO: Check parameters
+    user = User.objects.get(id=request.user.id)
+    backtest_name = request.POST['backtestName']
+    pm_role = Attributes.objects.get(identifier='TPR_PM')
+    backtest_container = Attributes.objects.get(identifier='CONT_BACKTEST')
+    active_status = Attributes.objects.get(identifier='STATUS_ACTIVE')
+    try:
+        backtest = BacktestContainer.objects.get(name=backtest_name, owner=user)
+    except:
+        backtest = BacktestContainer()
+    backtest.name = backtest_name
+    backtest.short_name = 'To define'
+    backtest.type = backtest_container
+    
+    backtest.inception_date = request.POST['fromDate']
+    if request.POST.has_key('toDate'):
+        backtest.closed_date = request.POST['toDate']
+    backtest.short_description = 'A backtest by ' + str(user.last_name) + ' ' + str(user.first_name)
+    backtest.status = active_status
+    backtest.currency = Attributes.objects.get(identifier=request.POST['currency'], type='currency')
+    backtest.owner_role = None
+    backtest.owner = None
+    backtest.frequency = Attributes.objects.get(identifier=request.POST['frequency'], type='frequency')
+    backtest.frequency_reference = None
+    backtest.universe = Universe.objects.get(id=request.POST['universeId'])
+    backtest.public = False
+    backtest.publisher = user
+    backtest.reweight = request.POST.has_key('reweight')
+    if request.POST.has_key('reweight'):
+        backtest.organic_date = request.POST['organicDate']
+    else:
+        backtest.organic_date = None
+    backtest.hedging = Attributes.objects.get(identifier=request.POST['hedgingMethod'], type='hedging_method')
+    backtest.fees = Attributes.objects.get(identifier=request.POST['feesScheme'], type='fees_scheme')
+    backtest.leverage = Attributes.objects.get(identifier=request.POST['leverage'], type='leverage')
+    if request.POST['leverage']!='LEVERAGE_NONE':
+        backtest.leverage_level = request.POST['leverageLevel']
+    else:
+        backtest.leverage_level = None
+    backtest.history = Attributes.objects.get(identifier=request.POST['historyCompletion'], type='history_completion')
+    backtest.initial_aum = request.POST['initialAUM']
+    backtest.save()
+    redirect('/universe_backtest_wizard.html?universe_id=' + str(request.POST['universeId']))
 
 def bloomberg_wizard(request, entity):
     # TODO: Check user

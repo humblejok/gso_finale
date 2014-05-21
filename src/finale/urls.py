@@ -29,6 +29,7 @@ urlpatterns = patterns('',
     url(r'^universe_details.html', 'universe.views.universe_details', name='universe_details'),
     url(r'^universe_member_delete.html$', 'universe.views.universe_member_delete', name='universe_member_delete'),
     url(r'^universe_report.html$', 'universe.views.universe_report', name='universe_report'),
+    url(r'^backtest_wizard_execute.html$', 'universe.views.backtest_wizard_execute', name='backtest_wizard_execute'),
 
     # Financials related views
     url(r'^bloomberg_update.html', 'universe.views.bloomberg_update', name='bloomberg_update'),

@@ -1039,6 +1039,22 @@ class BondContainer(SecurityContainer):
     def get_fields(self):
         return super(BondContainer, self).get_fields() + ['issue_date','coupon_rate','coupon_frequency','maturity_date']
 
+class BacktestContainer(FinancialContainer):
+    universe = models.ForeignKey(Universe, related_name='backtest_universe')
+    public = models.BooleanField()
+    publisher = models.ForeignKey(User, related_name='backtest_publisher_rel')
+    reweight = models.BooleanField()
+    organic_date = models.DateField(null=True)
+    hedging = models.ForeignKey(Attributes, limit_choices_to={'type':'hedging_method'}, related_name='backtest_hedging_method_rel')
+    fees = models.ForeignKey(Attributes, limit_choices_to={'type':'fees_scheme'}, related_name='backtest_fees_scheme_rel')
+    leverage = models.ForeignKey(Attributes, limit_choices_to={'type':'leverage'}, related_name='backtest_leverage_rel')
+    leverage_level = models.FloatField(default=0.0)
+    history = models.ForeignKey(Attributes, limit_choices_to={'type':'history_completion'}, related_name='backtest_history_completion_rel')
+    initial_aum = models.FloatField()
+    
+    def get_fields(self):
+        return super(FinancialContainer).get_fields() + ['universe','public','publisher','from_date','to_date','reweight','organic_date','hedging','fees','leverage','leverage_level','history','initial_aum']
+
 class TrackContainer(CoreModel):
     container = models.ForeignKey(ContentType)
     effective_container_id = models.PositiveIntegerField()
