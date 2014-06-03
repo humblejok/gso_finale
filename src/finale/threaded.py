@@ -94,10 +94,3 @@ def bloomberg_update_query(response_key, bulk_information, use_terminal):
             cache.set('type_' + response_key, 'historical')
             populate_tracks_from_bloomberg_protobuf(response, True)
             cache.set(response_key, cache.get(response_key) + step)
-        
-        
-        
-        
-        
-        
-    
