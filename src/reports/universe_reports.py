@@ -9,7 +9,7 @@ from datetime import datetime as dt
 import os
 import xlsxwriter
 from universe.models import Attributes, TrackContainer, CompanyContainer
-from seq_common.utils import dates
+from seq_common.utils import dates, classes
 import logging
 from utilities.track_content import get_track_content
 
@@ -203,3 +203,15 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
         col_index += 4
     workbook.close()
     return True, save_path
+
+def export_universe(universe, export_format):
+    callable = classes.my_class_import('reports.' + export_format.lower() + '.export_universe')
+    return callable(universe)
+
+def export_universe_history(universe, export_format):
+    callable = classes.my_class_import('reports.' + export_format.lower() + '.export_universe_history')
+    return callable(universe)
+
+def export_security_history(security, export_format):
+    callable = classes.my_class_import('reports.' + export_format.lower() + '.export_security_history')
+    return callable(security)

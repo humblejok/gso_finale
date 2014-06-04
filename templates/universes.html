@@ -49,10 +49,24 @@
 							<a href="/bloomberg_update.html?universe_id={{universe.id}}" class="btn btn-default" data-toggle="tooltip" data-placement="bottom" title="Update the universe with Bloomberg historical information">
 								<span class="glyphicon glyphicon-refresh"></span>
 							</a>
-							
 							<a href="/universe_backtest_wizard.html?universe_id={{universe.id}}" class="btn btn-default" data-toggle="tooltip" data-placement="bottom" title="Launch the backtesting wizard for this universe">
 								<span class="glyphicon glyphicon-tasks"></span>
 							</a>
+							<div class="btn-group">
+								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+									<span class="glyphicon glyphicon-export"/>&nbsp;<span class="caret"></span>
+								</button>
+								<ul class="dropdown-menu" role="menu">
+									<li role="presentation" class="dropdown-header">Securities</li>
+									{% for format in export_formats %}
+									<li><a href="/universe_export.html?universe_id={{universe.id}}&export_to={{format.identifier}}&export_type=securities">{{format.name}}</a></li>
+									{% endfor %}
+									<li role="presentation" class="dropdown-header">Historical information</li>
+									{% for format in export_formats %}
+									<li><a href="/universe_export.html?universe_id={{universe.id}}&export_to={{format.identifier}}&export_type=history">{{format.name}}</a></li>
+									{% endfor %}
+								</ul>
+							</div>
 						</td>
 					</tr>
 					{% endfor %}

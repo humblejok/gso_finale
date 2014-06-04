@@ -18,6 +18,7 @@ import threading
 import uuid
 import traceback
 from seq_common.utils import dates
+from utilities.track_token import get_main_track
 
 LOGGER = logging.getLogger(__name__)
 
@@ -182,7 +183,8 @@ def track_get(request):
 def universes(request):
     # TODO: Check user
     universes = Universe.objects.filter(Q(public=True)|Q(owner__id=request.user.id))
-    context = {'universes': universes}
+    export_formats = Attributes.objects.filter(type='export_to', active=True).order_by('id')
+    context = {'universes': universes, 'export_formats':export_formats}
     return render(request, 'universes.html', context)
 
 def universe_backtest_wizard(request):
@@ -196,7 +198,36 @@ def universe_backtest_wizard(request):
         return redirect('universes')
     context = {'universe': source}
     return render(request, 'financials/backtest/wizard.html', context)
-    
+
+def universe_export(request):
+    source_id = request.GET['universe_id']
+    export_to = request.GET['export_to']
+    export_type = request.GET['export_type']
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    try:
+        source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
+    except:
+        # TODO: Return error message
+        return HttpResponse('{"result": false, "status": "You are not allowed to view that universe."}',"json")
+    try:
+        if export_type=='securities':
+            path = universe_reports.export_universe(source, export_to)
+        elif export_type=='history':
+            path = universe_reports.export_universe_history(source, export_to)
+        else:
+            # Redirect with error message
+            return redirect('universes.html')
+        xlsx_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        with open(path,'rb') as f:
+            content = f.read()
+        response = HttpResponse(content,xlsx_mime)
+        split_path = os.path.split(path)
+        response['Content-Disposition'] = 'attachement; filename="' + split_path[len(split_path)-1] + '"'
+        return response
+    except:
+        traceback.print_exc()
+        return redirect('universes.html')
 
 def universe_report(request):
     source_id = request.GET['universe_id']
@@ -354,28 +385,13 @@ def universe_details(request):
         # TODO: Return error message
         return redirect('universes.html')
     context = {'universe': source, 'tracks': {}}
-    
-    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
-    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
-    official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
-    monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
-    
+ 
     for member in source.members.all():
-        provider = member.associated_companies.filter(role__identifier='SCR_DP')
-        if provider.exists():
-            provider = provider[0]
-            try:
-                track = TrackContainer.objects.get(
-                    effective_container_id=member.id,
-                    type__id=nav_value.id,
-                    quality__id=official_type.id,
-                    source__id=provider.company.id,
-                    frequency__id=monthly.id,
-                    status__id=final_status.id)
-                context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
-            except:
-                LOGGER.warn("No track found for container [" + str(member.id) + "]")
-                context['tracks']['track_' + str(member.id)] = []
+        content = get_main_track(member, True, True)
+        if content!=None:
+            context['tracks']['track_' + str(member.id)] = content
+        else:
+            context['tracks']['track_' + str(member.id)] = []
     return render(request, 'universe_details.html', context)
 
 def universe_details_edit(request):

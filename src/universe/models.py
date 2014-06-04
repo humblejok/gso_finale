@@ -295,6 +295,7 @@ def populate_track_from_lyxor(lyxor_file):
     tuesday = Attributes.objects.get(identifier='DT_REF_THURSDAY', active=True)
     row_index = 9
     isin_cache = {}
+    isin_content = {} 
     while row_index<sheet.nrows:
         full_date = datetime.datetime(*xldate_as_tuple(sheet.cell_value(row_index, 1), workbook.datemode))
         simple_date = datetime.date(full_date.year, full_date.month, full_date.day)
@@ -308,9 +309,28 @@ def populate_track_from_lyxor(lyxor_file):
                 else:
                     targets = isin_cache[isin]
                 LOGGER.info("Updating " + str(len(targets)) + " entities with ISIN like " + str(isin));
-                for target in targets:
-                    row_index += 1
-
+                if not isin_content.has_key(isin):
+                    isin_content[isin] = []
+                isin_content[isin].append({'date': dt.combine(simple_date, dt.min.time()), 'value':float(sheet.cell_value(row_index,col_index))})
+        row_index += 1
+    for isin in isin_cache.keys():
+        for target in isin_cache[isin]:
+            try:
+                track = TrackContainer.objects.get(effective_container_id=target.id, frequency_reference=tuesday, type__id=nav_value.id, quality__id=official_type.id,source__id=lyxor_company.id, frequency__id=weekly.id, status__id=final_status.id)
+                LOGGER.info("Track already exists")
+            except:
+                track = TrackContainer()
+                track.effective_container = SecurityContainer.objects.get(id=target.id)
+                track.type = nav_value
+                track.quality = official_type
+                track.source = lyxor_company
+                track.status = final_status
+                track.frequency = weekly
+                track.frequency_reference = tuesday
+                track.save()
+            set_track_content(track, isin_content[isin], True)
+            populate_perf(track.effective_container, track)
+            populate_monthly_track_from_track(track.effective_container, track)
 
 def populate_tracks_from_bloomberg_protobuf(data, update=False):
     LOGGER.info('Importing historical data from Bloomberg')
@@ -379,7 +399,7 @@ def populate_tracks_from_bloomberg_protobuf(data, update=False):
 def populate_security_from_bloomberg_protobuf(data):
     
     bloomberg_alias = Attributes.objects.get(identifier='ALIAS_BLOOMBERG')
-
+    daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
     if not RelatedCompany.objects.filter(company=bloomberg_company).exists():
@@ -442,6 +462,7 @@ def populate_security_from_bloomberg_protobuf(data):
         security.finalize()
     #[security.finalize() for security in securities.values()]
     [security.associated_companies.add(bloomberg_provider) for security in securities.values()]
+    [setattr(security,'frequency',daily) for security in securities.values()]
     [security.save() for security in securities.values()]
     final_tickers = []
     for ticker in securities:
@@ -480,7 +501,7 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
         universe.closed_date = None
         universe.status = Attributes.objects.get(identifier='STATUS_ACTIVE')
         universe.public = True
-        universe.owner = User.objects.get(id=3)
+        universe.owner = User.objects.get(id=1)
         universe.description = "This universe contains all Lyxor B ETFs and trackers."
         universe.save()
     if clean:
@@ -489,10 +510,16 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
     lyxor_company = CompanyContainer.objects.get(name='Lyxor Asset Management')
     
     data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
-    lyxor_provider = RelatedCompany()
-    lyxor_provider.company = lyxor_company
-    lyxor_provider.role = data_provider
-    lyxor_provider.save()
+    lyxor_provider = RelatedCompany.objects.filter(company=lyxor_company, role=data_provider)
+    if lyxor_provider.exists():
+        lyxor_provider = lyxor_provider[0]
+    else:
+        lyxor_provider = RelatedCompany()
+        lyxor_provider.company = lyxor_company
+        lyxor_provider.role = data_provider
+        lyxor_provider.save()
+    
+    usd_currency = Attributes.objects.get(identifier='CURR_USD', active=True)
     weekly = Attributes.objects.get(identifier='FREQ_WEEKLY', active=True)
     tuesday = Attributes.objects.get(identifier='DT_REF_THURSDAY', active=True)
     security_type = Attributes.objects.get(identifier='CONT_FUND')
@@ -512,8 +539,10 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
         if not sheet.cell_type(row_index,2)==xlrd.XL_CELL_EMPTY and value.strip()!='':
             update = SecurityContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=value)
             if update.exists():
-                LOGGER.info('Found ' + len(update) + ' securities with identifier [' + value + ']')
+                LOGGER.info('Found ' + str(len(update)) + ' securities with identifier [' + str(value) + ']')
                 update = [FundContainer.objects.get(id=security.id) for security in update]
+                [security.clean() for security in update]
+                [security.save() for security in update]
             else:
                 update = [FundContainer.create()]
                 [security.save() for security in update]
@@ -528,6 +557,12 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
                 else:
                     LOGGER.debug("Cannot find matching field for " + HEADER[i-1])
             [setattr(security,'type', security_type) for security in update]
+            [setattr(security,'currency', usd_currency) for security in update]
+            # Update currency if needed
+            for security in update:
+                currency = security.get_currency_in_name()
+                if currency!=None:
+                    security.currency = currency
             [setattr(security,'security_type', fund_type) for security in update]
             [setattr(security,'frequency', weekly) for security in update]
             [setattr(security,'frequency_reference', tuesday) for security in update]
@@ -787,6 +822,7 @@ class Container(CoreModel):
         self.save()
         
     def clean(self):
+        self.many_fields = {}
         for field_name in self._meta.get_all_field_names():
             try:
                 if self._meta.get_field(field_name).get_internal_type()=='ForeignKey':
@@ -830,6 +866,13 @@ class FinancialContainer(Container):
     
     def get_fields(self):
         return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases']
+    
+    def get_currency_in_name(self):
+        currencies = Attributes.objects.filter(type='currency').values_list('short_name', flat=True)
+        for currency in currencies:
+            if str(self.name).find(' ' + currency)>0:
+                return Attributes.objects.get(type='currency', short_name=currency)
+        return None
     
 class FinancialOperation(CoreModel):
     name = models.CharField(max_length=512)

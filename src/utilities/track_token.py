@@ -13,7 +13,6 @@ def get_main_track(security, ascending = True,  display = False):
     nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
-    daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
     provider = security.associated_companies.filter(role__identifier='SCR_DP')
     if provider.exists():
         provider = provider[0]
@@ -23,7 +22,8 @@ def get_main_track(security, ascending = True,  display = False):
                 type__id=nav_value.id,
                 quality__id=official_type.id,
                 source__id=provider.company.id,
-                frequency__id=daily.id,
+                frequency__id=security.frequency.id,
+                frequency_reference=security.frequency_reference,
                 status__id=final_status.id)
             return get_track_content_display(track, ascending, False) if display else get_track_content(track, ascending)
         except:
