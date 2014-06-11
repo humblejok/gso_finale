@@ -46,6 +46,10 @@ def get_security_price(isin_code,bloomberg_code, value_date):
 def default_operation(entry, account_code, pictet_code, accounts, code_operation, type_operation, guardian_cash, guardian_operation):
     isin_code = entry[u'ISIN']
     bloomberg_code = entry[u'Ticker Bloomberg (Code g\xe9n\xe9rique)']
+
+    if code_operation==u'CT: subscription TA':
+        entry[u'Montant brut (monnaie op.)'] = entry[u'Quantit\xe9']
+        entry[u'Montant net (monnaie compte courant)'] = entry[u'Quantit\xe9']        
     
     if entry[u'Monnaie du compte courant']!=u'':
         amount = entry[u'Montant brut (monnaie op.)'] if entry[u'Montant brut (monnaie op.)']!=None and entry[u'Montant brut (monnaie op.)']!='' else entry[u'Montant net (monnaie compte courant)']

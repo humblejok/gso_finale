@@ -58,7 +58,10 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     for security in result:
         if not all_containers.has_key(security.__class__.__name__):
             all_containers[security.__class__.__name__] = []
-        all_containers[security.__class__.__name__].append(security.aliases.get(alias_type__name='BLOOMBERG').alias_value)
+        try:
+            all_containers[security.__class__.__name__].append(security.aliases.get(alias_type__name='BLOOMBERG').alias_value)
+        except:
+            all_containers[security.__class__.__name__].append(security.aliases.get(alias_type__name='ISIN').alias_value)
     
     for key in all_containers.keys():
         fields = BloombergTrackContainerMapping.objects.filter(Q(container__short_name='SecurityContainer') | Q(container__short_name=key), Q(active=True)).values_list('short_name__code', flat=True)
