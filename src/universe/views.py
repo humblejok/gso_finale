@@ -240,11 +240,11 @@ def universe_report(request):
         source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
-        return redirect('universes')
+        return redirect('universes.html')
     result, path = universe_reports.simple_price_report(user, source, weekly, reference, datetime.datetime(2014,4,25,0,0), 90)
     xlsx_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     if not result:
-        return redirect('universes')
+        return redirect('universes.html')
     else:
         with open(path,'rb') as f:
             content = f.read()
