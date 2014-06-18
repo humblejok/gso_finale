@@ -1,19 +1,16 @@
 {% extends "finale_base.html" %}
 {% load universe_tags %}
 {% block title %}Financial Lightweight Editor - {{container.name}}{% endblock %}
-{% block headeroptions %}
-		<script>
-			var chart;
-
-			$(document).ready(function () {
+{% block readyoptions %}
 		     	$(".btn").not('#comment').tooltip();
 		     	$(".comment").popover();
-		     	csrftoken = getCookie('csrftoken');
 				$("#modal_view_track").on('shown.bs.modal', function () {
 					chart.invalidateSize();
 				});
-			   });
-
+{% endblock %}
+{% block headeroptions %}
+		<script>
+			var chart;
 
 			function onCallError(e) {
 				alert(e.status);

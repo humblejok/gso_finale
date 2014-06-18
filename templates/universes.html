@@ -1,12 +1,9 @@
 {% extends "finale_base.html" %}
 {% block title %}Financial Lightweight Editor - Universes{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+{% endblock %}
 {% block headeroptions %}
-		<script>
-			$(document).ready(function () {
-		     	$(".btn").not('#comment').tooltip();
-			   });
-
-		</script>
 {% endblock %}
 	</head>
 	<body>

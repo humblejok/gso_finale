@@ -1,13 +1,10 @@
 {% extends "finale_base.html" %}
 {% load universe_tags %}
 {% block title %}Financial Lightweight Editor - Bloomberg query wizard{% endblock %}
+{% block readyoptions %}
+			$(".btn").not('#comment').tooltip();
+{% endblock %}
 {% block headeroptions %}
-		<script>
-			$(document).ready(function () {
-		     	$(".btn").not('#comment').tooltip();
-			   });
-
-		</script>
 {% endblock %}
 {% block content %}
 			<div class="row">

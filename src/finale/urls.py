@@ -42,5 +42,8 @@ urlpatterns = patterns('',
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),
     
     
+    url(r'^external_import.html', 'universe.views.external_import', name='external_import'),
+    
+    
 
 )

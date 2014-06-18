@@ -25,7 +25,15 @@ DATABASES = {
         'USER': 'dejonckheeres',
         'PASSWORD': 'Geneve2014#',
         'HOST': '192.168.9.11',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
-    }
+    },
+    'saxo': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
+        'NAME': 's_repository',                      # Or path to database file if using sqlite3.
+        # The following settings are not used with sqlite3:
+        'USER': 's_repository',
+        'PASSWORD': 'dev',
+        'HOST': 'localhost',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
+    },
 }
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False

@@ -1,6 +1,9 @@
 {% extends "finale_base.html" %}
 {% load universe_tags %}
 {% block title %}Financial Lightweight Editor - Query results{% endblock %}
+{% block readyoptions %}
+			currentInterval = setInterval(checkExecution, 10000);
+{% endblock %}
 {% block headeroptions %}
 		<script>
 			var currentInterval;
@@ -93,12 +96,6 @@
 					error: universeNotCreated
 				});
 			}
-
-			$(document).ready(function () {
-				csrftoken = getCookie('csrftoken');
-				currentInterval = setInterval(checkExecution, 10000);
-			});
-
 		</script>
 {% endblock %}
 {% block content %}

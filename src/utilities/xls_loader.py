@@ -8,6 +8,12 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
+def load_xls(sheet_name, xlsx_file, group_by=None):
+    None
+    
+def load_csv(csv_file, group_by=None):
+    None
+
 def load_xlsx(sheet_name, xlsx_file, group_by=None):
     workbook = load_workbook(xlsx_file)
     sheet = workbook.get_sheet_by_name(sheet_name)

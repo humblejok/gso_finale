@@ -1,9 +1,7 @@
 {% extends "finale_base.html" %}
 {% load universe_tags %}
 {% block title %}Financial Lightweight Editor - Backtest wizard{% endblock %}
-{% block headeroptions %}
-		<script>
-			$(document).ready(function () {
+{% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
 				$(".no-enter").keydown( function(e) {
 					if (e.keyCode == 13) {
@@ -49,7 +47,9 @@
 				});
 				checkAllSteps();
 				updateTotalAllocation();
-			});
+{% endblock %}
+{% block headeroptions %}
+		<script>
 
 			function executeGotoStepTwo(e) {
 				alert("ttsts");

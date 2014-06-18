@@ -304,7 +304,7 @@ def populate_track_from_lyxor(lyxor_file):
             if sheet.cell_type(row_index,col_index)!=xlrd.XL_CELL_EMPTY and sheet.cell_value(row_index,col_index)!=None and sheet.cell_value(row_index,col_index)!='':
                 isin = sheet.cell_value(5,col_index)
                 if not isin_cache.has_key(isin):
-                    targets = FundContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin)
+                    targets = SecurityContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin)
                     isin_cache[isin] = targets
                 else:
                     targets = isin_cache[isin]
@@ -418,16 +418,12 @@ def populate_security_from_bloomberg_protobuf(data):
         if row.errorCode==0:
             if row.field=='SECURITY_TYP':
                 try:
-                    LOGGER.debug('Entity identified by [' + row.ticker + ',' + row.valueString + '] will be created as [' + Attributes.objects.get(type='bloomberg_security_model', name=row.valueString).short_name + ']')
-                    class_name = Attributes.objects.get(type='bloomberg_security_model', name=row.valueString).short_name
-                    full_class_name = class_name
+                    LOGGER.debug('Entity identified by [' + row.ticker + ',' + row.valueString + '] will be created')
                     sec_type_name = Attributes.objects.get(type='bloomberg_security_type', name=row.valueString).short_name
                     cont_type_name = Attributes.objects.get(type='bloomberg_container_type', name=row.valueString).short_name
                     container_type = Attributes.objects.get(identifier=cont_type_name)
                     security_type = Attributes.objects.get(identifier=sec_type_name)
-                    if not full_class_name.startswith('universe.models.'):
-                        full_class_name = 'universe.models.' + full_class_name
-                    securities[row.ticker] = classes.my_class_import(full_class_name).create()
+                    securities[row.ticker] = SecurityContainer.create()
                     securities[row.ticker].type = container_type
                     securities[row.ticker].security_type = security_type
                 except:
@@ -540,13 +536,13 @@ def populate_security_from_lyxor(lyxor_file, clean=True):
             update = SecurityContainer.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=value)
             if update.exists():
                 LOGGER.info('Found ' + str(len(update)) + ' securities with identifier [' + str(value) + ']')
-                update = [FundContainer.objects.get(id=security.id) for security in update]
+                update = [SecurityContainer.objects.get(id=security.id) for security in update]
                 [security.clean() for security in update]
                 [security.save() for security in update]
             else:
-                update = [FundContainer.create()]
+                update = [SecurityContainer.create()]
                 [security.save() for security in update]
-                LOGGER.info('Creating new entry ' + FundContainer.__name__)
+                LOGGER.info('Creating new entry ' + SecurityContainer.__name__)
             for i in range(1,sheet.ncols):
                 value = sheet.cell_value(row_index,i)
                 if sheet.cell_type(row_index,i)==xlrd.XL_CELL_DATE:
@@ -1036,55 +1032,6 @@ class SecurityContainer(FinancialContainer):
     
     def get_fields(self):
         return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','country','region','market_sector', 'parent_security','attached_account']
-
-class CurrencyContainer(SecurityContainer):
-    target = models.ForeignKey(Attributes, limit_choices_to={'type':'currency'}, related_name='source_currency_rel')
-    duration_unit = models.ForeignKey(Attributes, limit_choices_to={'type':'duration_unit'}, related_name='duration_unit_currency_rel')
-    duration = models.FloatField(null=True, blank=True)
-    
-    def get_fields(self):
-        return super(FinancialContainer, self).get_fields() + ['target', 'duration']
-
-class DerivativeContainer(SecurityContainer):
-    contract_buy_date = models.DateTimeField()
-    contract_buy_price = models.FloatField(null=True)
-    contract_remaining_quantity = models.FloatField(null=True)
-    contract_estimated_pnl = models.FloatField(null=True)
-    maturity_date = models.DateField(null=True)
-
-    def get_fields(self):
-        return super(DerivativeContainer, self).get_fields() + ['contract_buy_date','contract_buy_price','contract_remaining_quantity','contract_estimated_pnl','maturity_date']
-
-class OptionContainer(DerivativeContainer):
-    None
-
-class FundContainer(SecurityContainer):
-    bb_geographical_focus = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_geo_focus'}, related_name='geo_focus_rel', null=True)
-    bb_asset_class_focus = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_asset_focus'}, related_name='asset_focus_rel', null=True)
-    bb_style = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_style'}, related_name='style_rel', null=True)
-    bb_strategy = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_strategy'}, related_name='strategy_rel', null=True)
-    bb_fund_type = models.ForeignKey(Attributes, limit_choices_to={'type':'bloomberg_fund_type'}, related_name='fund_type_rel', null=True)
-    bb_fund_domiciliation = models.CharField(max_length=128)
-    bb_rating_class_focus = models.CharField(max_length=128)
-    
-    def get_fields(self):
-        return super(FundContainer, self).get_fields() + ['bb_geographical_focus','bb_asset_class_focus','bb_style','bb_strategy','bb_fund_type','bb_fund_domiciliation','bb_rating_class_focus']
-
-class IndexContainer(SecurityContainer):
-    data_type = models.ForeignKey(Attributes, limit_choices_to={'type':'numeric_type'}, related_name='numeric_type_data_index_rel', null=True)
-    data_period = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='frequency_data_index_rel', null=True)
-    
-    def get_fields(self):
-        return super(IndexContainer, self).get_fields() + ['data_type','data_period']
-    
-class BondContainer(SecurityContainer):
-    issue_date = models.DateField(null=True)
-    coupon_rate = models.FloatField(null=True)
-    coupon_frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='bond_frequency_rel', null=True)
-    maturity_date = models.DateField(null=True)
-    
-    def get_fields(self):
-        return super(BondContainer, self).get_fields() + ['issue_date','coupon_rate','coupon_frequency','maturity_date']
 
 class BacktestContainer(FinancialContainer):
     universe = models.ForeignKey(Universe, related_name='backtest_universe')

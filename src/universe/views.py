@@ -1,24 +1,27 @@
 # Create your views here.
+import datetime
+import logging
+import os
+import threading
+import traceback
+import uuid
+
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db.models import Q
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
+from seq_common.utils import dates
+
 from finale.threaded import bloomberg_data_query, bloomberg_update_query
 from finale.utils import to_bloomberg_code
 from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
-    Attributes, FundContainer, IndexContainer, BondContainer, CurrencyContainer, \
-    CompanyContainer, BloombergTrackContainerMapping, BacktestContainer
+    Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer
+from utilities.external_content import import_external_data
 from utilities.track_content import get_track_content_display
-import datetime
-import logging
-import os
-import threading
-import uuid
-import traceback
-from seq_common.utils import dates
 from utilities.track_token import get_main_track
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -149,22 +152,18 @@ def get_execution(request):
     context = {'results': execution_results,'universes': universes, 'errors':errors}
     rendition = render(request, 'rendition/wizard_securities_results.html', context)
     return rendition
+    
+def external_import(request):
+    provider = request.POST['provider']
+    data_type = request.POST['data_type']
+    import_external_data(provider, data_type)
+    return HttpResponse('{"result": true, "status": "Job done."}',"json")
 
 def financial_container_get(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     container_id = request.GET['container_id']
     container = SecurityContainer.objects.get(id=container_id)
-    if container.type.identifier=='CONT_FUND':
-        container = FundContainer.objects.get(id=container_id)
-    elif container.type.identifier=='CONT_INDEX':
-        container = IndexContainer.objects.get(id=container_id)
-    elif container.type.identifier=='CONT_BOND':
-        container = BondContainer.objects.get(id=container_id)
-    elif container.type.identifier=='CONT_SPOT':
-        container = CurrencyContainer.objects.get(id=container_id)
-    elif container.type.identifier=='CONT_FORWARD':
-        container = CurrencyContainer.objects.get(id=container_id)
     tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
     context = {'container': container, 'tracks': tracks}
     return render(request,'container/' + container.type.identifier + '.html', context)
