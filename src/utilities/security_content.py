@@ -9,9 +9,24 @@ from finale.settings import MONGO_URL
 client = MongoClient(MONGO_URL)
 
 mapping = client.mapping
-securities = client.securities
+securities = client.securities['containers']
 
 def get_security_information(security):
-    None
+    return securities.find_one({'_id': security.id})
     
-    
+def set_security_information(security, field, value, provider = None):
+    data = get_security_information(security)
+    print data
+    if data==None:
+        if provider==None:
+            data = {'_id': security.id, field: value}
+        else:
+            data = {'_id': security.id, provider:  {field: value}}
+        securities.insert(data)
+    else:
+        if provider==None:
+            data[field] = value
+        else:
+            data[provider][field] = value
+        securities.save(data)
+        

@@ -18,10 +18,10 @@ LOGGER = logging.getLogger(__name__)
 
 saxo_accounts = {'80287/6126430U': {'currency':'USD', 'guardian':'CC02054'},
                  '80287/6126430DMA': {'currency':'USD', 'guardian':'CC02083'},
-                 '80287/6137950CHF': {'currency':'CHF', 'guardian':''},
-                 '80287/6676750': {'currency':'USD', 'guardian':''},
-                 '80287/6137950': {'currency':'USD', 'guardian':''},
-                 '80287/6675050': {'currency':'USD', 'guardian':''},
+                 '80287/6137950CHF': {'currency':'CHF', 'guardian':'CC02089'},
+                 '80287/6134640': {'currency':'EUR', 'guardian':'CC02095'},
+                 '80287/6137950': {'currency':'USD', 'guardian':'CC02088'},
+                 '80287/6675050': {'currency':'USD', 'guardian':'CC02093'},
                  '80287/6677130': {'currency':'USD', 'guardian':''},
                  '80287/6676740': {'currency':'USD', 'guardian':''},                 
                  }
@@ -76,7 +76,7 @@ def get_guardian_operation(saxo_codes, guardian_code, start_date, end_date, expo
                 elif det[u'trade_booking_type'] in ['[Swiss Stamp Duty Foreign]','Tax Commission','[UK PTM Levy]', 'Stamp Duty']:
                     trade_details['taxes'] = trade_details['taxes'] + det[u'trade_booked_amount']
                 elif det[u'trade_booking_type'] in ['P/L']:
-                    trade_details['pnl'] = trade_details['pnl'] + det[u'trade_amount']
+                    trade_details['pnl'] = trade_details['pnl'] + det[u'trade_booked_amount']
                 if not trade_details.has_key('rate'):
                     if det[u'trade_conversion_rate']!=0.0 and det[u'trade_conversion_rate']!=1.0 and det[u'trade_conversion_rate']!=None:
                         trade_details['rate'] = det[u'trade_conversion_rate'] 
@@ -86,23 +86,24 @@ def get_guardian_operation(saxo_codes, guardian_code, start_date, end_date, expo
                 continue
             divide = get_security_divisor(security_code)
             buy_cfd = trade[u'trade_product']=='CFDs' and trade[u'trade_buy_sell']=='Bought'
+            sell_cfd = trade[u'trade_product']=='CFDs' and trade[u'trade_buy_sell']=='Sold'
             gross_amount = trade[u'trade_amount'] * (trade[u'trade_price'] / (1.0 if divide==None or divide=='' else divide)) * -1.0
             if trade[u'trade_instrument_currency']!=saxo_accounts[trade[u'product_account_id']]['currency'] and not trade_details.has_key('rate'):
                 LOGGER.info("\tNo rate but FX needed")
                 exchange_rate = get_exchange_rate_price(trade[u'trade_instrument_currency'],saxo_accounts[trade[u'product_account_id']]['currency'],trade_date )
             else:
                 exchange_rate = 1.0 if not trade_details.has_key('rate') or trade_details['rate']==0.0 else trade_details['rate']
-                
-            if buy_cfd:
-                gross_amount = trade_details['pnl']
             final_gross_amount = gross_amount * exchange_rate
-            
+            if final_gross_amount<0:
+                final_net_amount = final_gross_amount + trade_details['fees'] + trade_details['taxes']
+            else:
+                final_net_amount = ((final_gross_amount * -1.0) + trade_details['fees'] + trade_details['taxes']) * -1.0
             row = ['','','','','','','',
                        trade_date,
                        trade_date,
                        str(trade_time)[0:5],
                        datetime.datetime.strptime(trade[ u'trade_value_date'],'%Y-%m-%d'),
-                       'A' if trade[u'trade_buy_sell']=='Bought' else 'V',
+                       'B' if trade[u'trade_buy_sell']=='Bought' else 'S',
                        guardian_code,
                        security_code, # TRADED SECURITY
                        trade[u'trade_instrument_currency'],
@@ -116,23 +117,53 @@ def get_guardian_operation(saxo_codes, guardian_code, start_date, end_date, expo
                        '',
                        'SAXO',
                        'DEPTIT',
-                       ('LIQCFD' + saxo_accounts[trade[u'product_account_id']]['currency']) if buy_cfd else saxo_accounts[trade[u'product_account_id']]['guardian'],
+                       ('LIQCFD' + saxo_accounts[trade[u'product_account_id']]['currency']) if trade[u'trade_product']=='CFDs' else saxo_accounts[trade[u'product_account_id']]['guardian'],
                        '', # NONE IF BUY OR SELL
                        saxo_accounts[trade[u'product_account_id']]['currency'],
                        gross_amount,'','','','','','','',gross_amount,'',                       
-                       final_gross_amount,'','','','','',trade_details['fees'] if not buy_cfd else 0.0, trade_details['taxes'] if not buy_cfd else 0.0, final_gross_amount + ((trade_details['fees'] + trade_details['taxes']) if not buy_cfd else 0.0),
-                       str(trade[ u'trade_buy_sell']) + " " + str(trade[u'trade_product']) + " of " + str(trade[u'trade_instrument']),'','','','','','','','','','','','','',
+                       final_gross_amount if not buy_cfd else final_net_amount,'','','','','',trade_details['fees'] if not buy_cfd else 0.0, trade_details['taxes'] if not buy_cfd else 0.0, final_net_amount,
+                       str(trade[ u'trade_buy_sell']) + " " + str(trade[u'trade_product']) + " of " + str(trade[u'trade_instrument']) + " [" + trade[u'trade_id'] + "]",'','','','','','','','','','','','','',
                        ''
                        ]
             rows.append(row)
-            if buy_cfd and trade_details['taxes']!=0.0:
+            if sell_cfd and trade_details['pnl']!=0.0:
+                row = ['','','','','','','',
+                       trade_date,
+                       trade_date,
+                       str(trade_time)[0:5],
+                       datetime.datetime.strptime(trade[ u'trade_value_date'],'%Y-%m-%d'),
+                       'B' if trade_details['pnl']<0.0 else 'S',
+                       guardian_code,
+                       'LIQCFD' + saxo_accounts[trade[u'product_account_id']]['currency'],
+                       '',
+                       '', # ISIN
+                       '', # BLOOMBERG
+                       '',
+                       -1.0 * trade_details['pnl'],
+                       '',
+                       '',
+                       '',
+                       '',
+                       'SAXO',
+                       '',
+                       saxo_accounts[trade[u'product_account_id']]['guardian'],
+                       '',
+                       saxo_accounts[trade[u'product_account_id']]['currency'],
+                       trade_details['pnl'],'','','','','','','',trade_details['pnl'],'',
+                       trade_details['pnl'],'','','','','','', '', trade_details['pnl'],
+                       "PnL for " + str(trade[ u'trade_buy_sell']) + " " + str(trade[u'trade_product']) + " of " + str(trade[u'trade_instrument']),'','','','','','','','','','','','','',
+                       ''
+                       ]
+                LOGGER.info("\tCFD PnL have been found") 
+                rows.append(row)
+            if (buy_cfd or sell_cfd) and trade_details['taxes']!=0.0:
                 prefix = 'Taxes ' if trade_details['fees']<0 else 'Commission'
                 row = ['','','','','','','',
                        trade_date,
                        trade_date,
                        str(trade_time)[0:5],
                        datetime.datetime.strptime(trade[ u'trade_value_date'],'%Y-%m-%d'),
-                       'ADDEBITO' if trade_details['fees']<0 else 'ACCREDITO',
+                       'DEBIT' if trade_details['fees']<0 else 'CREDIT',
                        guardian_code,
                        saxo_accounts[trade[u'product_account_id']]['currency'],
                        saxo_accounts[trade[u'product_account_id']]['currency'],
@@ -156,14 +187,14 @@ def get_guardian_operation(saxo_codes, guardian_code, start_date, end_date, expo
                        ]
                 LOGGER.info("\tTaxes have been found") 
                 rows.append(row)
-            if buy_cfd and trade_details['fees']!=0.0:
+            if (buy_cfd or sell_cfd) and trade_details['fees']!=0.0:
                 prefix = 'Fees ' if trade_details['fees']<0 else 'Commission'
                 row = ['','','','','','','',
                        trade_date,
                        trade_date,
                        str(trade_time)[0:5],
                        datetime.datetime.strptime(trade[ u'trade_value_date'],'%Y-%m-%d'),
-                       'ADDEBITO' if trade_details['fees']<0 else 'ACCREDITO',
+                       'DEBIT' if trade_details['fees']<0 else 'CREDIT',
                        guardian_code,
                        saxo_accounts[trade[u'product_account_id']]['currency'],
                        saxo_accounts[trade[u'product_account_id']]['currency'],

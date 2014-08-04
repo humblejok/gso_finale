@@ -167,6 +167,7 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
         row_index += 1
         # CONTENT
         for member in universe.members.all():
+            print "---------------------->" + str(day)
             LOGGER.info("Working with " + member.name + " as of " + str(day))
             if first:
                 ws.write(row_index, 0, member.short_name, formats['main_format_normal'])
@@ -185,19 +186,23 @@ def simple_price_report(user, universe, frequency, reference = None, start_date 
                 all_data[member.id]['VALUES'] = all_values
                 all_data[member.id]['PERFORMANCES'] = all_performances
                 all_data[member.id]['MONTHLY'] = monthlies
-            if all_values.has_key(day):
-                ws.write(row_index, col_index, all_data[member.id]['VALUES'][day], formats['main_format_normal'])
-                ws.write(row_index, col_index + 1, all_data[member.id]['PERFORMANCES'][day], formats['main_format_percent'])
-                if all_data[member.id]['MONTHLY'].has_key(eom):
-                    LOGGER.info("PREVIOUS EOM:" + str(all_data[member.id]['MONTHLY'][eom]))
-                    ws.write(row_index, col_index + 2, (all_data[member.id]['VALUES'][day]/all_data[member.id]['MONTHLY'][eom]) - 1.0, formats['main_format_percent'])
-                else:
-                    ws.write(row_index, col_index + 2, '', formats['main_format_normal'])
-                if all_data[member.id]['MONTHLY'].has_key(eoy):
-                    LOGGER.info("PREVIOUS EOY:" + str(all_data[member.id]['MONTHLY'][eoy]))
-                    ws.write(row_index, col_index + 3, (all_data[member.id]['VALUES'][day]/all_data[member.id]['MONTHLY'][eoy]) - 1.0, formats['main_format_percent'])
-                else:
-                    ws.write(row_index, col_index + 3, '', formats['main_format_normal'])
+            backdated_day = day
+            print all_data[member.id]['VALUES']
+            while not all_data[member.id]['VALUES'].has_key(backdated_day):
+                backdated_day = dates.AddDay(backdated_day, -1)
+            LOGGER.info("Using " + str(backdated_day))
+            ws.write(row_index, col_index, all_data[member.id]['VALUES'][backdated_day], formats['main_format_normal'])
+            ws.write(row_index, col_index + 1, all_data[member.id]['PERFORMANCES'][backdated_day], formats['main_format_percent'])
+            if all_data[member.id]['MONTHLY'].has_key(eom):
+                ws.write(row_index, col_index + 2, (all_data[member.id]['VALUES'][backdated_day]/all_data[member.id]['MONTHLY'][eom]) - 1.0, formats['main_format_percent'])
+            else:
+                ws.write(row_index, col_index + 2, '', formats['main_format_normal'])
+            if all_data[member.id]['MONTHLY'].has_key(eoy):
+                ws.write(row_index, col_index + 3, (all_data[member.id]['VALUES'][backdated_day]/all_data[member.id]['MONTHLY'][eoy]) - 1.0, formats['main_format_percent'])
+            else:
+                ws.write(row_index, col_index + 3, '', formats['main_format_normal'])
+                    
+                    
             row_index += 1
         first = False
         col_index += 4

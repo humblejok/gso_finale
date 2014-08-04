@@ -20,6 +20,7 @@ import os
 import xlrd
 import traceback
 from django.template.context import Context
+from utilities.security_content import set_security_information
 
 LOGGER = logging.getLogger(__name__)
 
@@ -54,10 +55,10 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
     workbook = load_workbook(xlsx_file)
     sheet = workbook.get_sheet_by_name(name=model.__name__)
-    row_index = 0
+    row_index = 1
     # Reading header
     header = []
-    for column_index in range(0, sheet.get_highest_column()):
+    for column_index in range(1, sheet.get_highest_column() + 1):
         value = sheet.cell(row = row_index, column=column_index).value
         if value!=None:
             header.append(value if value!='' else header[-1])
@@ -66,12 +67,12 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
     LOGGER.info('Using header:' + str(header))
     row_index += 1
     while row_index<sheet.get_highest_row():
-        if model.objects.filter(identifier=sheet.cell(row = row_index, column=0).value).exists():
-            instance = model.objects.get(identifier=sheet.cell(row = row_index, column=0).value)
+        if model.objects.filter(identifier=sheet.cell(row = row_index, column=1).value).exists():
+            instance = model.objects.get(identifier=sheet.cell(row = row_index, column=1).value)
         else:
             instance = model()
         for i in range(0,len(header)):
-            value = sheet.cell(row = row_index, column=i).value
+            value = sheet.cell(row = row_index, column=i+1).value
             setattr(instance, header[i], value)
         instance.save()
         row_index += 1
@@ -81,10 +82,10 @@ def populate_model_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
     workbook = load_workbook(xlsx_file)
     sheet = workbook.get_sheet_by_name(name=model.__name__)
-    row_index = 0
+    row_index = 1
     # Reading header
     header = []
-    for column_index in range(0, sheet.get_highest_column()):
+    for column_index in range(1, sheet.get_highest_column() + 1):
         value = sheet.cell(row = row_index, column=column_index).value
         if value!=None:
             header.append(value if value!='' else header[-1])
@@ -95,7 +96,7 @@ def populate_model_from_xlsx(model_name, xlsx_file):
     while row_index<sheet.get_highest_row():
         instance = model()
         for i in range(0,len(header)):
-            value = sheet.cell(row = row_index, column=i).value
+            value = sheet.cell(row = row_index, column=i+1).value
             field_info = Attributes()
             field_info.short_name = header[i]
             field_info.name = header[i]
@@ -141,7 +142,6 @@ def populate_bloomberg_fields(csv_file):
                 field.get_company = row[header.index('Getcompany')].strip()!=''
                 field.dl_2nd_category = row[header.index('Data License Category 2')]
                 field.save()
-
 
 def populate_perf(container, source_track, reference=None):
     LOGGER.info('Computing and saving ' + source_track.frequency.name + ' performances track for ' + container.name)
@@ -434,19 +434,11 @@ def populate_security_from_bloomberg_protobuf(data):
             with_errors.append(row.ticker)
     for row in data.rows:
         if row.errorCode==0:
-            field_info = BloombergDataContainerMapping.objects.filter(Q(short_name__code=row.field), Q(container__short_name=securities[row.ticker].__class__.__name__) | Q(container__short_name='SecurityContainer') , Q(active=True))
+            field_info = BloombergDataContainerMapping.objects.filter(Q(short_name__code=row.field), Q(container__short_name=cont_type_name) | Q(container__short_name='CONT_SECURITY') , Q(active=True))
             if field_info.exists():
                 field_info = BloombergDataContainerMapping.objects.get(short_name__code=row.field, active=True)
-                new_value = BloombergSecurityData()
-                new_value.mapping = field_info
-                new_value.text_value = row.valueString
-                if field_info.short_name.type.find('Integer')>=0:
-                    new_value.integer_value = row.valueString
-                if field_info.short_name.type.find('Real')>=0:
-                    new_value.float_value = row.valueString
-                new_value.save()
+                set_security_information(securities[row.ticker], field_info.name , row.valueString, 'bloomberg')
                 securities[row.ticker].save()
-                securities[row.ticker].bloomberg_data.add(new_value)
                 if field_info.model_link!=None and field_info.model_link!='':
                     info = Attributes()
                     info.name = row.field
@@ -844,12 +836,6 @@ class Universe(Container):
     owner = models.ForeignKey(User, related_name='universe_owner_rel')
     description = models.TextField(null=True, blank=True)
 
-class BloombergSecurityData(CoreModel):
-    mapping = models.ForeignKey('BloombergDataContainerMapping', related_name='bloomberg_data_mapping')
-    text_value = models.TextField(null=True, blank=True)
-    float_value = models.FloatField(null=True)
-    integer_value = models.IntegerField(null=True)
-
 class FinancialContainer(Container):
     currency = models.ForeignKey(Attributes, limit_choices_to = {'type':'currency'}, related_name='container_currency_rel', null=True)
     owner_role = models.ForeignKey(Attributes, limit_choices_to={'type':'third_party_role'}, related_name='owner_role_rel', null=True)
@@ -857,8 +843,6 @@ class FinancialContainer(Container):
     aliases = models.ManyToManyField(Alias, related_name='financial_alias_rel')
     frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='financial_frequency_rel', null=True)
     frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='financial_date_reference_rel', null=True)
-    
-    bloomberg_data = models.ManyToManyField(BloombergSecurityData, related_name='bloomberg_data_rel')
     
     def get_fields(self):
         return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases']

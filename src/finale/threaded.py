@@ -41,7 +41,6 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
         if bloomberg_field.exists():
             with_bloomberg = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='BLOOMBERG', aliases__alias_value=bloomberg_field[0].alias_value), key=lambda x: x.id)
         if len(with_isin)>1:
-            securities[security].bloomberg_data.all().delete()
             securities[security].delete()
             result.append(with_isin[0])
         elif len(with_bloomberg)>1:
