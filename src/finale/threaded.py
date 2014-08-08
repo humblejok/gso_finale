@@ -31,19 +31,21 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     new_securities_count = 0
     
     for security in securities.keys():
-        with_isin = []
+        #with_isin = []
         with_bloomberg = []
         
-        isin_field = securities[security].aliases.filter(alias_type__name='ISIN')
-        if isin_field.exists():
-            with_isin = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin_field[0].alias_value), key=lambda x: x.id)
+        #isin_field = securities[security].aliases.filter(alias_type__name='ISIN')
+        #if isin_field.exists():
+        #    with_isin = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin_field[0].alias_value), key=lambda x: x.id)
+            
         bloomberg_field = securities[security].aliases.filter(alias_type__name='BLOOMBERG')
         if bloomberg_field.exists():
             with_bloomberg = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='BLOOMBERG', aliases__alias_value=bloomberg_field[0].alias_value), key=lambda x: x.id)
-        if len(with_isin)>1:
-            securities[security].delete()
-            result.append(with_isin[0])
-        elif len(with_bloomberg)>1:
+            
+        #if len(with_isin)>1:
+        #    securities[security].delete()
+        #    result.append(with_isin[0])
+        if len(with_bloomberg)>1:
             securities[security].delete()
             result.append(with_bloomberg[0])
         else:

@@ -20,7 +20,8 @@ import os
 import xlrd
 import traceback
 from django.template.context import Context
-from utilities.security_content import set_security_information
+from utilities.security_content import set_security_information,\
+    get_security_provider_information
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
             break
     LOGGER.info('Using header:' + str(header))
     row_index += 1
-    while row_index<sheet.get_highest_row():
+    while row_index<=sheet.get_highest_row():
         if model.objects.filter(identifier=sheet.cell(row = row_index, column=1).value).exists():
             instance = model.objects.get(identifier=sheet.cell(row = row_index, column=1).value)
         else:
@@ -93,7 +94,7 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             break
     LOGGER.info('Using header:' + str(header))
     row_index += 1
-    while row_index<sheet.get_highest_row():
+    while row_index<=sheet.get_highest_row():
         instance = model()
         for i in range(0,len(header)):
             value = sheet.cell(row = row_index, column=i+1).value
@@ -396,7 +397,7 @@ def populate_tracks_from_bloomberg_protobuf(data, update=False):
             else:
                 LOGGER.warn("Empty track for " + key + " no computation will be executed!")
 
-def populate_security_from_bloomberg_protobuf(data):
+def populate_security_from_bloomberg_protobuf(data, entries = {}):
     
     bloomberg_alias = Attributes.objects.get(identifier='ALIAS_BLOOMBERG')
     daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
@@ -411,7 +412,7 @@ def populate_security_from_bloomberg_protobuf(data):
     else:
         bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company)
     
-    securities = {}
+    securities = entries
     with_errors = []
     
     for row in data.rows:
@@ -422,8 +423,10 @@ def populate_security_from_bloomberg_protobuf(data):
                     sec_type_name = Attributes.objects.get(type='bloomberg_security_type', name=row.valueString).short_name
                     cont_type_name = Attributes.objects.get(type='bloomberg_container_type', name=row.valueString).short_name
                     container_type = Attributes.objects.get(identifier=cont_type_name)
-                    security_type = Attributes.objects.get(identifier=sec_type_name)
-                    securities[row.ticker] = SecurityContainer.create()
+                    security_type = Attributes.objects.get(type='security_type', identifier=sec_type_name)
+                    if not securities.has_key(row.ticker):
+                        LOGGER.info('Creating new security for ticker ' + str(row.ticker))
+                        securities[row.ticker] = SecurityContainer.create()
                     securities[row.ticker].type = container_type
                     securities[row.ticker].security_type = security_type
                 except:
@@ -432,9 +435,10 @@ def populate_security_from_bloomberg_protobuf(data):
                     securities[row.ticker] = SecurityContainer.create()
         else:
             with_errors.append(row.ticker)
+            
     for row in data.rows:
         if row.errorCode==0:
-            field_info = BloombergDataContainerMapping.objects.filter(Q(short_name__code=row.field), Q(container__short_name=cont_type_name) | Q(container__short_name='CONT_SECURITY') , Q(active=True))
+            field_info = BloombergDataContainerMapping.objects.filter(Q(short_name__code=row.field), Q(container__short_name=container_type.short_name) | Q(container__short_name='Security') , Q(active=True))
             if field_info.exists():
                 field_info = BloombergDataContainerMapping.objects.get(short_name__code=row.field, active=True)
                 set_security_information(securities[row.ticker], field_info.name , row.valueString, 'bloomberg')
@@ -449,20 +453,21 @@ def populate_security_from_bloomberg_protobuf(data):
     for security in securities.values():
         security.finalize()
     #[security.finalize() for security in securities.values()]
-    [security.associated_companies.add(bloomberg_provider) for security in securities.values()]
+    [security.associated_companies.add(bloomberg_provider) for security in securities.values() if len(security.associated_companies.all())==0]
     [setattr(security,'frequency',daily) for security in securities.values()]
     [security.save() for security in securities.values()]
     final_tickers = []
     for ticker in securities:
         securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
         ticker_value = securities[ticker].aliases.filter(alias_type__name='BLOOMBERG')
-        if ticker_value.exists():
+        if ticker_value.exists() and securities[ticker].market_sector!=None:
             LOGGER.info("Using Bloomberg information for ticker and exchange")
-            ticker_value = Alias.objects.get(id=ticker_value[0].id)
-            new_full_ticker = ticker_value.alias_value + ' ' + securities[ticker].market_sector
-            ticker_value.alias_value = new_full_ticker
-            final_tickers.append(new_full_ticker)
-            ticker_value.save()
+            ticker_value = ticker_value[0]
+            if not ticker_value.alias_value.endswith(securities[ticker].market_sector):
+                new_full_ticker = ticker_value.alias_value + ' ' + securities[ticker].market_sector
+                ticker_value.alias_value = new_full_ticker
+                final_tickers.append(new_full_ticker)
+                ticker_value.save()
         else:
             LOGGER.info("Using user information for ticker and exchange")
             ticker_value = Alias()
@@ -472,9 +477,21 @@ def populate_security_from_bloomberg_protobuf(data):
             final_tickers.append(ticker)
             securities[ticker].aliases.add(ticker_value)
     [security.save() for security in securities.values()]
+    
+    for security in securities.values():
+        if security.type!=None:
+            if security.type.identifier=='CONT_BOND':
+                data = get_security_provider_information(security, 'bloomberg')
+                if data.has_key('coupon_rate') and data.has_key('maturity_date'):
+                    security.name = data['short_name'] + ' ' + data['coupon_rate'] + '% ' + data['maturity_date']
+                    security.save()
+                else:
+                    LOGGER.error(u"The following security has incomplete data [" + unicode(security.name) + u"," + unicode(security.id) +  u"]")
+        else:
+            LOGGER.error(u"The following security is wrongly categorized [" + unicode(security.name) + u"," + unicode(security.id) +  u"]")
     return securities, final_tickers, with_errors
 
-def populate_security_from_lyxor(lyxor_file, clean=True):
+def populate_security_from_lyxor(lyxor_file, clean=False):
     universe = Universe.objects.filter(short_name='LYXOR')
     if universe.exists():
         universe = universe[0]
@@ -615,8 +632,10 @@ class CoreModel(models.Model):
                 if self._meta.get_field(field_info.short_name).get_internal_type()=='ManyToManyField':
                     if not self.many_fields.has_key(field_info.short_name):
                         self.many_fields[field_info.short_name] = []
-                    foreign = self._meta.get_field(field_info.short_name).rel.to                
-                    self.many_fields[field_info.short_name].append(foreign.retrieve_or_create(source, field_info.name, string_value))
+                    foreign = self._meta.get_field(field_info.short_name).rel.to
+                    foreign_element = foreign.retrieve_or_create(self, source, field_info.name, string_value)
+                    if foreign_element!=None:                
+                        self.many_fields[field_info.short_name].append(foreign_element)
                 elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
                     try:
                         dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')
@@ -758,18 +777,22 @@ class Alias(CoreModel):
         return ['alias_type','alias_value','alias_additional']
     
     @staticmethod
-    def retrieve_or_create(source, key, value):
+    def retrieve_or_create(parent, source, key, value):
         translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
         if translation.exists():
             translation = translation[0].short_name
         else:
             translation = key
-        new_alias = Alias()        
-        new_alias.alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
-        new_alias.alias_value = value
-        new_alias.alias_additional = ''
-        new_alias.save()
-        return new_alias
+        alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
+        if parent.aliases.filter(alias_type__id=alias_type.id).exists():
+            new_alias = Alias()        
+            new_alias.alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
+            new_alias.alias_value = value
+            new_alias.alias_additional = ''
+            new_alias.save()
+            return new_alias
+        else:
+            return None
 
     class Meta:
         ordering = ['alias_value']
@@ -942,7 +965,7 @@ class RelatedCompany(CoreModel):
         return ['company','role']
     
     @staticmethod
-    def retrieve_or_create(source, key, value):
+    def retrieve_or_create(parent, source, key, value):
         translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
         if translation.exists():
             translation = translation[0].short_name
@@ -985,7 +1008,7 @@ class PortfolioContainer(FinancialContainer):
 class BloombergDataContainerMapping(CoreModel):
     name = models.CharField(max_length=64)
     short_name = models.ForeignKey(BloombergField, limit_choices_to={'get_history':False}, related_name='bloomberg_field_data_rel')
-    container = models.ForeignKey(Attributes, limit_choices_to={'type':'finale_target_container'}, related_name='bloomberg_container_data_rel')
+    container = models.ForeignKey(Attributes, limit_choices_to={'type':'container_type'}, related_name='bloomberg_container_type_rel')
     model_link = models.CharField(max_length=128, null=True)
     model_visible = models.BooleanField(default=False)
     active = models.BooleanField(default=True)

@@ -13,10 +13,15 @@ securities = client.securities['containers']
 
 def get_security_information(security):
     return securities.find_one({'_id': security.id})
+
+def get_security_provider_information(security, provider):
+    data = get_security_information(security)
+    if data!=None:
+        return data[provider]
+    return data
     
 def set_security_information(security, field, value, provider = None):
     data = get_security_information(security)
-    print data
     if data==None:
         if provider==None:
             data = {'_id': security.id, field: value}
