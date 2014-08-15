@@ -7,13 +7,12 @@ from ctypes.test.test_errno import threading
 from django.db.models import Q
 from django.core.cache import cache
 from providers import BloombergTasks
-from universe.models import populate_security_from_bloomberg_protobuf, \
-    SecurityContainer, populate_tracks_from_bloomberg_protobuf,\
-    BloombergDataContainerMapping, BloombergTrackContainerMapping
-from finale.utils import to_bloomberg_code
+from universe.models import populate_tracks_from_bloomberg_protobuf, BloombergDataContainerMapping, BloombergTrackContainerMapping
+from finale.utils import to_bloomberg_code, batch
     
 import uuid
 import logging
+from providers.bloomberg import populate_security_from_bloomberg_protobuf
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set('type_' + response_key, 'securities')
     cache.set(response_key, 0.5)
     securities, final_tickers, errors = populate_security_from_bloomberg_protobuf(response)
-    
+    print securities
     result = []
     
     new_securities_count = 0
@@ -57,28 +56,30 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     # Getting all kind of containers
     all_containers = {}
     for security in result:
-        if not all_containers.has_key(security.__class__.__name__):
-            all_containers[security.__class__.__name__] = []
+        if not all_containers.has_key(security.type.identifier):
+            all_containers[security.type.identifier] = []
         try:
-            all_containers[security.__class__.__name__].append(security.aliases.get(alias_type__name='BLOOMBERG').alias_value)
+            all_containers[security.type.identifier].append(security.aliases.get(alias_type__name='BLOOMBERG').alias_value)
         except:
-            all_containers[security.__class__.__name__].append(security.aliases.get(alias_type__name='ISIN').alias_value)
+            all_containers[security.type.identifier].append(security.aliases.get(alias_type__name='ISIN').alias_value)
     
     for key in all_containers.keys():
-        fields = BloombergTrackContainerMapping.objects.filter(Q(container__short_name='SecurityContainer') | Q(container__short_name=key), Q(active=True)).values_list('short_name__code', flat=True)
+        fields = BloombergTrackContainerMapping.objects.filter(Q(container__identifier='CONT_SECURITY') | Q(container__identifier=key), Q(active=True)).values_list('short_name__code', flat=True)
         all_containers[key] = [to_bloomberg_code(ticker,use_terminal) for ticker in all_containers[key]]
         history_key = uuid.uuid4().get_hex()
         bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, all_containers[key], fields, True))
         bb_thread.start()
         bb_thread.join()
+
     
 def bloomberg_history_query(response_key, prepared_entries, fields, use_terminal):
     cache.set(response_key, 0.0)
-    response = BloombergTasks.send_bloomberg_get_history(prepared_entries, ticker_type='TICKER', fields=fields, use_terminal=use_terminal)
-    cache.set('data_' + response_key, response)
-    cache.set('type_' + response_key, 'historical')
-    cache.set(response_key, 0.5)
-    populate_tracks_from_bloomberg_protobuf(response)
+    for tickers in batch(prepared_entries, 50):
+        response = BloombergTasks.send_bloomberg_get_history(tickers, ticker_type='TICKER', fields=fields, use_terminal=use_terminal)
+        cache.set('data_' + response_key, response)
+        cache.set('type_' + response_key, 'historical')
+        cache.set(response_key, 0.5)
+        populate_tracks_from_bloomberg_protobuf(response)
     cache.set(response_key, 1.0)
     
 def bloomberg_update_query(response_key, bulk_information, use_terminal):

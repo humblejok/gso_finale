@@ -56,6 +56,27 @@
 	  			<p class="lead">{% if container.short_description %}{{ container.short_description }}{% else %}No description is available.{% endif %}<br/>
 			</div>
 		</div>
+
+		<div class="row">
+			<div class="col-lg-11">
+				<table class="table table.striped">
+					<tr>
+						<th>Type</th>
+						<th>Value</th>
+						<th>Additional information</th>
+						<th></th>
+					</tr>
+					{% for alias in container.aliases.all %}
+						<tr>
+							<td>{{alias.alias_type.short_name}}</td>
+							<td>{{alias.alias_value}}</td>
+							<td>{{alias.alias_additional}}</td>
+						</tr>
+					{% endfor %}
+				</table>
+			</div>
+		</div>
+
 		<div class="row">
 			<div class="col-lg-11">
 				<table class="table table.striped">

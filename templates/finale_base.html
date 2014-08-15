@@ -29,11 +29,14 @@
 				alert("Task failed with message: " + e.message);
 			}
 
-			function importExternalData(providerName, dataType) {
+			function importExternalData(providerName, dataType, grouped) {
 				var importForm = new FormData();
 				$("#backgroundProgress").removeClass("invisible");
 				importForm.append('provider', providerName);
 				importForm.append('data_type', dataType);
+				if (grouped) {
+					importForm.append('grouped','')
+				}
 				$.ajax({
 					url: '/external_import.html',
 					type: 'POST',
@@ -105,12 +108,13 @@
 							<a href="#" class="dropdown-toggle" data-toggle="dropdown">External systems <b class="caret"></b></a>
 							<ul class="dropdown-menu">
 								<li role="presentation" class="dropdown-header">Swiss-Rev Guardian</li>
-								<li><a onclick="importExternalData('guardian','securities')">Import securities</a></li>
-								<li><a onclick="importExternalData('guardian','portfolios')">Import porfolios</a></li>
+								<li><a onclick="importExternalData('guardian','securities', false)">Import securities</a></li>
+								<li><a onclick="importExternalData('guardian','positions', true)">Import positions</a></li>
 								<li role="presentation" class="dropdown-header">DST Webfolio</li>
-								<li><a onclick="importExternalData('webfolio','securities')">Import securities</a></li>
+								<li><a onclick="importExternalData('webfolio','securities', false)">Import securities</a></li>
 								<li role="presentation" class="dropdown-header">Sequoia</li>
-								<li><a onclick="importExternalData('saxo','operations')">Import Saxo operations</a></li>
+								<li><a href="/call_external.html?provider=sequoia&action=export&step=wizard">Export data wizard</a></li>
+								<li><a onclick="importExternalData('saxo','operations', false)">Import Saxo operations</a></li>
 							</ul>
 						</li>
 					</ul>

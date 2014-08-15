@@ -1,0 +1,9 @@
+<table class="table">
+	<tr><th>Name</th><th>Currency</th><th>ISIN</th><th>Bloomberg</th>{% if action %}<th>Action</th>{% endif %}</tr>
+	{% for security in securities %}
+		<tr><td>{{security.name}}</td><td>{{security.currency}}</td><td>{{security.isin}}</td><td>{{security.bloomberg}}</td>{% if action %}<td><button type="button" class="btn btn-sm btn-default" aria-hidden="true" onclick="executeAction('{{action}}', {{security.id}})">{{action}}</button></td>{% endif %}</tr>
+	{% endfor %}
+</table>
+{% if message %}
+<div class="row">{{message}}</div>
+{% endif %}

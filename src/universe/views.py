@@ -17,13 +17,25 @@ from finale.threaded import bloomberg_data_query, bloomberg_update_query
 from finale.utils import to_bloomberg_code
 from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
-    Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer
-from utilities.external_content import import_external_data
+    Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer,\
+    Container
+from utilities.external_content import import_external_data,\
+    import_external_grouped_data
 from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track
+import importlib
 
 
 LOGGER = logging.getLogger(__name__)
+
+def call_external(request):
+    context = {}
+    provider = request.GET['provider']
+    action = request.GET['action']
+    step = request.GET['step']
+    if step=='execute':
+        getattr(importlib.import_module('external.' + provider), action)(request.POST)
+    return render(request, 'external/' + provider + '/' + action + '/' + step + '.html', context)
 
 def backtest_wizard_execute(request):
     # TODO: Check user
@@ -137,10 +149,17 @@ def bloomberg_update(request):
 def check_execution(request):
     response_key = request.POST['response_key']
     if cache.get(response_key)==1.0:
-        return HttpResponse('{"result": true, "status": 1.0}',"json")
+        return HttpResponse('{"result": true, "status_message": 1.0}',"json")
     else:
-        return HttpResponse('{"result": false, "status":' + str(cache.get(response_key)) + '}',"json")
+        return HttpResponse('{"result": false, "status_message":' + str(cache.get(response_key)) + '}',"json")
     
+
+def container_delete(request):
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    Container.objects.get(id=container_id).delete()
+    return HttpResponse('{"result": true, "status_message": "Deleted"}',"json")
+
 def get_execution(request):
     if request.POST.has_key('response_key'):
         response_key = request.POST['response_key']
@@ -156,8 +175,13 @@ def get_execution(request):
 def external_import(request):
     provider = request.POST['provider']
     data_type = request.POST['data_type']
-    import_external_data(provider, data_type)
-    return HttpResponse('{"result": true, "status": "Job done."}',"json")
+    if request.POST.has_key('grouped'):
+        import_external_grouped_data(provider, data_type)
+    else:
+        import_external_data(provider, data_type)
+    return HttpResponse('{"result": true, "status_message": "Job done."}',"json")
+
+
 
 def financial_container_get(request):
     # TODO: Check user
@@ -208,7 +232,7 @@ def universe_export(request):
         source = Universe.objects.get(Q(id=source_id),Q(public=True)|Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
-        return HttpResponse('{"result": false, "status": "You are not allowed to view that universe."}',"json")
+        return HttpResponse('{"result": false, "status_message": "You are not allowed to view that universe."}',"json")
     try:
         if export_type=='securities':
             path = universe_reports.export_universe(source, export_to)
@@ -276,9 +300,9 @@ def universe_create(request):
             universe.members.add(SecurityContainer.objects.get(id=security_id))
         universe.save()
     except:
-        return HttpResponse('{"result": false, "status": "Error during universe creation."}',"json")
+        return HttpResponse('{"result": false, "status_message": "Error during universe creation."}',"json")
     
-    return HttpResponse('{"result": true, "status": "Universe updated", "universe_id": ' + str(universe.id) + '}',"json")
+    return HttpResponse('{"result": true, "status_message": "Universe updated", "universe_id": ' + str(universe.id) + '}',"json")
 
 def universe_change_members(request):
     universe_id = request.POST['universe_id']
@@ -290,14 +314,14 @@ def universe_change_members(request):
         source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
     except:
         # TODO: Return error message
-        return HttpResponse('{"result": false, "status": "You are not allowed to edit that universe."}',"json")
+        return HttpResponse('{"result": false, "status_message": "You are not allowed to edit that universe."}',"json")
     if universe_clean:
         source.members.clear()
         source.save()
     for security_id in universe_securities:
         source.members.add(SecurityContainer.objects.get(id=security_id))
     source.save()
-    return HttpResponse('{"result": true, "status": "Universe ' + source.name + 'updated", "universe_id": ' + str(source.id) + '}',"json")
+    return HttpResponse('{"result": true, "status_message": "Universe ' + source.name + 'updated", "universe_id": ' + str(source.id) + '}',"json")
 
 def universe_duplicate(request):
     source_id = request.GET['universe_id']
@@ -331,24 +355,43 @@ def universe_delete(request):
     # TODO: Return success message
     return redirect('universes.html')
 
-def universe_base_edit(request):
-    universe_id = request.POST['universe_id']
+def universe_add_security(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
-    try:
-        source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
-    except:
-        # TODO: Return error message
-        return redirect('universes.html')
+    universe_id = request.POST['universe_id']
+    security_id = request.POST['security_id']
+    source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
+    security = SecurityContainer.objects.get(id=security_id)
+    if not source.members.filter(id=security_id).exists():
+        source.members.add(security)
+        source.save()
+    return HttpResponse('{"result": true, "status_message": "Universe ' + source.name + 'updated", "universe_id": ' + str(source.id) + '}',"json")
+
+def universe_base_edit(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    
+    if request.POST.has_key('universe_id'):
+        universe_id = request.POST['universe_id']
+        try:
+            source = Universe.objects.get(Q(id=universe_id),Q(owner__id=request.user.id))
+        except:
+            # TODO: Return error message
+            return redirect('universes.html')
+    else:
+        source = Universe()
+        source.owner = user
+         
     source.name = request.POST['name']
     source.short_name = request.POST['short_name']
+
     if request.POST.has_key('public'):
         source.public = True
     else:
         source.public = False
     source.save()
     # TODO: Return success message
-    return redirect('/universe_details_edit.html?universe_id=' + str(universe_id))
+    return redirect('/universe_details_edit.html?universe_id=' + str(source.id))
 
 def universe_description_edit(request):
     universe_id = request.POST['universe_id']
@@ -362,7 +405,7 @@ def universe_description_edit(request):
     source.description = request.POST['universe_description']
     source.save()
     # TODO: Return success message
-    return HttpResponse('{"result": true, "status": "Description changed", "member_id": ' + universe_id + '}',"json")
+    return HttpResponse('{"result": true, "status_message": "Description changed", "member_id": ' + universe_id + '}',"json")
 
 def universe_get_writable(request):
     # TODO: Check user
@@ -442,16 +485,24 @@ def universe_member_delete(request):
         source.save()
     except:
         # TODO: Return error message
-        return HttpResponse('{"result": false, "status": "Could not remove member!"}',"json")
+        return HttpResponse('{"result": false, "status_message": "Could not remove member!"}',"json")
     # TODO: Return success message
-    return HttpResponse('{"result": true, "status": "Member removed", "member_id": ' + member_id + '}',"json")
+    return HttpResponse('{"result": true, "status_message": "Member removed", "member_id": ' + member_id + '}',"json")
 
 def security_search(request):
+    context = {}
     try:
-        searching = request.POST['searching']
+        searching = request.POST[u'searching']
+        if not isinstance(searching, basestring):
+            searching = searching[0]
+        action = request.POST['action']
+        print action
         # TODO: Check user
         user = User.objects.get(id=request.user.id)
-        results = SecurityContainer.objects.filter(Q(name__icontains=searching) | Q(short_name__icontains=searching) | Q(aliases__alias_value__icontains=searching))
-        
+        results = SecurityContainer.objects.filter(Q(name__icontains=searching) | Q(short_name__icontains=searching) | Q(aliases__alias_value__icontains=searching)).order_by('name').distinct()
+        results_list = [result.get_short_json() for result in results]
+        context['securities'] = results_list
+        context['action'] = action
     except:
-        return HttpResponse('{"result": false, "status": "Error while querying for:"' + searching + '}',"json")
+        context['message'] = 'Error while querying for:' + searching
+    return render(request, 'rendition/securities_list.html', context)

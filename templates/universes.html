@@ -50,9 +50,7 @@
 								<span class="glyphicon glyphicon-tasks"></span>
 							</a>
 							<div class="btn-group">
-								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-									<span class="glyphicon glyphicon-export"/>&nbsp;<span class="caret"></span>
-								</button>
+								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-export"/>&nbsp;<span class="caret"/></button>
 								<ul class="dropdown-menu" role="menu">
 									<li role="presentation" class="dropdown-header">Securities</li>
 									{% for format in export_formats %}
@@ -69,10 +67,43 @@
 					{% endfor %}
 				</table>
 			</div>
-			<a href="#" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Create a new universe">
+			<a href="#modal_create_universe" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Create a new universe">
 				<span class="glyphicon glyphicon-plus"></span>
 			</a>
 		</div>
+
+		<div class="modal fade" id="modal_create_universe" tabindex="-1" role="dialog" aria-labelledby="modal_create_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create_label">Create a new universe</h4>
+					</div>
+					<form id="create_form" role="form" action="/universe_base_edit.html" method="POST">{% csrf_token %}
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="name">Name</label>
+								<input name="name" type="text" class="form-control" id="name" placeholder="Enter a name" value=""/>
+							</div>
+							<div class="form-group">
+								<label for="short_name">Short name</label>
+								<input name="short_name" type="text" class="form-control" id="short_name" placeholder="Enter an alias" value=""/>
+							</div>
+							<div class="checkbox">
+								<label>
+  									<input id="public" name="public" type="checkbox" value="True"/> Public
+								</label>
+								</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm universe creation and go to content edition">Continue</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+
 		{% for universe in universes %}
 			<div class="modal fade" id="modal_delete_{{universe.id}}" tabindex="-1" role="dialog" aria-labelledby="modal_delete_label_{{universe.id}}" aria-hidden="true">
 				<div class="modal-dialog">

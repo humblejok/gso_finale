@@ -24,6 +24,10 @@
 				}
 			}
 
+			function updateSecuritiesResults(e) {
+				$("#securitiesList").html(e);
+			}
+
 			function removalHandler(e) {
 				if (e.result) {
 					$('#row_' + e.member_id).remove();
@@ -55,6 +59,41 @@
 					success: updateDescriptionHandler,
 					error: onCallError
 				});
+			}
+
+			function securityAddSuccess(e) {
+			}
+
+			function searchSecurities() {
+				var searchForm = new FormData();
+				searchForm.append('searching', $("#searching").val());
+				searchForm.append('action', 'Add');
+				$.ajax({
+					url: '/security_search.html',
+					type: 'POST',
+					data: searchForm,
+					processData: false,
+					contentType: false,
+					success: updateSecuritiesResults,
+					error: onCallError
+				});
+			}
+
+			function executeAction(actionName, id) {
+				if (actionName=="Add") {
+					var appendForm = new FormData();
+					appendForm.append('universe_id', '{{universe.id}}');
+					appendForm.append('security_id', id);
+					$.ajax({
+						url: '/universe_add_security.html',
+						type: 'POST',
+						data: appendForm,
+						processData: false,
+						contentType: false,
+						success: securityAddSuccess,
+						error: onCallError
+					});
+				}
 			}
 
 		</script>
@@ -121,16 +160,18 @@
 						<h4 class="modal-title" id="modal_add_security_label">Add security to universe</h4>
 					</div>
 					<div class="modal-body">
-						<form id="addSecurityForm" role="form" class="form-horizontal" action="/universe_edit_base.html" method="POST" onsubmit="">{% csrf_token %}
+						<form id="addSecurityForm" role="form" class="form-horizontal" action="/security_search.html" method="POST" onsubmit="">{% csrf_token %}
 							<div class="form-group">
-								<label for="securityData" class="col-lg-2 col-lg-offset-1">Looking for:</label>
-								<input id="securityData" class="col-lg-6" name="securityData" type="text" placeholder="Can be a name, ticker or isin">
-								<button type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="submit()">Search</button>
+								<label for="searching" class="col-lg-2 col-lg-offset-1">Looking for:</label>
+								<input id="searching" class="col-lg-6" name="searching" type="text" placeholder="Can be a name, ticker or isin">
+								<button type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="searchSecurities()">Search</button>
 							</div>
 						</form>
+						<div id="securitiesList" class="row">
+						</div>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-default" data-dismiss="modal" onclick="location.reload()">Close</button>
 					</div>
 				</div>
 			</div>
