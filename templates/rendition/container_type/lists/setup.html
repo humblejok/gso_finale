@@ -1,0 +1,17 @@
+{% extends "finale_base.html" %}
+{% block title %}Financial Lightweight Editor - Setup{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+	</head>
+	<body>
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ request.user.first_name }} {{ request.user.last_name }}'s universes</h1>
+	  			<p class="lead">Manage and explore your universes from here<br/>
+			</div>
+		</div>
+{% endblock %}

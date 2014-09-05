@@ -28,14 +28,14 @@ def get_bloomberg_provider():
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
     
-    if not RelatedCompany.objects.filter(company=bloomberg_company).exists():
+    if not RelatedCompany.objects.filter(company=bloomberg_company, role=data_provider).exists():
         LOGGER.info("Creating Bloomberg LP as a data providing company.")
         bloomberg_provider = RelatedCompany()
         bloomberg_provider.company = bloomberg_company
         bloomberg_provider.role = data_provider
         bloomberg_provider.save()
     else:
-        bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company)
+        bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company, role=data_provider)
     return bloomberg_provider
 
 def get_universe_from_datasource(datasource):

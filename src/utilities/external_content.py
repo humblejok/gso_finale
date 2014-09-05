@@ -10,11 +10,14 @@ from finale.settings import MONGO_URL
 from seq_common.db import dbutils
 from decimal import Decimal
 from pymongo.errors import DuplicateKeyError
-from universe.models import SecurityContainer, Attributes, BloombergTrackContainerMapping
+from universe.models import SecurityContainer, Attributes, BloombergTrackContainerMapping, CompanyContainer,\
+    TrackContainer, populate_perf, populate_monthly_track_from_track, populate_weekly_track_from_track,\
+    RelatedCompany
 
 from finale.utils import get_bloomberg_provider, get_universe_from_datasource,\
     to_bloomberg_code
 from finale.threaded import bloomberg_history_query
+from utilities.track_content import set_track_content, get_track_content
 
 import logging
 import threading
@@ -46,7 +49,10 @@ QUERIES = { 'guardian': {'securities':
                                       left join rap r on r.cod_rap=t1.cod_rap left join tit on tit.cod_tit=t1.cod_tit left join tabemi te on te.cod_emi=tit.cod_emi \n\
                                       where t0.richiesta1=(select max(richiesta1) request from tmppostit0) and t1.ordinamento='B' and r.cod_soc<>'NOSEQ' order by cod_rap, cod_tit",
                              'group_by':['data_cal', 'des_rap']
-                             }
+                             },
+                          'tracks':
+                            {'query': "select * from prezzi where cod_tit='%s' order by data_ins"
+                            }
                          },
             'saxo': {'operations': {'query': 'SELECT * FROM PRODUCT_PRODUCTEXECUTEDTRADES',
                                     'group_by':['id'],
@@ -89,7 +95,65 @@ def convert_to_mongo(result):
     new_entry = {key: (unicode(new_entry[key]) if not isinstance(new_entry[key], float) and new_entry[key]!=None else new_entry[key]) for key in new_entry.keys()}
     return new_entry
 
-      
+def import_external_tracks(data_source):
+    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
+    official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
+    daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
+    data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
+
+    provider = CompanyContainer.objects.get(short_name__icontains=data_source)
+
+    external_provider = RelatedCompany.objects.get(company=provider, role=data_provider)
+
+    query = QUERIES[data_source]['tracks']['query']
+
+    securities = SecurityContainer.objects.filter(aliases__alias_type__short_name=data_source.upper()).distinct()
+    for security in securities:
+        LOGGER.info("Working on " + security.name)
+        if not TrackContainer.objects.filter(effective_container_id = security.id).exists():
+            # Switch to new data provider
+            if security.associated_companies.filter(role=data_provider).exists():
+                security.associated_companies.remove(security.associated_companies.get(role=data_provider))
+                security.save()
+                security.associated_companies.add(external_provider)
+                security.save()
+        try:
+            track = TrackContainer.objects.get(
+                                effective_container_id=security.id,
+                                type__id=nav_value.id,
+                                quality__id=official_type.id,
+                                source__id=provider.id,
+                                frequency__id=daily.id,
+                                status__id=final_status.id)
+            LOGGER.info("\tTrack already exists")
+        except:
+            track = TrackContainer()
+            track.effective_container = security
+            track.type = nav_value
+            track.quality = official_type
+            track.source = provider
+            track.status = final_status
+            track.frequency = daily
+            track.frequency_reference = None
+            track.save()
+        all_values = []
+        # TODO: Change while import of universe is correct
+        alias = security.aliases.filter(alias_type__short_name=data_source.upper())
+        alias = alias[0]
+        results = dbutils.query_to_dicts(query%alias.alias_value, data_source)
+        for result in results:
+            if result['prezzo']!='' and result['prezzo']!=None:
+                all_values.append({'date': dt.combine(result['data_ins'], dt.min.time()), 'value': float(result['prezzo'])})
+            else:
+                LOGGER.warning("\tInvalid price value " + unicode(result))
+        set_track_content(track, all_values, True)
+        if len(all_values)>0 and security.associated_companies.filter(company=provider, role=data_provider).exists():
+            populate_perf(track.effective_container, track)
+            populate_monthly_track_from_track(track.effective_container, track)
+            populate_weekly_track_from_track(track.effective_container, track)
+        LOGGER.info("\tFound " + str(len(all_values)) + " tokens in external track [" + str(alias.alias_value) + "]")
+
 def import_external_grouped_data(data_source, data_type):
     LOGGER.info('Loading working data')
     query = QUERIES[data_source][data_type]['query']

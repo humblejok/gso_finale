@@ -686,8 +686,9 @@ class Alias(CoreModel):
             translation = translation[0].short_name
         else:
             translation = key
+
         alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
-        if parent.aliases.filter(alias_type__id=alias_type.id).exists():
+        if not parent.aliases.filter(alias_type__id=alias_type.id).exists():
             new_alias = Alias()        
             new_alias.alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
             new_alias.alias_value = value
@@ -695,7 +696,7 @@ class Alias(CoreModel):
             new_alias.save()
             return new_alias
         else:
-            return None
+            return parent.aliases.get(alias_type__id=alias_type.id)
 
     class Meta:
         ordering = ['alias_value']
@@ -838,6 +839,9 @@ class PersonContainer(ThirdPartyContainer):
     
     def get_fields(self):
         return super(PersonContainer, self).get_fields() + ['first_name','last_name','birth_date']
+    
+    def get_short_json(self):
+        return {'id': self.id, 'first_name': self.first_name, 'last_name': self.last_name}
 
 class CompanySubsidiary(CoreModel):
     company = models.ForeignKey('CompanyContainer', null=True)
@@ -865,6 +869,12 @@ class CompanyContainer(ThirdPartyContainer):
     
     def get_fields(self):
         return super(CompanyContainer, self).get_fields() + ['members','subsidiary']
+
+    def get_short_json(self):
+        data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
+        is_provider = RelatedCompany.objects.filter(company=self, role=data_provider).exists()
+
+        return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'provider': is_provider}
 
 class AccountContainer(FinancialContainer):
     account_type = models.ForeignKey(Attributes, limit_choices_to={'type':'account_type'}, related_name='account_type_rel', null=True)
@@ -923,6 +933,9 @@ class PortfolioContainer(FinancialContainer):
     
     def get_fields(self):
         return super(PortfolioContainer, self).get_fields() + ['accounts']
+    
+    def get_short_json(self):
+        return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'currency': self.currency.short_name if self.currency!=None else '', 'manager':'', 'bank':'', 'aum':0.0}
 
 class BloombergDataContainerMapping(CoreModel):
     name = models.CharField(max_length=64)

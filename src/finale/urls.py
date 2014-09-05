@@ -19,7 +19,10 @@ urlpatterns = patterns('',
     url(r'^call_external.html', 'universe.views.call_external', name='call_external'),
     
     url(r'^container_delete.html', 'universe.views.container_delete', name='container_delete'),
-       
+    
+    # Setup views
+    url(r'^setup.html', 'universe.views.setup', name='setup'),
+
     # Universes related views
     url(r'^universes.html$', 'universe.views.universes', name='universes'),
     url(r'^universe_backtest_wizard.html$', 'universe.views.universe_backtest_wizard', name='universe_backtest_wizard.html'),
@@ -44,8 +47,19 @@ urlpatterns = patterns('',
     url(r'^financials_bloomberg_wizard_execute.html', 'universe.views.bloomberg_wizard_execute', name='bloomberg_wizard_execute', kwargs={'entity':'financials'}),
     url(r'^financial_container_get.html', 'universe.views.financial_container_get', name='financial_container_get'),
     # Securities views
+    url(r'^securities.html', 'universe.views.securities', name='securities'),
     url(r'^security_search.html', 'universe.views.security_search', name='security_search'),
     
+    
+    
+    # Companies views
+    url(r'^companies.html', 'universe.views.companies', name='companies'),
+    url(r'^company_base_edit.html', 'universe.views.company_base_edit', name='company_base_edit'),
+    
+    # Portfolios views
+    url(r'^portfolios.html', 'universe.views.portfolios', name='portfolios'),
+    url(r'^portfolio_base_edit.html', 'universe.views.portfolio_base_edit', name='portfolio_base_edit'),
+
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),
     

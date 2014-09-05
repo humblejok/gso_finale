@@ -93,7 +93,7 @@
 						<td>{{track.frequency.name}}{% if track.frequency_reference %} [{{track.frequency_reference.name}}]{% endif %}</td>
 						<td>{{track.source.name}}</td>
 						<td>{{track.quality.name}}</td>
-						<td><button class="btn btn-default" role="button" data-placement="bottom" title="View {{track.frequency.name|lower}} {{track.quality.name|lower}} {{track.type.name|lower}} track of {{container.name}}" onclick="showTrack('{{track.id}}')">
+						<td><button class="btn btn-default" role="button" data-placement="bottom" title="View {{track.frequency.name|lower}} {{track.quality.name|lower}} {{track.type.name}} track of {{container.name}}" onclick="showTrack('{{track.id}}')">
 							<span class="glyphicon glyphicon-signal"></span>
 						</button></td>
 					</tr>

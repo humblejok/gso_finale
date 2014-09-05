@@ -149,7 +149,7 @@ def populate_security_from_bloomberg_protobuf(data):
     [security.save() for security in securities.values()]
     final_tickers = []
     for ticker in securities:
-        securities[ticker].status = Attributes.objects.get(identifier='STATUS_TO_BE_VALIDATED')
+        securities[ticker].status = Attributes.objects.get(identifier='STATUS_ACTIVE')
         ticker_value = securities[ticker].aliases.filter(alias_type__name='BLOOMBERG')
         if ticker_value.exists() and securities[ticker].market_sector!=None:
             LOGGER.info("Using Bloomberg information for ticker and exchange")

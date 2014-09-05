@@ -24,29 +24,32 @@ def bloomberg_data_query(response_key, prepared_entries, use_terminal):
     cache.set('type_' + response_key, 'securities')
     cache.set(response_key, 0.5)
     securities, final_tickers, errors = populate_security_from_bloomberg_protobuf(response)
-    print securities
     result = []
     
     new_securities_count = 0
     
     for security in securities.keys():
-        #with_isin = []
+        with_isin = []
         with_bloomberg = []
         
-        #isin_field = securities[security].aliases.filter(alias_type__name='ISIN')
-        #if isin_field.exists():
-        #    with_isin = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin_field[0].alias_value), key=lambda x: x.id)
+        isin_field = securities[security].aliases.filter(alias_type__name='ISIN')
+        isin_code = None
+        if isin_field.exists():
+            with_isin = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='ISIN', aliases__alias_value=isin_field[0].alias_value), key=lambda x: x.id)
+            isin_code = isin_field[0].alias_value
             
         bloomberg_field = securities[security].aliases.filter(alias_type__name='BLOOMBERG')
+        bloomberg_code = None
         if bloomberg_field.exists():
             with_bloomberg = sorted(securities[security].__class__.objects.filter(aliases__alias_type__name='BLOOMBERG', aliases__alias_value=bloomberg_field[0].alias_value), key=lambda x: x.id)
+            bloomberg_code = bloomberg_field[0].alias_value
             
-        #if len(with_isin)>1:
-        #    securities[security].delete()
-        #    result.append(with_isin[0])
         if len(with_bloomberg)>1:
             securities[security].delete()
             result.append(with_bloomberg[0])
+        elif len(with_isin)>1 and (bloomberg_code==None or bloomberg_code==isin_code):
+            securities[security].delete()
+            result.append(with_isin[0])
         else:
             new_securities_count += 1
             result.append(securities[security])

@@ -1,5 +1,6 @@
 # Create your views here.
 import datetime
+import importlib
 import logging
 import os
 import threading
@@ -17,13 +18,13 @@ from finale.threaded import bloomberg_data_query, bloomberg_update_query
 from finale.utils import to_bloomberg_code
 from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
-    Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer,\
-    Container
-from utilities.external_content import import_external_data,\
-    import_external_grouped_data
+    Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer, \
+    Container, RelatedCompany, PortfolioContainer, FinancialContainer, \
+    PersonContainer
+from utilities.external_content import import_external_data, \
+    import_external_grouped_data, import_external_tracks
 from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track
-import importlib
 
 
 LOGGER = logging.getLogger(__name__)
@@ -152,7 +153,102 @@ def check_execution(request):
         return HttpResponse('{"result": true, "status_message": 1.0}',"json")
     else:
         return HttpResponse('{"result": false, "status_message":' + str(cache.get(response_key)) + '}',"json")
+
+def containers(request, clazz):
+    results = clazz.objects.all().order_by('name')
+    results_list = [result.get_short_json() for result in results]
+    context = {'containers': results_list,}
+    return render(request, 'containers.html', context)
+
+def companies(request):
+    # TODO: Check user
+    results = CompanyContainer.objects.all().order_by('name')
+    results_list = [result.get_short_json() for result in results]
+    context = {'companies': results_list,}
+    return render(request, 'companies.html', context)
+
+def persons(request):
+    # TODO: Check user
+    results = PersonContainer.objects.all().order_by('name')
+    results_list = [result.get_short_json() for result in results]
+    context = {'persons': results_list,}
+    return render(request, 'persons.html', context)
+
+def portfolios(request):
+    # TODO: Check user
+    results = PortfolioContainer.objects.all().order_by('name')
+    results_list = [result.get_short_json() for result in results]
+    context = {'portfolios': results_list,}
+    return render(request, 'portfolios.html', context)
+
+def setup(request):
+    # TODO: Check user
+    item = request.GET['item']
+    item_view_type = request.GET['type']
+    context = {'data_set': Attributes.objects.filter(type=item), 'global': {}, 'user': {}}
+    return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html')
+
+def portfolio_base_edit(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    active_status = Attributes.objects.get(identifier='STATUS_ACTIVE')
+    portfolio_container = Attributes.objects.get(identifier='CONT_PORTFOLIO')
+    if request.POST.has_key('portfolio_id'):
+        portfolio_id = request.POST['portfolio_id']
+        try:
+            source = PortfolioContainer.objects.get(Q(id=portfolio_id))
+        except:
+            # TODO: Return error message
+            return redirect('portfolios.html')
+    else:
+        source = PortfolioContainer()
     
+    source.type = portfolio_container
+    source.name = request.POST['name']
+    source.short_name = request.POST['short_name']
+    source.status = active_status
+    source.save()
+    source.currency = Attributes.objects.get(identifier=request.POST['currency'])
+    source.frequency = Attributes.objects.get(identifier=request.POST['frequency'])
+    # TODO: Handle
+    source.frequency_reference = None
+    source.save()
+    # TODO: Return success message
+    # return redirect('/company_details_edit.html?company_id=' + str(source.id))
+    return redirect('/portfolios.html')
+
+
+def company_base_edit(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    active_status = Attributes.objects.get(identifier='STATUS_ACTIVE')
+    
+    if request.POST.has_key('company_id'):
+        company_id = request.POST['company_id']
+        try:
+            source = CompanyContainer.objects.get(Q(id=company_id))
+        except:
+            # TODO: Return error message
+            return redirect('companies.html')
+    else:
+        source = CompanyContainer()
+         
+    source.name = request.POST['name']
+    source.short_name = request.POST['short_name']
+    source.status = active_status
+    source.save()
+
+    if request.POST.has_key('provider'):
+        LOGGER.info("Creating " + source.name + " as a data providing company.")
+        data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
+        new_provider = RelatedCompany()
+        new_provider.company = source
+        new_provider.role = data_provider
+        new_provider.save()
+
+    # TODO: Return success message
+    # return redirect('/company_details_edit.html?company_id=' + str(source.id))
+    return redirect('/companies.html')
 
 def container_delete(request):
     user = User.objects.get(id=request.user.id)
@@ -175,7 +271,9 @@ def get_execution(request):
 def external_import(request):
     provider = request.POST['provider']
     data_type = request.POST['data_type']
-    if request.POST.has_key('grouped'):
+    if data_type=='tracks':
+        import_external_tracks(provider)
+    elif request.POST.has_key('grouped'):
         import_external_grouped_data(provider, data_type)
     else:
         import_external_data(provider, data_type)
@@ -187,10 +285,39 @@ def financial_container_get(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     container_id = request.GET['container_id']
-    container = SecurityContainer.objects.get(id=container_id)
+    container = FinancialContainer.objects.get(id=container_id)
+    if container.type.id==Attributes.objects.get(identifier='CONT_PORTFOLIO').id:
+        container = PortfolioContainer.objects.get(id=container_id)
+    else:
+        container = SecurityContainer.objects.get(id=container_id)
     tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
     context = {'container': container, 'tracks': tracks}
     return render(request,'container/' + container.type.identifier + '.html', context)
+
+def securities(request):
+    # TODO: Check user
+    results = SecurityContainer.objects.all().order_by('name')
+    results_list = [result.get_short_json() for result in results]
+    context = {'securities': results_list,}
+    return render(request, 'securities.html', context)
+
+def security_search(request):
+    context = {}
+    try:
+        searching = request.POST[u'searching']
+        if not isinstance(searching, basestring):
+            searching = searching[0]
+        action = request.POST['action']
+        print action
+        # TODO: Check user
+        user = User.objects.get(id=request.user.id)
+        results = SecurityContainer.objects.filter(Q(name__icontains=searching) | Q(short_name__icontains=searching) | Q(aliases__alias_value__icontains=searching)).order_by('name').distinct()
+        results_list = [result.get_short_json() for result in results]
+        context['securities'] = results_list
+        context['action'] = action
+    except:
+        context['message'] = 'Error while querying for:' + searching
+    return render(request, 'rendition/securities_list.html', context)
 
 def track_get(request):
     # TODO: Check user
@@ -488,21 +615,3 @@ def universe_member_delete(request):
         return HttpResponse('{"result": false, "status_message": "Could not remove member!"}',"json")
     # TODO: Return success message
     return HttpResponse('{"result": true, "status_message": "Member removed", "member_id": ' + member_id + '}',"json")
-
-def security_search(request):
-    context = {}
-    try:
-        searching = request.POST[u'searching']
-        if not isinstance(searching, basestring):
-            searching = searching[0]
-        action = request.POST['action']
-        print action
-        # TODO: Check user
-        user = User.objects.get(id=request.user.id)
-        results = SecurityContainer.objects.filter(Q(name__icontains=searching) | Q(short_name__icontains=searching) | Q(aliases__alias_value__icontains=searching)).order_by('name').distinct()
-        results_list = [result.get_short_json() for result in results]
-        context['securities'] = results_list
-        context['action'] = action
-    except:
-        context['message'] = 'Error while querying for:' + searching
-    return render(request, 'rendition/securities_list.html', context)

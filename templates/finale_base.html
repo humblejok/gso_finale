@@ -81,9 +81,14 @@
 							</ul>
 						</li>
 						<li class="dropdown">
-							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Securities <b class="caret"></b></a>
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Containers <b class="caret"></b></a>
 							<ul class="dropdown-menu">
-								<li><a href="#">Explore</a></li>
+								<li role="presentation" class="dropdown-header">Portfolios</li>
+								<li><a href="/containers.html?item=CONT_PORTFOLIO">Explore</a></li>
+								<li role="presentation" class="dropdown-header">Securities</li>
+								<li><a href="/securities.html">Explore</a></li>
+								<li role="presentation" class="dropdown-header">Companies</li>
+								<li><a href="/companies.html">Explore</a></li>
 							</ul>
 						</li>
 						<li class="dropdown">
@@ -109,12 +114,21 @@
 							<ul class="dropdown-menu">
 								<li role="presentation" class="dropdown-header">Swiss-Rev Guardian</li>
 								<li><a onclick="importExternalData('guardian','securities', false)">Import securities</a></li>
+								<li><a onclick="importExternalData('guardian','tracks', false)">Import tracks</a></li>
 								<li><a onclick="importExternalData('guardian','positions', true)">Import positions</a></li>
 								<li role="presentation" class="dropdown-header">DST Webfolio</li>
 								<li><a onclick="importExternalData('webfolio','securities', false)">Import securities</a></li>
 								<li role="presentation" class="dropdown-header">Sequoia</li>
 								<li><a href="/call_external.html?provider=sequoia&action=export&step=wizard">Export data wizard</a></li>
 								<li><a onclick="importExternalData('saxo','operations', false)">Import Saxo operations</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Setup <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li role="presentation" class="dropdown-header">Presentation</li>
+								<li><a href="/setup.html?item=container_type&type=lists">Containers lists</a></li>
+								<li><a href="/setup.html?item=container_type&type=details">Containers details</a></li>
 							</ul>
 						</li>
 					</ul>
