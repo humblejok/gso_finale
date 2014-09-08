@@ -185,8 +185,8 @@ def setup(request):
     # TODO: Check user
     item = request.GET['item']
     item_view_type = request.GET['type']
-    context = {'data_set': Attributes.objects.filter(type=item), 'global': {}, 'user': {}}
-    return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html')
+    context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': {}, 'user': {}}
+    return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
 def portfolio_base_edit(request):
     # TODO: Check user
