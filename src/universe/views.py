@@ -25,6 +25,7 @@ from utilities.external_content import import_external_data, \
     import_external_grouped_data, import_external_tracks
 from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track
+from utilities import setup_content
 
 
 LOGGER = logging.getLogger(__name__)
@@ -185,7 +186,8 @@ def setup(request):
     # TODO: Check user
     item = request.GET['item']
     item_view_type = request.GET['type']
-    context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': {}, 'user': {}}
+    all_data = getattr(setup_content, 'get_' + item)
+    context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': all_data if not all_data.has_key('global') else all_data['global'], 'user': {} if not all_data.has_key('user') else all_data['user']}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
 def portfolio_base_edit(request):

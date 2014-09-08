@@ -1,0 +1,37 @@
+{% extends "finale_base.html" %}
+{% block title %}Financial Lightweight Editor - Setup{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+	</head>
+	<body>
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">Custom objects definition</h1>
+	  			<p class="lead">Define all the custom objects you may need in your application.<br/>
+			</div>
+		</div>
+		<div class="row">
+			<select class='form-control no-enter' id='currency' name='currency' onchange="checkAllSteps()">
+				{% with value='' %}
+					{% include selection_template %}
+				{% endwith %}
+			</select>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div class="list-group col-lg-3">
+				<ul class="list-group">
+					<li class="list-group-item list-group-item-success">Dapibus ac facilisis in</li>
+					<li class="list-group-item list-group-item-info">Cras sit amet nibh libero</li>
+					<li class="list-group-item list-group-item-warning">Porta ac consectetur ac</li>
+					<li class="list-group-item list-group-item-danger">Vestibulum at eros</li>
+				</ul>
+			</div>
+			<div class="col-lg-9">
+			</div>
+		</div>
+{% endblock %}
