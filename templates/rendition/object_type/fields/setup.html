@@ -2,8 +2,15 @@
 {% block title %}Financial Lightweight Editor - Setup{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
+				checkAllSteps();
 {% endblock %}
 {% block headeroptions %}
+	<script>
+		function checkAllSteps() {
+			var objType = $("#objectType").val();
+			$("#newObjectType").val(objType);
+		}
+	</script>
 {% endblock %}
 	</head>
 	<body>
@@ -15,7 +22,7 @@
 			</div>
 		</div>
 		<div class="row">
-			<select class='form-control no-enter' id='currency' name='currency' onchange="checkAllSteps()">
+			<select class='form-control no-enter' id='objectType' name='objectType' onchange="checkAllSteps()">
 				{% with value='' %}
 					{% include selection_template %}
 				{% endwith %}
@@ -23,15 +30,41 @@
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">
+			<button data-target="#modal_create_object" class="btn btn-default col-lg-3" type="button" data-toggle="modal" data-placement="bottom" title="Create a new object">Create</button>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
 			<div class="list-group col-lg-3">
 				<ul class="list-group">
-					<li class="list-group-item list-group-item-success">Dapibus ac facilisis in</li>
-					<li class="list-group-item list-group-item-info">Cras sit amet nibh libero</li>
-					<li class="list-group-item list-group-item-warning">Porta ac consectetur ac</li>
-					<li class="list-group-item list-group-item-danger">Vestibulum at eros</li>
+					{% for element in global %}
+					<li class="list-group-item">{{ element.name }}</li>
+					{% endfor %}
 				</ul>
 			</div>
 			<div class="col-lg-9">
+			</div>
+		</div>
+		<div class="modal fade" id="modal_create_object" tabindex="-1" role="dialog" aria-labelledby="modal_create_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create_label">Create a new object</h4>
+					</div>
+					<form id="create_form" role="form" action="/object_base_edit.html" method="POST">{% csrf_token %}
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="name">Name</label>
+								<input name="name" type="text" class="form-control no-enter" id="name" placeholder="Enter a name" value=""/>
+							</div>
+						</div>
+						<input type="hidden" name="newObjectType" id="newObjectType" value=""/>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm object creation and go to edition mode">Continue</button>
+						</div>
+					</form>
+				</div>
 			</div>
 		</div>
 {% endblock %}

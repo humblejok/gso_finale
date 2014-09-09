@@ -11,15 +11,15 @@ import datetime
 
 client = MongoClient(MONGO_URL)
 
-object_type = client.object_type
+setup = client.setup
 
 def get_object_type():
-    results = object_type.find().sort("_id", -1)
-    if len()>0:
+    results = setup.object_type.find().sort("_id", -1)
+    if results.count()>0:
         return results[0]
     else:
         return {}
     
 def set_object_type(values):
     values['_id'] = epoch_time(datetime.datetime.today())
-    object_type.insert(values)
+    setup.object_type.insert(values)

@@ -3,11 +3,6 @@
 {% block title %}Financial Lightweight Editor - Backtest wizard{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
-				$(".no-enter").keydown( function(e) {
-					if (e.keyCode == 13) {
-						e.preventDefault();
-					}
-				});
 				$("#fromDate").datepicker({ dateFormat: "yy-mm-dd" });
 				$("#toDate").datepicker({ dateFormat: "yy-mm-dd" });
 				$("#organicDate").datepicker({ dateFormat: "yy-mm-dd" });

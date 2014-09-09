@@ -51,6 +51,11 @@
 		<script>
 			$(document).ready(function () {
 		     	csrftoken = getCookie('csrftoken');
+				$(".no-enter").keydown( function(e) {
+					if (e.keyCode == 13) {
+						e.preventDefault();
+					}
+				});
 		     	{% block readyoptions %}
 		     	{% endblock %}
 			});

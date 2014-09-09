@@ -186,7 +186,7 @@ def setup(request):
     # TODO: Check user
     item = request.GET['item']
     item_view_type = request.GET['type']
-    all_data = getattr(setup_content, 'get_' + item)
+    all_data = getattr(setup_content, 'get_' + item)()
     context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': all_data if not all_data.has_key('global') else all_data['global'], 'user': {} if not all_data.has_key('user') else all_data['user']}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
@@ -219,6 +219,15 @@ def portfolio_base_edit(request):
     # return redirect('/company_details_edit.html?company_id=' + str(source.id))
     return redirect('/portfolios.html')
 
+
+def object_base_edit(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    name = request.POST['name']
+    new_type = request.POST['newObjectType']
+    print name
+    print new_type
+    return redirect('portfolios.html')
 
 def company_base_edit(request):
     # TODO: Check user

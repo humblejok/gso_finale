@@ -20,6 +20,8 @@ urlpatterns = patterns('',
     
     url(r'^container_delete.html', 'universe.views.container_delete', name='container_delete'),
     
+    url(r'^object_base_edit.html', 'universe.views.object_base_edit', name='object_base_edit'),
+    
     # Setup views
     url(r'^setup.html', 'universe.views.setup', name='setup'),
 
