@@ -2,13 +2,33 @@
 {% block title %}Financial Lightweight Editor - Setup{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
+				if (urlParams.newObjectType) {
+					$("#objectType").val(urlParams.newObjectType);
+				}
 				checkAllSteps();
 {% endblock %}
 {% block headeroptions %}
 	<script>
+		var allItems = {{global|safe}};
+		var currentRow = -1;
+
 		function checkAllSteps() {
 			var objType = $("#objectType").val();
 			$("#newObjectType").val(objType);
+			$("#currentItems").empty();
+			$.each(allItems[objType], function(index, value) {
+				if (urlParams.name==value.name) {
+					$("#currentItems").append('<li class="list-group-item list-group-item-success">' + value.name + '</li>');
+				} else {
+					$("#currentItems").append('<li class="list-group-item">' + value.name + '</li>');
+				}
+			});
+		}
+
+		function addField() {
+			currentRow = currentRow + 1;
+			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + currentRow + '"/></td><td id="fieldTypeTd_' + currentRow + '"></td></tr>');
+			
 		}
 	</script>
 {% endblock %}
@@ -35,13 +55,15 @@
 		<div class="row">&nbsp;</div>
 		<div class="row">
 			<div class="list-group col-lg-3">
-				<ul class="list-group">
-					{% for element in global %}
-					<li class="list-group-item">{{ element.name }}</li>
-					{% endfor %}
+				<ul id="currentItems" class="list-group">
 				</ul>
 			</div>
-			<div class="col-lg-9">
+			<div id="objectFieldsDiv" class="col-lg-9">
+				<button class="btn btn-default btn-sm" onclick="addField()">Add field</button>
+				<form id="define_form" role="form" action="/object_base_save.html" method="POST">{% csrf_token %}
+					<table id="fieldsTable" class="table">
+					</table>
+				</form>
 			</div>
 		</div>
 		<div class="modal fade" id="modal_create_object" tabindex="-1" role="dialog" aria-labelledby="modal_create_label" aria-hidden="true">
