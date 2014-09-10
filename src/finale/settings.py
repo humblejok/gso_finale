@@ -190,6 +190,7 @@ WORKING_PATH = 'u:\\DEV\\Tests\\FinaLE'
 
 MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 STATICS_PATH = 'c:\\DEV\\Sources\\gso_finale\\templates\\statics'
+STATICS_GLOBAL_PATH = 'c:\\DEV\\Sources\\gso_finale\\static\\templates'
 
 BLOOMBERG_BROKER_URL = 'amqp://bloomberg:bloomberg@192.168.9.93:5672/bloomberg'
 

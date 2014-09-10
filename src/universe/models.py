@@ -9,7 +9,8 @@ from openpyxl.reader.excel import load_workbook
 from seq_common.utils import classes, dates
 from xlrd.xldate import xldate_as_tuple
 from datetime import datetime as dt
-from finale.settings import RESOURCES_MAIN_PATH, STATICS_PATH
+from finale.settings import RESOURCES_MAIN_PATH, STATICS_PATH,\
+    STATICS_GLOBAL_PATH
 from utilities import computing
 from utilities.track_content import set_track_content, get_track_content
 
@@ -47,6 +48,12 @@ def generate_attributes():
         rendition = template.render(context)
         # TODO Implement multi-langage
         outfile = os.path.join(STATICS_PATH, a_type.type + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
+        template = loader.get_template('rendition/attributes_select_renderer.html')
+        rendition = template.render(context)
+        # TODO Implement multi-langage
+        outfile = os.path.join(STATICS_GLOBAL_PATH, a_type.type + '_select_en.html')
         with open(outfile,'w') as o:
             o.write(rendition.encode('utf-8'))
 

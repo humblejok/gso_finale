@@ -26,6 +26,7 @@ from utilities.external_content import import_external_data, \
 from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track
 from utilities import setup_content
+from bson.json_util import dumps
 
 
 LOGGER = logging.getLogger(__name__)
@@ -187,7 +188,7 @@ def setup(request):
     item = request.GET['item']
     item_view_type = request.GET['type']
     all_data = getattr(setup_content, 'get_' + item)()
-    context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': all_data if not all_data.has_key('global') else all_data['global'], 'user': {} if not all_data.has_key('user') else all_data['user']}
+    context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': dumps(all_data) if not all_data.has_key('global') else dumps(all_data['global']), 'user': {} if not all_data.has_key('user') else dumps(all_data['user'])}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
 def portfolio_base_edit(request):
@@ -225,9 +226,12 @@ def object_base_edit(request):
     user = User.objects.get(id=request.user.id)
     name = request.POST['name']
     new_type = request.POST['newObjectType']
-    print name
-    print new_type
-    return redirect('portfolios.html')
+    all_data = setup_content.get_object_type()
+    if not all_data.has_key(new_type) or not isinstance(all_data[new_type], list):
+        all_data[new_type] = []
+    all_data[new_type].append({'name': name})
+    setup_content.set_object_type(all_data)
+    return redirect(request.META.get('HTTP_REFERER') + '&name=' + name + '&newObjectType=' + new_type)
 
 def company_base_edit(request):
     # TODO: Check user
