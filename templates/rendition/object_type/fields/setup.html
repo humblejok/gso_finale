@@ -27,8 +27,8 @@
 
 		function addField() {
 			currentRow = currentRow + 1;
-			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + currentRow + '"/></td><td id="fieldTypeTd_' + currentRow + '"></td></tr>');
-			
+			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + currentRow + '"/></td><td id="fieldTypeTd_' + currentRow + '"></td><td><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-up"></span></button><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
+			$("#fieldTypeTd_" + currentRow).load("/static/templates/field_type_select_en.html");
 		}
 	</script>
 {% endblock %}
@@ -60,6 +60,7 @@
 			</div>
 			<div id="objectFieldsDiv" class="col-lg-9">
 				<button class="btn btn-default btn-sm" onclick="addField()">Add field</button>
+				<div>&nbsp;</div>
 				<form id="define_form" role="form" action="/object_base_save.html" method="POST">{% csrf_token %}
 					<table id="fieldsTable" class="table">
 					</table>
