@@ -1,0 +1,12 @@
+<form id="object_form" role="form" action="/object_instanciante.html" method="POST">{% csrf_token %}
+	{% for field in element %}
+		<div class="form-group">
+			<label for="{{field.name|as_identifier}}">{{field.name}}</label>
+			<input name="{{field.name|as_identifier}}" type="text" class="form-control no-enter" id="{{field.name|as_identifier}}" placeholder="Enter a {{field.name|lower}}" value=""/>
+		</div>
+	{% endfor %}
+	<div class="row">
+		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+		<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Create the {{element.name}} and save it">Continue</button>
+	</div>
+</form>

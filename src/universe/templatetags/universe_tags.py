@@ -14,3 +14,7 @@ def track_identifier(track_id):
 @register.filter()
 def track_content(tracks, track_id):
     return tracks['track_' + str(track_id)]
+
+@register.filter()
+def as_identifier(name):
+    return name.lower().replace('_',' ')

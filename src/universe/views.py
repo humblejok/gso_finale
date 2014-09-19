@@ -27,6 +27,10 @@ from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track
 from utilities import setup_content
 from bson.json_util import dumps
+import json
+from django.template.context import Context
+from django.template import loader
+from finale.settings import STATICS_PATH
 
 
 LOGGER = logging.getLogger(__name__)
@@ -220,7 +224,6 @@ def portfolio_base_edit(request):
     # return redirect('/company_details_edit.html?company_id=' + str(source.id))
     return redirect('/portfolios.html')
 
-
 def object_base_edit(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -229,9 +232,30 @@ def object_base_edit(request):
     all_data = setup_content.get_object_type()
     if not all_data.has_key(new_type) or not isinstance(all_data[new_type], list):
         all_data[new_type] = []
-    all_data[new_type].append({'name': name})
+    all_data[new_type].append({'name': name, 'fields':[]})
     setup_content.set_object_type(all_data)
     return redirect(request.META.get('HTTP_REFERER') + '&name=' + name + '&newObjectType=' + new_type)
+
+def object_save(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    object_type = request.POST['object_type']
+    object_name = request.POST['object_name']
+    object_fields = request.POST['object_fields']
+    object_fields = json.loads(object_fields)
+    all_data = setup_content.get_object_type()
+    for element in all_data[object_type]:
+        if element['name']==object_name:
+            element['fields'] = object_fields
+            context = Context({"element": element})
+            template = loader.get_template('rendition/object_simple_wizard.html')
+            rendition = template.render(context)
+            # TODO Implement multi-langage
+            outfile = os.path.join(STATICS_PATH, element['name'] + '_en.html')
+            with open(outfile,'w') as o:
+                o.write(rendition.encode('utf-8'))
+    setup_content.set_object_type(all_data)
+    return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
 def company_base_edit(request):
     # TODO: Check user

@@ -11,6 +11,68 @@
 	<script>
 		var allItems = {{global|safe}};
 		var currentRow = -1;
+		var currentObject;
+		var currentName;
+
+		function onCallError(e) {
+			alert(e.status);
+		}
+
+		function objectFieldsSaved(e) {
+		}
+
+		function displayFields(fields) {
+			var objType = $("#objectType").val();
+			$("#fieldsTable").empty();
+			currentRow = -1;
+			if (typeof fields === "undefined") {
+				fields = [];
+			}
+			$.each(fields, function(index, value) {
+				$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + index + '" value="' + value.name + '"/></td><td id="fieldTypeId_' + index + '"></td><td><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-up"></span></button><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm" onclick="removeFieldEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
+				$("#fieldTypeId_" + index).load("/static/templates/field_type_select_en.html", function() {$("#fieldTypeId_" + index + " > select").val(value.type);});
+				currentRow = index;
+			});
+		}
+
+		function changeSelection(itemIndex, itemName) {
+			var objType = $("#objectType").val();
+			var currentRow = -1;
+			currentName = itemName;
+			$.each(allItems[objType], function(index, value) {
+				var itemCurrent = "#item_" + index;
+				$(itemCurrent).removeClass("list-group-item-success");
+				if (itemIndex==itemCurrent) {
+					$(itemCurrent).addClass("list-group-item-success");
+					currentObject = value;
+					displayFields(value['fields']);
+				}
+			});
+		}
+
+		function saveFields() {
+			var objType = $("#objectType").val();
+			currentObject.fields = [];
+			$("#fieldsTable > tbody  > tr").each(function(index, value) {
+				var newField = {};
+				newField.name = $("#fieldName_" + index).val();
+				newField.type = $("#fieldTypeId_" + index + " > select").val();
+				currentObject.fields.push(newField);
+			});
+			var updateForm = new FormData();
+			updateForm.append('object_type', objType);
+			updateForm.append('object_name', currentName);
+			updateForm.append('object_fields', JSON.stringify(currentObject["fields"]));
+			$.ajax({
+				url: '/object_save.html',
+				type: 'POST',
+				data: updateForm,
+				processData: false,
+				contentType: false,
+				success: objectFieldsSaved,
+				error: onCallError
+			});
+		}
 
 		function checkAllSteps() {
 			var objType = $("#objectType").val();
@@ -18,17 +80,19 @@
 			$("#currentItems").empty();
 			$.each(allItems[objType], function(index, value) {
 				if (urlParams.name==value.name) {
-					$("#currentItems").append('<li class="list-group-item list-group-item-success">' + value.name + '</li>');
+					$("#currentItems").append('<li id="item_' + index + '" class="list-group-item list-group-item-success" onclick="changeSelection(\'#item_' + index + '\',\'' + value.name + '\')">' + value.name + '</li>');
+					currentObject = value;
+					changeSelection('#item_' + index,value.name);
 				} else {
-					$("#currentItems").append('<li class="list-group-item">' + value.name + '</li>');
+					$("#currentItems").append('<li id="item_' + index + '" class="list-group-item" onclick="changeSelection(\'#item_' + index + '\',\'' + value.name + '\')">' + value.name + '</li>');
 				}
 			});
 		}
 
 		function addField() {
 			currentRow = currentRow + 1;
-			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + currentRow + '"/></td><td id="fieldTypeTd_' + currentRow + '"></td><td><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-up"></span></button><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
-			$("#fieldTypeTd_" + currentRow).load("/static/templates/field_type_select_en.html");
+			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + currentRow + '"/></td><td id="fieldTypeId_' + currentRow + '"></td><td><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-up"></span></button><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
+			$("#fieldTypeId_" + currentRow).load("/static/templates/field_type_select_en.html");
 		}
 	</script>
 {% endblock %}
@@ -60,6 +124,7 @@
 			</div>
 			<div id="objectFieldsDiv" class="col-lg-9">
 				<button class="btn btn-default btn-sm" onclick="addField()">Add field</button>
+				<button class="btn btn-default btn-sm" onclick="saveFields()">Save</button>
 				<div>&nbsp;</div>
 				<form id="define_form" role="form" action="/object_base_save.html" method="POST">{% csrf_token %}
 					<table id="fieldsTable" class="table">
