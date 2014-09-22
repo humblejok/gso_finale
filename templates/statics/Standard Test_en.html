@@ -1,0 +1,30 @@
+
+<form id="object_form" role="form" action="/object_instanciante.html" method="POST">
+	
+		<div class="form-group">
+			<label for="1er_champ">1er champ</label>
+			<input name="1er_champ" type="text" class="form-control no-enter" id="1er_champ" placeholder="Enter a 1er champ" value=""/>
+		</div>
+		<script>
+			
+				$("#1er_champ").mask("9?9%");
+			    $("#1er_champ").on("blur", function() {
+			        var value = $(this).val().length == 1 ? $(this).val() + '%' : $(this).val();
+			        $(this).val( value );
+			    })
+			
+		</script>
+	
+		<div class="form-group">
+			<label for="2ieme_champ">2ieme champ</label>
+			<input name="2ieme_champ" type="text" class="form-control no-enter" id="2ieme_champ" placeholder="Enter a 2ieme champ" value=""/>
+		</div>
+		<script>
+			
+		</script>
+	
+	<div class="row">
+		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+		<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Create the Standard Test and save it">Continue</button>
+	</div>
+</form>

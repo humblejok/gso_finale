@@ -6,6 +6,8 @@
 					$("#objectType").val(urlParams.newObjectType);
 				}
 				checkAllSteps();
+				$(".save-btn").attr("disabled", true);
+				$(".add-btn").attr("disabled", true);
 {% endblock %}
 {% block headeroptions %}
 	<script>
@@ -89,6 +91,9 @@
 					displayFields(value['fields']);
 				}
 			});
+
+			$(".save-btn").removeAttr("disabled");
+			$(".add-btn").removeAttr("disabled");
 		}
 
 		function saveFields() {
@@ -126,6 +131,9 @@
 					changeSelection('#item_' + index,value.name);
 				} else {
 					$("#currentItems").append('<li id="item_' + index + '" class="list-group-item" onclick="changeSelection(\'#item_' + index + '\',\'' + value.name + '\')">' + value.name + '</li>');
+				}
+				if (index==0) {
+					changeSelection("#item_" + index, value.name);
 				}
 			});
 		}
@@ -171,8 +179,8 @@
 				</ul>
 			</div>
 			<div id="objectFieldsDiv" class="col-lg-9">
-				<button class="btn btn-default btn-sm" onclick="addField(currentRow + 1, null)">Add field</button>
-				<button class="btn btn-default btn-sm" onclick="saveFields()">Save</button>
+				<button class="btn btn-default btn-sm add-btn" onclick="addField(currentRow + 1, null)">Add field</button>
+				<button class="btn btn-default btn-sm save-btn" onclick="saveFields()">Save</button>
 				<div>&nbsp;</div>
 				<form id="define_form" role="form" action="/object_base_save.html" method="POST">{% csrf_token %}
 					<table id="fieldsTable" class="table">
