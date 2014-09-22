@@ -1,9 +1,23 @@
-<form id="object_form" role="form" action="/object_instanciante.html" method="POST">{% csrf_token %}
-	{% for field in element %}
+{% load universe_tags %}
+<form id="object_form" role="form" action="/object_instanciante.html" method="POST">
+	{% for field in element.fields %}
 		<div class="form-group">
 			<label for="{{field.name|as_identifier}}">{{field.name}}</label>
 			<input name="{{field.name|as_identifier}}" type="text" class="form-control no-enter" id="{{field.name|as_identifier}}" placeholder="Enter a {{field.name|lower}}" value=""/>
 		</div>
+		<script>
+			{% if field.type == 'FIELD_TYPE_DATE' %}
+				$("#{{field.name|as_identifier}}").datepicker({ dateFormat: "yy-mm-dd" });
+			{% elif field.type == 'FIELD_TYPE_DATETIME' %}
+				$("#{{field.name|as_identifier}}").datepicker({ dateFormat: "yy-mm-dd" });
+			{% elif field.type == 'FIELD_TYPE_PERCENT' %}
+				$("#{{field.name|as_identifier}}").mask("9?9%");
+			    $("#{{field.name|as_identifier}}").on("blur", function() {
+			        var value = $(this).val().length == 1 ? $(this).val() + '%' : $(this).val();
+			        $(this).val( value );
+			    })
+			{% endif %}
+		</script>
 	{% endfor %}
 	<div class="row">
 		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

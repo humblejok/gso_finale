@@ -1,0 +1,50 @@
+
+<form id="object_form" role="form" action="/object_instanciante.html" method="POST">
+	
+		<div class="form-group">
+			<label for="first_field_as_number">First field as NUMBER</label>
+			<input name="first_field_as_number" type="text" class="form-control no-enter" id="first_field_as_number" placeholder="Enter a first field as number" value=""/>
+		</div>
+		<script>
+			
+		</script>
+	
+		<div class="form-group">
+			<label for="second_field_as_string">Second field as STRING</label>
+			<input name="second_field_as_string" type="text" class="form-control no-enter" id="second_field_as_string" placeholder="Enter a second field as string" value=""/>
+		</div>
+		<script>
+			
+				$("#second_field_as_string").datepicker({ dateFormat: "yy-mm-dd" });
+			
+		</script>
+	
+		<div class="form-group">
+			<label for="third_field_as_date">Third field as DATE</label>
+			<input name="third_field_as_date" type="text" class="form-control no-enter" id="third_field_as_date" placeholder="Enter a third field as date" value=""/>
+		</div>
+		<script>
+			
+				$("#third_field_as_date").datepicker({ dateFormat: "yy-mm-dd" });
+			
+		</script>
+	
+		<div class="form-group">
+			<label for="fourth_field_as_percent">Fourth field as PERCENT</label>
+			<input name="fourth_field_as_percent" type="text" class="form-control no-enter" id="fourth_field_as_percent" placeholder="Enter a fourth field as percent" value=""/>
+		</div>
+		<script>
+			
+				$("#fourth_field_as_percent").mask("9?9%");
+			    $("#fourth_field_as_percent").on("blur", function() {
+			        var value = $(this).val().length == 1 ? $(this).val() + '%' : $(this).val();
+			        $(this).val( value );
+			    })
+			
+		</script>
+	
+	<div class="row">
+		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+		<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Create the Another Test and save it">Continue</button>
+	</div>
+</form>

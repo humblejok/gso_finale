@@ -21,6 +21,50 @@
 		function objectFieldsSaved(e) {
 		}
 
+		function moveFieldEntry(index, way) {
+			var field = $('#fieldsTable tr:nth-child(' + (index+1) + ')');
+			if (way>0) {
+				field.insertAfter(field.next());
+			} else {
+				field.insertBefore(field.prev());
+			}
+			reindexFieldEntries();
+		}
+
+		function removeFieldEntry(rowIndex) {
+			currentRow = currentRow - 1;
+			$('#fieldsTable tr:nth-child(' + (rowIndex+1) + ')').remove();
+			reindexFieldEntries();
+		}
+
+		function reindexFieldEntries() {
+			$("#fieldsTable > tbody  > tr").each(function(index, value) {
+				var removeButton = $(value).find('.remove-btn');
+				var nameField = $(value).find("input[id^='fieldName_']");
+				var typeField = $(value).find("td[id^='fieldTypeId_']");
+				var upButton = $(value).find('.up-btn');
+				var downButton = $(value).find('.down-btn');
+
+				downButton.removeAttr('disabled');
+				upButton.removeAttr('disabled');
+
+				removeButton.attr('onclick','removeFieldEntry(' + index + ')');
+				upButton.attr('onclick','moveFieldEntry(' + index +',-1)');
+				downButton.attr('onclick','moveFieldEntry(' + index +',1)');
+				nameField.attr('id','fieldName_' + index);
+				typeField.attr('id','fieldTypeId_' + index);
+				nameField.attr('name','fieldName_' + index);
+				typeField.attr('name','fieldTypeId_' + index);
+				$("#fieldTypeId_" + index + " > select").attr('id','fieldSelectTypeId_' + index);
+				$("#fieldTypeId_" + index + " > select").attr('name','fieldSelectTypeId_' + index);
+				if (index==0) {
+					upButton.attr('disabled', true);
+				} else if (index==currentRow) {
+					downButton.attr('disabled', true);
+				}
+			});
+		}
+
 		function displayFields(fields) {
 			var objType = $("#objectType").val();
 			$("#fieldsTable").empty();
@@ -28,11 +72,8 @@
 			if (typeof fields === "undefined") {
 				fields = [];
 			}
-			$.each(fields, function(index, value) {
-				$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + index + '" value="' + value.name + '"/></td><td id="fieldTypeId_' + index + '"></td><td><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-up"></span></button><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm" onclick="removeFieldEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
-				$("#fieldTypeId_" + index).load("/static/templates/field_type_select_en.html", function() {$("#fieldTypeId_" + index + " > select").val(value.type);});
-				currentRow = index;
-			});
+			$.each(fields, addField);
+			reindexFieldEntries();
 		}
 
 		function changeSelection(itemIndex, itemName) {
@@ -89,10 +130,17 @@
 			});
 		}
 
-		function addField() {
-			currentRow = currentRow + 1;
-			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + currentRow + '"/></td><td id="fieldTypeId_' + currentRow + '"></td><td><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-up"></span></button><button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
-			$("#fieldTypeId_" + currentRow).load("/static/templates/field_type_select_en.html");
+		function addField(index, value) {
+			currentRow = index;
+			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + index + '" value="' + (value?value.name:"") + '"/></td><td id="fieldTypeId_' + index + '"></td><td><button type="button" class="btn btn-default btn-sm up-btn"><span class="glyphicon glyphicon-arrow-up" onclick="moveFieldEntry(' + index +',-1)"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm down-btn" onclick="moveFieldEntry(' + index +',1)"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm remove-btn" onclick="removeFieldEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
+			$("#fieldTypeId_" + index).load("/static/templates/field_type_select_en.html");
+			$("#fieldTypeId_" + index).load("/static/templates/field_type_select_en.html", function() {
+				if (value) {
+					$("#fieldTypeId_" + index + " > select").val(value.type);
+				}
+				$("#fieldTypeId_" + index + " > select").attr('id','fieldSelectTypeId_' + index);
+				$("#fieldTypeId_" + index + " > select").attr('name','fieldSelectTypeId_' + index);
+			});
 		}
 	</script>
 {% endblock %}
@@ -123,7 +171,7 @@
 				</ul>
 			</div>
 			<div id="objectFieldsDiv" class="col-lg-9">
-				<button class="btn btn-default btn-sm" onclick="addField()">Add field</button>
+				<button class="btn btn-default btn-sm" onclick="addField(currentRow + 1, null)">Add field</button>
 				<button class="btn btn-default btn-sm" onclick="saveFields()">Save</button>
 				<div>&nbsp;</div>
 				<form id="define_form" role="form" action="/object_base_save.html" method="POST">{% csrf_token %}
