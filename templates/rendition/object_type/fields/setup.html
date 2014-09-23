@@ -181,6 +181,7 @@
 			<div id="objectFieldsDiv" class="col-lg-9">
 				<button class="btn btn-default btn-sm add-btn" onclick="addField(currentRow + 1, null)">Add field</button>
 				<button class="btn btn-default btn-sm save-btn" onclick="saveFields()">Save</button>
+				<button class="btn btn-danger btn-sm delete-btn col-lg-offset-9" onclick="deleteObject()">Delete</button>
 				<div>&nbsp;</div>
 				<form id="define_form" role="form" action="/object_base_save.html" method="POST">{% csrf_token %}
 					<table id="fieldsTable" class="table">

@@ -30,7 +30,7 @@ from bson.json_util import dumps
 import json
 from django.template.context import Context
 from django.template import loader
-from finale.settings import STATICS_PATH
+from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH
 
 
 LOGGER = logging.getLogger(__name__)
@@ -195,6 +195,18 @@ def setup(request):
     context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': dumps(all_data) if not all_data.has_key('global') else dumps(all_data['global']), 'user': {} if not all_data.has_key('user') else dumps(all_data['user'])}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
+
+def container_definition_save(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container = request.POST['container']
+    definitions = request.POST['definitions']
+    definitions = json.loads(definitions)
+    all_data = setup_content.get_container_type()
+    all_data[container] = definitions
+    setup_content.set_container_type(all_data)
+    return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
+
 def portfolio_base_edit(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -251,7 +263,7 @@ def object_save(request):
             template = loader.get_template('rendition/object_simple_wizard.html')
             rendition = template.render(context)
             # TODO Implement multi-langage
-            outfile = os.path.join(STATICS_PATH, element['name'] + '_en.html')
+            outfile = os.path.join(STATICS_GLOBAL_PATH, element['name'] + '_en.html')
             with open(outfile,'w') as o:
                 o.write(rendition.encode('utf-8'))
     setup_content.set_object_type(all_data)

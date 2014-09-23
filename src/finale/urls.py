@@ -25,6 +25,7 @@ urlpatterns = patterns('',
     
     # Setup views
     url(r'^setup.html', 'universe.views.setup', name='setup'),
+    url(r'^container_definition_save.html','universe.views.container_definition_save', name='container_definition_save'),
 
     # Universes related views
     url(r'^universes.html$', 'universe.views.universes', name='universes'),
