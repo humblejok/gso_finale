@@ -17,34 +17,45 @@ client = MongoClient(MONGO_URL)
 
 setup = client.setup
 
-def get_object_type():
-    results = setup.object_type.find().sort("_id", -1)
+def get_object_type_fields():
+    results = setup.object_type_fields.find().sort("_id", -1)
     if results.count()>0:
         return results[0]
     else:
         return {}
     
-def set_object_type(values):
+def set_object_type_fields(values):
     values['_id'] = epoch_time(datetime.datetime.today())
-    setup.object_type.insert(values)
+    setup.object_type_fields.insert(values)
     all_types = Attributes.objects.filter(active=True, type='object_type')
     for a_type in all_types:
-        
-        context = Context({"selection": values[a_type.identifier]})
-        template = loader.get_template('rendition/object_type/lists/object_type_choices.html')
-        rendition = template.render(context)
-        # TODO Implement multi-langage
-        outfile = os.path.join(STATICS_GLOBAL_PATH, a_type.identifier + '_en.html')
-        with open(outfile,'w') as o:
-            o.write(rendition.encode('utf-8'))
-    
-def get_container_type():
-    results = setup.container_type.find().sort("_id", -1)
+        if values.has_key(a_type.identifier):
+            context = Context({"selection": values[a_type.identifier]})
+            template = loader.get_template('rendition/object_type/lists/object_type_choices.html')
+            rendition = template.render(context)
+            # TODO Implement multi-langage
+            outfile = os.path.join(STATICS_GLOBAL_PATH, a_type.identifier + '_en.html')
+            with open(outfile,'w') as o:
+                o.write(rendition.encode('utf-8'))
+
+def get_container_type_lists():
+    results = setup.container_type_lists.find().sort("_id", -1)
+    if results.count()>0:
+        return results[0]
+    else:
+        return {}
+
+def set_container_type_lists(values):
+    values['_id'] = epoch_time(datetime.datetime.today())
+    setup.container_type_lists.insert(values)
+
+def get_container_type_fields():
+    results = setup.container_type_fields.find().sort("_id", -1)
     if results.count()>0:
         return results[0]
     else:
         return {}
     
-def set_container_type(values):
+def set_container_type_fields(values):
     values['_id'] = epoch_time(datetime.datetime.today())
-    setup.container_type.insert(values)
+    setup.container_type_fields.insert(values)

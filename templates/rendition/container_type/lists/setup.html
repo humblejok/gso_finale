@@ -2,10 +2,83 @@
 {% block title %}Financial Lightweight Editor - Setup{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
+				containerChanged();
 {% endblock %}
 {% block headeroptions %}
 <script>
-	function checkAllSteps() {
+
+	function onCallError(e) {
+		alert(e.status);
+	}
+
+	function onForeignClick(fieldName) {
+		$(".sub-" + fieldName).toggleClass("hidden");
+	}
+
+	function onFieldClick(fieldName) {
+		if (fieldName.indexOf(".")!==-1) {
+			var mainField = fieldName.substring(0, fieldName.indexOf("."));
+			var subField = fieldName.substring(fieldName.indexOf(".") + 1);
+
+			$(".main-" + mainField + ".multiple-master").removeClass("list-group-item-warning");
+
+			if ($(".main-" + subField + ".sub-" + mainField + ".list-group-item-info").length===1) {
+				$("#selectedfieldsList").append('<a class="list-group-item select-' + mainField + '-' + subField + '" onclick="onFieldClick(\'' + fieldName + '\')">' + fieldName + '</a>');
+			} else {
+				$(".select-" + mainField + "-" + subField).remove();
+			}
+			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-success");
+			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-info");
+			if ($(".sub-" + mainField + ".list-group-item-success").length>0) {
+				$(".main-" + mainField + ".multiple-master").addClass("list-group-item-warning");
+			}
+		} else {
+			if ($(".main-" + fieldName + ":not(.multiple-master)").hasClass("list-group-item-success")) {
+				$(".select-" + fieldName).remove();
+			} else {
+				$("#selectedfieldsList").append('<a class="list-group-item select-' + fieldName + '" onclick="onFieldClick(\'' + fieldName + '\')">' + fieldName + '</a>');
+			}
+			$(".main-" + fieldName).toggleClass("list-group-item-success");
+		}
+	}
+
+	function fieldsLoaded(e) {
+		var currentList = [];
+		
+		$.each(e.result, function(index, value) {
+			currentList.push(index);
+		});
+		currentList.sort();
+		$.each(currentList, function(index, value) {
+			if (e.result[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+				$("#fieldsList").append('<a class="list-group-item main-' + value + '" onclick="onFieldClick(\'' + value + '\')">' + value + '</a>');
+			} else {
+				$("#fieldsList").append('<a class="list-group-item multiple-master main-' + value + '" onclick="onForeignClick(\'' + value + '\')">' + value + '</a>');
+				var subCurrentList = [];
+				$.each(e.result[value].fields, function(index, value) {
+					subCurrentList.push(index);
+				});
+				subCurrentList.sort();
+				$.each(subCurrentList, function (subIndex, subValue) {
+					$("#fieldsList").append('<a class="list-group-item list-group-item-info hidden main-' + subValue + ' sub-' + value + '" onclick="onFieldClick(\'' + value + '.' + subValue + '\')">' + subValue + '</a>');
+				});
+			}
+		});
+		$("#selectedfieldsList").empty();
+	}
+
+	function containerChanged() {
+		var fieldsForm = new FormData();
+		fieldsForm.append('container_type', $("#containerType").val());
+		$.ajax({
+			url: '/object_fields_get.html',
+			type: 'POST',
+			data: fieldsForm,
+			processData: false,
+			contentType: false,
+			success: fieldsLoaded,
+			error: onCallError
+		});
 	}
 </script>
 {% endblock %}
@@ -19,10 +92,25 @@
 			</div>
 		</div>
 		<div class="row">
-			<select class='form-control no-enter' id='currency' name='currency' onchange="checkAllSteps()">
+			<select class="form-control no-enter" id="containerType" name="containerType" onchange="containerChanged()">
 				{% with value='' %}
 					{% include selection_template %}
 				{% endwith %}
 			</select>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div class="col-lg-offset-1 col-lg-3">
+				<h4>Available fields</h4>
+			</div>
+			<div class="col-lg-3 col-lg-offset-4">
+				<h4>Selected fields</h4>
+			</div>
+		</div>
+		<div class="row">
+			<div id="fieldsList" class="list-group col-lg-offset-1 col-lg-3">
+			</div>
+			<div id="selectedfieldsList" class="list-group col-lg-3 col-lg-offset-4">
+			</div>
 		</div>
 {% endblock %}

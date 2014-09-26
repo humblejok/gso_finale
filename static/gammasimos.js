@@ -32,6 +32,7 @@ function csrfSafeMethod(method) {
 }
 
 $.ajaxSetup({
+    cache: false,
     crossDomain: false, // Avoid cross-domain forgery
     beforeSend: function(xhr, settings) {
         if (!csrfSafeMethod(settings.type)) {
@@ -40,3 +41,12 @@ $.ajaxSetup({
         
     }
 });
+
+$.fn.hasAttr = function(attributeName) {
+    var attribute = $(this).attr(attributeName);
+    if (typeof attribute !== typeof undefined && attr !== false) {
+        return true;
+    } else {
+        return false;
+    }
+}

@@ -12,10 +12,10 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
-from seq_common.utils import dates
+from seq_common.utils import dates, classes
 
 from finale.threaded import bloomberg_data_query, bloomberg_update_query
-from finale.utils import to_bloomberg_code
+from finale.utils import to_bloomberg_code, get_static_fields
 from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
     Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer, \
@@ -31,6 +31,7 @@ import json
 from django.template.context import Context
 from django.template import loader
 from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH
+from django.db.models.fields import FieldDoesNotExist
 
 
 LOGGER = logging.getLogger(__name__)
@@ -117,7 +118,6 @@ def bloomberg_update(request):
     # TODO: Check Bloomberg method (Terminal/DL)
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     bloomberg_fields = {entry[0]: entry[1] for entry in BloombergTrackContainerMapping.objects.values_list('name__name', 'short_name__name')}
-    print bloomberg_fields
     try:
         universe_id = request.GET['universe_id']
     except:
@@ -129,7 +129,6 @@ def bloomberg_update(request):
             all_tracks = TrackContainer.objects.filter(effective_container_id__in=universe.members.all().values_list('id', flat=True), source__id=bloomberg_company.id).order_by('end_date')
     else:
         all_tracks = TrackContainer.objects.filter(source__id=bloomberg_company.id).order_by('end_date')
-    print all_tracks
     bulk_information = {}
     for track in all_tracks:
         if track.end_date!=None:
@@ -191,7 +190,7 @@ def setup(request):
     # TODO: Check user
     item = request.GET['item']
     item_view_type = request.GET['type']
-    all_data = getattr(setup_content, 'get_' + item)()
+    all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
     context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': dumps(all_data) if not all_data.has_key('global') else dumps(all_data['global']), 'user': {} if not all_data.has_key('user') else dumps(all_data['user'])}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
@@ -202,9 +201,9 @@ def container_definition_save(request):
     container = request.POST['container']
     definitions = request.POST['definitions']
     definitions = json.loads(definitions)
-    all_data = setup_content.get_container_type()
+    all_data = setup_content.get_container_type_fields()
     all_data[container] = definitions
-    setup_content.set_container_type(all_data)
+    setup_content.set_container_type_fields(all_data)
     return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
 def portfolio_base_edit(request):
@@ -236,18 +235,45 @@ def portfolio_base_edit(request):
     # return redirect('/company_details_edit.html?company_id=' + str(source.id))
     return redirect('/portfolios.html')
 
+def object_fields_get(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_class = request.POST['container_type'] + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    object_static_fields = get_static_fields(effective_class)
+    return HttpResponse('{"result": ' + dumps(object_static_fields) + ', "status_message": "Found"}',"json")
+
 def object_base_edit(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     name = request.POST['name']
     new_type = request.POST['newObjectType']
-    all_data = setup_content.get_object_type()
+    all_data = setup_content.get_object_type_fields()
     if not all_data.has_key(new_type) or not isinstance(all_data[new_type], list):
         all_data[new_type] = []
     all_data[new_type].append({'name': name, 'fields':[]})
-    setup_content.set_object_type(all_data)
+    setup_content.set_object_type_fields(all_data)
     return redirect(request.META.get('HTTP_REFERER') + '&name=' + name + '&newObjectType=' + new_type)
 
+def object_delete(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    object_type = request.POST['object_type']
+    object_name = request.POST['object_name']
+    all_data = setup_content.get_object_type_fields()
+    new_list = []
+    # TODO Pythonize this
+    for element in all_data[object_type]:
+        if element['name']==object_name:
+            None
+        else:
+            new_list.append(element)
+    all_data[object_type] = new_list
+    setup_content.set_object_type_fields(all_data)
+    return HttpResponse('{"result": true, "status_message": "Deleted"}',"json")
+    
 def object_save(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -255,7 +281,7 @@ def object_save(request):
     object_name = request.POST['object_name']
     object_fields = request.POST['object_fields']
     object_fields = json.loads(object_fields)
-    all_data = setup_content.get_object_type()
+    all_data = setup_content.get_object_type_fields()
     for element in all_data[object_type]:
         if element['name']==object_name:
             element['fields'] = object_fields
@@ -266,7 +292,7 @@ def object_save(request):
             outfile = os.path.join(STATICS_GLOBAL_PATH, element['name'] + '_en.html')
             with open(outfile,'w') as o:
                 o.write(rendition.encode('utf-8'))
-    setup_content.set_object_type(all_data)
+    setup_content.set_object_type_fields(all_data)
     return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
 def company_base_edit(request):

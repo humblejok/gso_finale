@@ -8,6 +8,7 @@
 				checkAllSteps();
 				$(".save-btn").attr("disabled", true);
 				$(".add-btn").attr("disabled", true);
+				$(".delete-btn").attr("disabled", true);
 {% endblock %}
 {% block headeroptions %}
 	<script>
@@ -15,12 +16,17 @@
 		var currentRow = -1;
 		var currentObject;
 		var currentName;
+		var currentIndex = 0;
 
 		function onCallError(e) {
 			alert(e.status);
 		}
 
 		function objectFieldsSaved(e) {
+		}
+
+		function objectDeleted(e) {
+			location.reload();
 		}
 
 		function moveFieldEntry(index, way) {
@@ -44,24 +50,42 @@
 				var removeButton = $(value).find('.remove-btn');
 				var nameField = $(value).find("input[id^='fieldName_']");
 				var typeField = $(value).find("td[id^='fieldTypeId_']");
+				var attributeField = $(value).find("input[id^='attributeType_']")
+				var editButton = $(value).find('.edit-btn');
 				var upButton = $(value).find('.up-btn');
 				var downButton = $(value).find('.down-btn');
+				var typeSelect = $(value).find("select[id^='fieldSelectTypeId_']");
 
 				downButton.removeAttr('disabled');
 				upButton.removeAttr('disabled');
+				editButton.removeAttr('disabled');
 
 				removeButton.attr('onclick','removeFieldEntry(' + index + ')');
 				upButton.attr('onclick','moveFieldEntry(' + index +',-1)');
 				downButton.attr('onclick','moveFieldEntry(' + index +',1)');
+
+				editButton.attr('id','editButton_' + index);
+				editButton.attr('onclick','changeChoice(' + index + ')');
+
 				nameField.attr('id','fieldName_' + index);
 				typeField.attr('id','fieldTypeId_' + index);
+				attributeField.attr('id','attributeType_' + index);
 				nameField.attr('name','fieldName_' + index);
 				typeField.attr('name','fieldTypeId_' + index);
-				$("#fieldTypeId_" + index + " > select").attr('id','fieldSelectTypeId_' + index);
-				$("#fieldTypeId_" + index + " > select").attr('name','fieldSelectTypeId_' + index);
+				attributeField.attr('name','attributeType_' + index);
+				
+				typeSelect.attr('id','fieldSelectTypeId_' + index);
+				typeSelect.attr('name','fieldSelectTypeId_' + index);
+				typeSelect.attr('onchange','fieldTypeChanged(' + index + ')');
+
+				if ($("#fieldTypeId_" + index + " > select").val()!='FIELD_TYPE_CHOICE') {
+					editButton.attr('disabled', true);
+				}
+
 				if (index==0) {
 					upButton.attr('disabled', true);
-				} else if (index==currentRow) {
+				}
+				if (index==currentRow) {
 					downButton.attr('disabled', true);
 				}
 			});
@@ -76,6 +100,23 @@
 			}
 			$.each(fields, addField);
 			reindexFieldEntries();
+		}
+
+		function deleteObject() {
+			var objType = $("#objectType").val();
+			var toRemove = $('.list-group-item-success').text();
+			var deleteForm = new FormData();
+			deleteForm.append('object_type', objType);
+			deleteForm.append('object_name', toRemove);
+			$.ajax({
+				url: '/object_delete.html',
+				type: 'POST',
+				data: deleteForm,
+				processData: false,
+				contentType: false,
+				success: objectDeleted,
+				error: onCallError
+			});
 		}
 
 		function changeSelection(itemIndex, itemName) {
@@ -94,6 +135,7 @@
 
 			$(".save-btn").removeAttr("disabled");
 			$(".add-btn").removeAttr("disabled");
+			$(".delete-btn").removeAttr("disabled");
 		}
 
 		function saveFields() {
@@ -103,6 +145,9 @@
 				var newField = {};
 				newField.name = $("#fieldName_" + index).val();
 				newField.type = $("#fieldTypeId_" + index + " > select").val();
+				if ($("#fieldTypeId_" + index + " > select").val()=='FIELD_TYPE_CHOICE') {
+					newField.attribute = $("#attributeType_" + index).val();
+				}
 				currentObject.fields.push(newField);
 			});
 			var updateForm = new FormData();
@@ -136,19 +181,43 @@
 					changeSelection("#item_" + index, value.name);
 				}
 			});
+			reindexFieldEntries();
+		}
+
+		function fieldTypeChanged(index) {
+			if ($("#fieldTypeId_" + index + " > select").val()!='FIELD_TYPE_CHOICE') {
+				$('#editButton_' + index).attr("disabled", true);
+				$('#attributeType_' + index).val("");
+			} else {
+				currentIndex = index;
+				$('#editButton_' + index).removeAttr("disabled");
+				$('#modal_select_attribute').modal({});
+			}
+		}
+
+		function changeChoice(index) {
+			currentIndex = index;
+			$('#attributeType').val($('#attributeType_' + index).val());
+			$('#modal_select_attribute').modal({});
+		}
+
+		function validateAttributeSelection() {
+			var attributeType = $('#attributeType').val();
+			$('#attributeType_' + currentIndex).val(attributeType);
 		}
 
 		function addField(index, value) {
 			currentRow = index;
-			$("#fieldsTable").append('<tr><td><input type="text" class="form-control" id="fieldName_' + index + '" value="' + (value?value.name:"") + '"/></td><td id="fieldTypeId_' + index + '"></td><td><button type="button" class="btn btn-default btn-sm up-btn"><span class="glyphicon glyphicon-arrow-up" onclick="moveFieldEntry(' + index +',-1)"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm down-btn" onclick="moveFieldEntry(' + index +',1)"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm remove-btn" onclick="removeFieldEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
-			$("#fieldTypeId_" + index).load("/static/templates/field_type_select_en.html");
+			$("#fieldsTable").append('<tr><td><input id="attributeType_' + index + '" name="attributeType_' + index + '" type="hidden" value="' + (value?value.attribute:"") + '"><input type="text" class="form-control" id="fieldName_' + index + '" value="' + (value?value.name:"") + '"/></td><td id="fieldTypeId_' + index + '"></td><td><button type="button" class="btn btn-default btn-sm edit-btn" id="editButton_' + index + '" onclick="changeChoice(' + index +')"><span class="glyphicon glyphicon-edit" ></span></button>&nbsp;&nbsp;<button type="button" class="btn btn-default btn-sm up-btn"><span class="glyphicon glyphicon-arrow-up" onclick="moveFieldEntry(' + index +',-1)"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm down-btn" onclick="moveFieldEntry(' + index +',1)"><span class="glyphicon glyphicon-arrow-down"></span></button>&nbsp;<button type="button" class="btn btn-default btn-sm remove-btn" onclick="removeFieldEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
 			$("#fieldTypeId_" + index).load("/static/templates/field_type_select_en.html", function() {
 				if (value) {
 					$("#fieldTypeId_" + index + " > select").val(value.type);
 				}
 				$("#fieldTypeId_" + index + " > select").attr('id','fieldSelectTypeId_' + index);
 				$("#fieldTypeId_" + index + " > select").attr('name','fieldSelectTypeId_' + index);
+				$("#fieldTypeId_" + index + " > select").attr('onchange','fieldTypeChanged(' + index + ')');
 			});
+			reindexFieldEntries();
 		}
 	</script>
 {% endblock %}
@@ -207,6 +276,30 @@
 						<div class="modal-footer">
 							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 							<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm object creation and go to edition mode">Continue</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+		<div class="modal fade" id="modal_select_attribute" tabindex="-1" role="dialog" aria-labelledby="modal_select_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4 class="modal-title" id="modal_select_label">Create a new object</h4>
+					</div>
+					<form id="create_form" role="form" action="" method="POST">
+						<div class="modal-body">
+							<div id="fieldTypeInput" class="form-group">
+								<label for="attributeType">Attribute</label>
+								<select class='form-control no-enter' id='attributeType' name='attributeType'>
+									{% with value='' %}
+										{% include 'statics/all_types_option_en.html' %}
+									{% endwith %}
+								</select>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm attribute selection and continue edition" data-dismiss="modal" onclick="validateAttributeSelection()">Select</button>
 						</div>
 					</form>
 				</div>

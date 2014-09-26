@@ -1,12 +1,1 @@
-
-<option value='OPE_STATUS_CANCELLED'
-	{% if value == 'OPE_STATUS_CANCELLED' %}selected{% endif %}>Cancelled</option>
-
-<option value='OPE_STATUS_CONFIRMED'
-	{% if value == 'OPE_STATUS_CONFIRMED' %}selected{% endif %}>Confirmed</option>
-
-<option value='OPE_STATUS_EXECUTED'
-	{% if value == 'OPE_STATUS_EXECUTED' %}selected{% endif %}>Executed</option>
-
-<option value='OPE_STATUS_PENDING'
-	{% if value == 'OPE_STATUS_PENDING' %}selected{% endif %}>Pending</option>
+<option value='OPE_STATUS_CANCELLED' {% if value == 'OPE_STATUS_CANCELLED' %}selected{% endif %}>Cancelled</option><option value='OPE_STATUS_CONFIRMED' {% if value == 'OPE_STATUS_CONFIRMED' %}selected{% endif %}>Confirmed</option><option value='OPE_STATUS_EXECUTED' {% if value == 'OPE_STATUS_EXECUTED' %}selected{% endif %}>Executed</option><option value='OPE_STATUS_PENDING' {% if value == 'OPE_STATUS_PENDING' %}selected{% endif %}>Pending</option>

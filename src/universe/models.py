@@ -41,6 +41,19 @@ def setup_attributes():
 
 def generate_attributes():
     all_types = Attributes.objects.all().order_by('type').distinct('type')
+    context = Context({"selection": all_types})
+    template = loader.get_template('rendition/attributes_list_option_renderer.html')
+    rendition = template.render(context)
+    # TODO Implement multi-langage
+    outfile = os.path.join(STATICS_PATH, 'all_types_option_en.html')
+    with open(outfile,'w') as o:
+        o.write(rendition.encode('utf-8'))
+    template = loader.get_template('rendition/attributes_list_select_renderer.html')
+    rendition = template.render(context)
+    # TODO Implement multi-langage
+    outfile = os.path.join(STATICS_GLOBAL_PATH, 'all_types_select_en.html')
+    with open(outfile,'w') as o:
+        o.write(rendition.encode('utf-8'))
     for a_type in all_types:
         all_elements = Attributes.objects.filter(type=a_type.type, active=True)
         context = Context({"selection": all_elements})
@@ -676,7 +689,7 @@ class Phone(CoreModel):
         return ['line_type','phone']
     
 class Alias(CoreModel):
-    alias_type = models.ForeignKey(Attributes, limit_choices_to={'type':'alias_type'}, related_name='alias_type', null=True)
+    alias_type = models.ForeignKey(Attributes, limit_choices_to={'type':'alias_type'}, related_name='alias_type_rel', null=True)
     alias_value = models.CharField(max_length=512)
     alias_additional = models.CharField(max_length=512)
     
@@ -999,7 +1012,7 @@ class SecurityContainer(FinancialContainer):
         return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'currency': currency, 'isin': isin, 'bloomberg': bloomberg}
 
 class BacktestContainer(FinancialContainer):
-    universe = models.ForeignKey(Universe, related_name='backtest_universe')
+    universe = models.ForeignKey(Universe, related_name='backtest_universe_rel')
     public = models.BooleanField()
     publisher = models.ForeignKey(User, related_name='backtest_publisher_rel')
     reweight = models.BooleanField()

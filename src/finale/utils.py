@@ -4,6 +4,7 @@ from universe.models import CompanyContainer, Attributes, RelatedCompany,\
 import logging
 import datetime
 from django.contrib.auth.models import User
+from django.db.models.fields import FieldDoesNotExist
 
 LOGGER = logging.getLogger(__name__)
 
@@ -62,3 +63,29 @@ def batch(iterable, n = 1):
     l = len(iterable)
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx+n, l)]
+        
+def get_static_fields(clazz, trail = []):
+    object_static_fields = {}
+    LOGGER.info("Parsing ->" + str(clazz))
+    for field_name in clazz._meta.get_all_field_names():
+        try:
+            if not field_name.endswith('_rel') and not field_name.endswith('_ptr'):
+                LOGGER.info("\tField ->" + str(field_name))
+                if clazz._meta.get_field(field_name).get_internal_type()=='ForeignKey' or clazz._meta.get_field(field_name).get_internal_type()=='ManyToManyField':
+                    foreign_class = clazz._meta.get_field(field_name).rel.to
+                    if clazz._meta.get_field(field_name).get_internal_type()=='ForeignKey':
+                        linked_to = clazz._meta.get_field(field_name).rel.limit_choices_to
+                        linked_to = dict(linked_to)
+                    else:
+                        linked_to = {}
+                    if foreign_class.__name__!=clazz.__name__ and foreign_class.__name__ not in trail:
+                        object_static_fields[field_name] = {'type': clazz._meta.get_field(field_name).get_internal_type(), 'fields': get_static_fields(foreign_class, trail + [foreign_class.__name__]), 'link': linked_to}
+                    else:
+                        object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT', 'link': linked_to}
+                    foreign_class
+                else:
+                    object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT'}
+        except FieldDoesNotExist:
+            None
+    LOGGER.info("\tBACK BACK BACK")
+    return object_static_fields

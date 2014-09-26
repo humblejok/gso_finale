@@ -46,8 +46,38 @@
 	function reindexDefinitionEntries() {
 		$("#associatedObjectsTable > tbody  > tr").each(function(index, value) {
 			var removeButton = $(value).find('.remove-btn');
+			var typeSelect = $(value).find("select[id^='instanceTypeId_']");
+			var repeatField = $(value).find("input[id^='maxRepeat_']")
+
+			repeatField.attr('id','maxRepeat_' + index);
+			repeatField.attr('onblur','instanceCountChange(' + index + ')');
+			repeatField.attr('onchange','instanceCountChange(' + index + ')');
+
+			typeSelect.attr('id','fieldSelectTypeId_' + index);
+			typeSelect.attr('name','fieldSelectTypeId_' + index);
+			typeSelect.attr('onchange','fieldTypeChanged(' + index + ')');
+
 			removeButton.attr('onclick','removeDefinitionEntry(' + index + ')');
 		});
+	}
+
+	function instanceCountChange(rowIndex) {
+		allValues[rowIndex].repeat = $("#maxRepeat_" + rowIndex).val();
+	}
+
+	function instanceTypeChanged(rowIndex) {
+		var instanceType = $("#instanceTypeId_" + rowIndex).val();
+		if (instanceType == 'FIELD_ASSIGNMENT_LIMITED') {
+			$("#maxRepeat_" + rowIndex).removeAttr("disabled");
+			if ($("#maxRepeat_" + rowIndex).val()=='0') {
+				$("#maxRepeat_" + rowIndex).val(1);
+			}
+		} else {
+			$("#maxRepeat_" + rowIndex).attr("disabled", true);
+			$("#maxRepeat_" + rowIndex).val(0);
+		}
+		allValues[rowIndex].instanceType = instanceType;
+		allValues[rowIndex].repeat = $("#maxRepeat_" + rowIndex).val();
 	}
 
 	function removeDefinitionEntry(rowIndex) {
@@ -65,7 +95,16 @@
 
 	function addObjectDefinition(index, value) {
 		currentRow = index;
-		$("#associatedObjectsTable").append('<tr><td><span>' + (value?value.typeLabel:"") + '</span></td><td><span>' + (value?value.name:"") + '</span></td><td><button type="button" class="btn btn-default btn-sm remove-btn" onclick="removeDefinitionEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
+		$("#associatedObjectsTable").append('<tr><td><span>' + (value?value.typeLabel:"") + '</span></td><td><span>' + (value?value.name:"") + '</span></td><td id="instanceType_' + index + '"></td><td><input type="text" class="form-control" id="maxRepeat_' + index + '" value="' + (value?value.repeat:"") + '" onblur="instanceCountChange(' + index + ')" onchange="instanceCountChange(' + index + ')"/></td><td><button type="button" class="btn btn-default btn-sm remove-btn" onclick="removeDefinitionEntry(' + index + ')"><span class="glyphicon glyphicon-remove"></span></button></td></tr>');
+		$("#instanceType_" + index).load("/static/templates/field_assignment_select_en.html", function() {
+			if (value) {
+				$("#instanceType_" + index + " > select").val(value.instanceType);
+			}
+			$("#instanceType_" + index + " > select").attr('id','instanceTypeId_' + index);
+			$("#instanceType_" + index + " > select").attr('name','instanceTypeId_' + index);
+			$("#instanceType_" + index + " > select").attr('onchange','instanceTypeChanged(' + index + ')');
+			instanceTypeChanged(index);
+		});
 		allValues.push(value);
 	}
 </script>
@@ -110,6 +149,6 @@
 				<select class='form-control col-lg-3 no-enter' id='objectDefinition' name='objectDefinition' onchange="">
 				</select>
 			</div>
-			<button class="btn btn-default btn-sm col-lg-1 add-btn" onclick='addObjectDefinition(currentRow + 1, {"name":$("#objectDefinition").val(), "type":$("#objectType").val(), "typeLabel":$("#objectType option:selected").text()})'>Add</button>
+			<button class="btn btn-default btn-sm col-lg-1 add-btn" onclick='addObjectDefinition(currentRow + 1, {"name":$("#objectDefinition").val(), "type":$("#objectType").val(), "typeLabel":$("#objectType option:selected").text(), "repeat":0, "instanceType":"FIELD_ASSIGNMENT_SINGLE"})'>Add</button>
 		</div>
 {% endblock %}
