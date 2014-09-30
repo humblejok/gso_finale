@@ -7,12 +7,39 @@
 {% block headeroptions %}
 <script>
 
+	var allItems = {{global|safe}};
+	var initialLoad = true;
+
 	function onCallError(e) {
 		alert(e.status);
 	}
 
 	function onForeignClick(fieldName) {
 		$(".sub-" + fieldName).toggleClass("hidden");
+	}
+
+	function containerFieldsSaved(e) {
+
+	}
+
+	function saveListSetup() {
+		var containerSetup = {}
+		containerSetup.type =  $("#containerType").val();
+		containerSetup.fields = new Array();
+		$.each($("#selectedfieldsList").children(), function(index, value) {
+			containerSetup.fields.push($(value).text());
+		});
+		var updateForm = new FormData();
+		updateForm.append('container_setup', JSON.stringify(containerSetup));
+		$.ajax({
+			url: '/container_list_save.html',
+			type: 'POST',
+			data: updateForm,
+			processData: false,
+			contentType: false,
+			success: containerFieldsSaved,
+			error: onCallError
+		});
 	}
 
 	function onFieldClick(fieldName) {
@@ -38,13 +65,25 @@
 			} else {
 				$("#selectedfieldsList").append('<a class="list-group-item select-' + fieldName + '" onclick="onFieldClick(\'' + fieldName + '\')">' + fieldName + '</a>');
 			}
-			$(".main-" + fieldName).toggleClass("list-group-item-success");
+			$(".main-" + fieldName + ":not(.multiple-slave)").toggleClass("list-group-item-success");
+		}
+		if (!initialLoad) {
+			saveListSetup();
 		}
 	}
 
 	function fieldsLoaded(e) {
 		var currentList = [];
-		
+		var preSelection = [];
+
+		$("#selectedfieldsList").empty();
+
+		if (allItems.hasOwnProperty($("#containerType").val())) {
+			preSelection = allItems[$("#containerType").val()];
+		}
+
+		$("#fieldsList").empty();
+
 		$.each(e.result, function(index, value) {
 			currentList.push(index);
 		});
@@ -60,14 +99,25 @@
 				});
 				subCurrentList.sort();
 				$.each(subCurrentList, function (subIndex, subValue) {
-					$("#fieldsList").append('<a class="list-group-item list-group-item-info hidden main-' + subValue + ' sub-' + value + '" onclick="onFieldClick(\'' + value + '.' + subValue + '\')">' + subValue + '</a>');
+					$("#fieldsList").append('<a class="list-group-item list-group-item-info multiple-slave hidden main-' + subValue + ' sub-' + value + '" onclick="onFieldClick(\'' + value + '.' + subValue + '\')">' + subValue + '</a>');
 				});
 			}
 		});
-		$("#selectedfieldsList").empty();
+		$.each(preSelection, function(index, value) {
+			var selected;
+			if (value.indexOf(".")!==-1) {
+				var mainField = value.substring(0, value.indexOf("."));
+				var subField = value.substring(value.indexOf(".") + 1);
+				$(".main-" + subField + ".sub-" + mainField).click();
+			} else {
+				$(".main-" + value + ":not(.multiple-slave)").click();
+			}
+		});
+		initialLoad = false;
 	}
 
 	function containerChanged() {
+		initialLoad = true;
 		var fieldsForm = new FormData();
 		fieldsForm.append('container_type', $("#containerType").val());
 		$.ajax({
@@ -97,6 +147,7 @@
 					{% include selection_template %}
 				{% endwith %}
 			</select>
+			<b
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">

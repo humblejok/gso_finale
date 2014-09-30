@@ -1,0 +1,102 @@
+{% templatetag openblock %} extends "finale_base.html" {% templatetag closeblock %}
+{% templatetag openblock %} block title {% templatetag closeblock %}Financial Lightweight Editor - Securities{% templatetag openblock %} endblock {% templatetag closeblock %}
+{% templatetag openblock %} block readyoptions {% templatetag closeblock %}
+				$(".btn").not('#comment').tooltip();
+{% templatetag openblock %} endblock {% templatetag closeblock %}
+{% templatetag openblock %} block headeroptions {% templatetag closeblock %}
+{% templatetag openblock %} endblock {% templatetag closeblock %}
+	</head>
+	<body>
+{% templatetag openblock %} block content {% templatetag closeblock %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">All portfolios</h1>
+	  			<p class="lead">Manage and explore all portfolios from here<br/>
+			</div>
+		</div>
+		<div class="row">
+			<form id="look_form" role="form" action="#" method="POST">{% templatetag openblock %} csrf_token {% templatetag closeblock %}
+				<div class="form-group">
+					<label for="name" class="col-lg-1">Look for:</label>
+					<input name="name" type="text" class="form-control" id="name" placeholder="Enter a name or part of a name" value=""/>
+				</div>
+			</form>
+		</div>
+		<div class="row">
+			<div class="col-lg-11">
+				<table id="portfoliosTable" class="table table.striped">
+					<tr>
+						{% for field in fields %}
+						<th>{{field}}</th>
+						{% endfor %}
+						<th></th>
+					</tr>
+					{% templatetag openblock %} for item in containers {% templatetag closeblock %}
+					<tr>
+						{% for field in fields %}
+						<td>{% templatetag openvariable %}item.{{field}}{% templatetag closevariable %}</td>
+						{% endfor %}
+						<td>
+							<div class="btn-group">
+								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+								<ul class="dropdown-menu" role="menu">
+									<li role="presentation" class="dropdown-header">Actions</li>
+									<li><a href="/financial_container_get.html?container_id={% templatetag openvariable %}item.id{% templatetag closevariable %}">Open</a></li>
+									<li><a href="/container_delete.html?container_id={% templatetag openvariable %}item.id{% templatetag closevariable %}">Delete</a></li>
+								</ul>
+							</div>
+						</td>
+					</tr>
+					{% templatetag openblock %} endfor {% templatetag closeblock %}
+				</table>
+			</div>
+			<a href="#modal_create_portfolio" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Create a new portfolio">
+				<span class="glyphicon glyphicon-plus"></span>
+			</a>
+		</div>
+
+		<div class="modal fade" id="modal_create_portfolio" tabindex="-1" role="dialog" aria-labelledby="modal_create_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create_label">Create a new portfolio</h4>
+					</div>
+					<form id="create_form" role="form" action="/portfolio_base_edit.html" method="POST">{% templatetag openblock %} csrf_token %}
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="name">Name</label>
+								<input name="name" type="text" class="form-control" id="name" placeholder="Enter a name" value=""/>
+							</div>
+							<div class="form-group">
+								<label for="short_name">Short name</label>
+								<input name="short_name" type="text" class="form-control" id="short_name" placeholder="Enter an alias" value=""/>
+							</div>
+							<div class="form-group">
+								<label for="frequency" class="col-lg-2 control-label">Frequency</label>
+								<div class="col-lg-4">
+									<select class='form-control no-enter' id='frequency' name='frequency' onchange="checkAllSteps()">
+										{% templatetag openblock %} with value="FREQ_MONTHLY" {% templatetag closeblock %}
+											{% templatetag openblock %} include 'statics/frequency_en.html' {% templatetag closeblock %}
+										{% templatetag openblock %} endwith {% templatetag closeblock %}
+									</select>
+								</div>
+								<label for="currency" class="col-lg-2 control-label">Currency</label>
+								<div class="col-lg-4">
+									<select class='form-control no-enter' id='currency' name='currency' onchange="checkAllSteps()">
+										{% templatetag openblock %} with value="CURR_EUR" {% templatetag closeblock %}
+											{% templatetag openblock %} include 'statics/currency_en.html' {% templatetag closeblock %}
+										{% templatetag openblock %} endwith {% templatetag closeblock %}
+									</select>
+								</div>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm security creation and go to content edition">Continue</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+{% templatetag openblock %} endblock {% templatetag closeblock %}

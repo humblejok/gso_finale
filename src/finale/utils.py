@@ -66,11 +66,11 @@ def batch(iterable, n = 1):
         
 def get_static_fields(clazz, trail = []):
     object_static_fields = {}
-    LOGGER.info("Parsing ->" + str(clazz))
+    LOGGER.debug("Parsing ->" + str(clazz))
     for field_name in clazz._meta.get_all_field_names():
         try:
             if not field_name.endswith('_rel') and not field_name.endswith('_ptr'):
-                LOGGER.info("\tField ->" + str(field_name))
+                LOGGER.debug("\tField ->" + str(field_name))
                 if clazz._meta.get_field(field_name).get_internal_type()=='ForeignKey' or clazz._meta.get_field(field_name).get_internal_type()=='ManyToManyField':
                     foreign_class = clazz._meta.get_field(field_name).rel.to
                     if clazz._meta.get_field(field_name).get_internal_type()=='ForeignKey':
@@ -87,5 +87,4 @@ def get_static_fields(clazz, trail = []):
                     object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT'}
         except FieldDoesNotExist:
             None
-    LOGGER.info("\tBACK BACK BACK")
     return object_static_fields

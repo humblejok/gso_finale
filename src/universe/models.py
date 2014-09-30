@@ -614,6 +614,9 @@ class Attributes(CoreModel):
     def get_fields(self):
         return ['identifier','name','short_name','type','active']
     
+    def get_short_json(self):
+        return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'identifier': self.identifier }
+
     class Meta:
         ordering = ['name']
         
@@ -787,7 +790,12 @@ class FinancialContainer(Container):
     currency = models.ForeignKey(Attributes, limit_choices_to = {'type':'currency'}, related_name='container_currency_rel', null=True)
     owner_role = models.ForeignKey(Attributes, limit_choices_to={'type':'third_party_role'}, related_name='owner_role_rel', null=True)
     owner = models.ForeignKey(Container, limit_choices_to = {'type__identifier':'third_party'}, related_name='container_owner_rel', null=True)
+    
     aliases = models.ManyToManyField(Alias, related_name='financial_alias_rel')
+    
+    associated_companies = models.ManyToManyField("RelatedCompany")
+    associated_thirds = models.ManyToManyField("RelatedThird")
+    
     frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='financial_frequency_rel', null=True)
     frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='financial_date_reference_rel', null=True)
     
@@ -808,7 +816,7 @@ class FinancialContainer(Container):
             self.save()
     
     def get_fields(self):
-        return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases']
+        return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases', 'frequency', 'frequency_reference', 'associated_thirds', 'associated_companies']
     
     def get_currency_in_name(self):
         currencies = Attributes.objects.filter(type='currency').values_list('short_name', flat=True)
@@ -978,8 +986,6 @@ class BloombergTrackContainerMapping(CoreModel):
 
 
 class SecurityContainer(FinancialContainer):
-    associated_companies = models.ManyToManyField(RelatedCompany)
-    associated_thirds = models.ManyToManyField(RelatedThird)
     security_type = models.ForeignKey(Attributes, limit_choices_to={'type':'security_type'}, related_name='security_type_rel', null=True)
     country = models.ForeignKey(Attributes, limit_choices_to={'type':'country_iso2'}, related_name='security_country_rel', null=True)
     region = models.CharField(max_length=128, null=True, blank=True)
@@ -990,7 +996,7 @@ class SecurityContainer(FinancialContainer):
     attached_account = models.ForeignKey('AccountContainer', related_name='financials_account_rel', null=True)
     
     def get_fields(self):
-        return super(SecurityContainer, self).get_fields() + ['associated_companies','associated_thirds','security_type','country','region','market_sector', 'parent_security','attached_account']
+        return super(SecurityContainer, self).get_fields() + ['security_type','country','region','market_sector', 'parent_security','attached_account']
     
     def get_short_json(self):
         isin = self.aliases.filter(alias_type__short_name='ISIN')

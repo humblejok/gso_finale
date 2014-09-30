@@ -13,12 +13,15 @@ urlpatterns = patterns('',
     url(r'^index.html$', 'universe.views.universes', name='index'),
     
     # Common views
+    
+    url(r'^get_attributes.html', 'universe.views.get_attributes', name='get_attributes'),
     url(r'^check_execution.html', 'universe.views.check_execution', name='check_execution'),
     url(r'^get_execution.html', 'universe.views.get_execution', name='get_execution'),
     
     url(r'^call_external.html', 'universe.views.call_external', name='call_external'),
     
     url(r'^container_delete.html', 'universe.views.container_delete', name='container_delete'),
+    url(r'^container_list_save.html', 'universe.views.container_list_save', name='container_list_save'),    
     
     url(r'^object_base_edit.html', 'universe.views.object_base_edit', name='object_base_edit'),
     url(r'^object_delete.html', 'universe.views.object_delete', name='object_delete'),
@@ -29,6 +32,11 @@ urlpatterns = patterns('',
     # Setup views
     url(r'^setup.html', 'universe.views.setup', name='setup'),
     url(r'^container_definition_save.html','universe.views.container_definition_save', name='container_definition_save'),
+    
+    # Custom view
+    url(r'^custom_edit.html', 'universe.views.custom_edit', name='custom_edit'),
+    url(r'^custom_view.html', 'universe.views.custom_view', name='custom_view'),
+    
 
     # Universes related views
     url(r'^universes.html$', 'universe.views.universes', name='universes'),
@@ -58,13 +66,12 @@ urlpatterns = patterns('',
     url(r'^security_search.html', 'universe.views.security_search', name='security_search'),
     
     
+    url(r'^containers.html', 'universe.views.containers', name='containers'),
     
     # Companies views
-    url(r'^companies.html', 'universe.views.companies', name='companies'),
     url(r'^company_base_edit.html', 'universe.views.company_base_edit', name='company_base_edit'),
     
     # Portfolios views
-    url(r'^portfolios.html', 'universe.views.portfolios', name='portfolios'),
     url(r'^portfolio_base_edit.html', 'universe.views.portfolio_base_edit', name='portfolio_base_edit'),
 
     # Tracks related views

@@ -45,6 +45,13 @@ def call_external(request):
         getattr(importlib.import_module('external.' + provider), action)(request.POST)
     return render(request, 'external/' + provider + '/' + action + '/' + step + '.html', context)
 
+def get_attributes(request):
+    user = User.objects.get(id=request.user.id)
+    attributes_type = request.POST['attributes_type']
+    attributes = Attributes.objects.filter(type=attributes_type, active=True)
+    attributes = [attribute.get_short_json() for attribute in attributes]
+    return HttpResponse('{"result": ' + dumps(attributes) + ', "attribute_type":"' + attributes_type + '""status_message": "Loaded"}',"json")
+
 def backtest_wizard_execute(request):
     # TODO: Check user
     # TODO: Check parameters
@@ -159,11 +166,34 @@ def check_execution(request):
     else:
         return HttpResponse('{"result": false, "status_message":' + str(cache.get(response_key)) + '}',"json")
 
-def containers(request, clazz):
-    results = clazz.objects.all().order_by('name')
-    results_list = [result.get_short_json() for result in results]
-    context = {'containers': results_list,}
-    return render(request, 'containers.html', context)
+def containers(request):
+    # TODO: Check user
+    container_type = request.GET['item']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    print effective_class
+    results = effective_class.objects.all().order_by('name')
+    context = {'containers': results,}
+    return render(request, 'statics/' + container_type + '_results_list_en.html', context)
+
+def container_list_save(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_setup = request.POST['container_setup']
+    container_setup = json.loads(container_setup)
+    all_data = setup_content.get_container_type_lists()
+    all_data[container_setup["type"]] = container_setup["fields"]
+    setup_content.set_container_type_lists(all_data)
+    context = Context({"fields": container_setup["fields"], "container" : container_setup["type"]})
+    template = loader.get_template('rendition/container_type/lists/results.html')
+    rendition = template.render(context)
+    # TODO Implement multi-langage
+    outfile = os.path.join(STATICS_PATH, container_setup["type"] + '_results_list_en.html')
+    with open(outfile,'w') as o:
+        o.write(rendition.encode('utf-8'))
+    return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
 def companies(request):
     # TODO: Check user
@@ -171,6 +201,37 @@ def companies(request):
     results_list = [result.get_short_json() for result in results]
     context = {'companies': results_list,}
     return render(request, 'companies.html', context)
+
+def custom_edit(request):
+    # TODO: Check user
+    container_id = request.GET['container_id']
+    custom_id = request.GET['custom']
+    target = request.GET['target']
+    container = FinancialContainer.objects.get(id=container_id)
+    if container.type.id==Attributes.objects.get(identifier='CONT_PORTFOLIO').id:
+        container = PortfolioContainer.objects.get(id=container_id)
+    else:
+        container = SecurityContainer.objects.get(id=container_id)
+    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
+    context = {'container': container, 'tracks': tracks, 'all_types': {}}
+    all_types = Attributes.objects.filter(type__startswith=custom_id).order_by('type').distinct('type')
+    for a_type in all_types:
+        context['all_types'][a_type.type] = Attributes.objects.filter(type=a_type.type, active=True).order_by('identifier')
+    return render(request, 'external/' + custom_id + '/' + target +'/edit.html', context)
+
+def custom_view(request):
+    # TODO: Check user
+    container_id = request.GET['container_id']
+    custom_id = request.GET['custom']
+    target = request.GET['target']
+    container = FinancialContainer.objects.get(id=container_id)
+    if container.type.id==Attributes.objects.get(identifier='CONT_PORTFOLIO').id:
+        container = PortfolioContainer.objects.get(id=container_id)
+    else:
+        container = SecurityContainer.objects.get(id=container_id)
+    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
+    context = {'container': container, 'tracks': tracks}
+    return render(request, 'external/' + custom_id + '/' + target +'/view.html', context)
 
 def persons(request):
     # TODO: Check user
@@ -233,7 +294,7 @@ def portfolio_base_edit(request):
     source.save()
     # TODO: Return success message
     # return redirect('/company_details_edit.html?company_id=' + str(source.id))
-    return redirect('/portfolios.html')
+    return redirect('/containers.html?item=CONT_PORTFOLIO')
 
 def object_fields_get(request):
     # TODO: Check user
