@@ -59,3 +59,4 @@ def get_container_type_fields():
 def set_container_type_fields(values):
     values['_id'] = epoch_time(datetime.datetime.today())
     setup.container_type_fields.insert(values)
+    

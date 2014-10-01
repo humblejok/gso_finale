@@ -25,7 +25,7 @@ from utilities.external_content import import_external_data, \
     import_external_grouped_data, import_external_tracks
 from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track
-from utilities import setup_content
+from utilities import setup_content, external_content
 from bson.json_util import dumps
 import json
 from django.template.context import Context
@@ -217,6 +217,8 @@ def custom_edit(request):
     all_types = Attributes.objects.filter(type__startswith=custom_id).order_by('type').distinct('type')
     for a_type in all_types:
         context['all_types'][a_type.type] = Attributes.objects.filter(type=a_type.type, active=True).order_by('identifier')
+    content = external_content.get_sequoia_map()
+    context['custom_data'] = content[container_id] if content.has_key(container_id) else getattr(external_content,"create_" + custom_id + "_" + target + "_entry")(container)
     return render(request, 'external/' + custom_id + '/' + target +'/edit.html', context)
 
 def custom_view(request):

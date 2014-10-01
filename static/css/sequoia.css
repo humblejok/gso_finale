@@ -11,6 +11,11 @@
   background: #C4D79B;
 }
 
+.swm-whitetext-darkback {
+  color: #FFFFFF;
+  background: #4F6228;
+}
+
 .swm-all-border {
   border-width: 1px;
   border-style: solid;

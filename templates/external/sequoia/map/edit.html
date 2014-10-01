@@ -4,12 +4,24 @@
 {% block readyoptions %}
 		     	$(".btn").not('#comment').tooltip();
 		     	$(".comment").popover();
+		     	computeAndAssignSums();
 {% endblock %}
 {% block headeroptions %}
 		<script>
-
 			function onCallError(e) {
 				alert(e.status);
+			}
+
+			function computeAndAssignSums() {
+				{% for element in all_types.sequoia_charge_top.all %}
+					{% for fee in all_types.sequoia_fees_type %}
+						var currentSum = 0.0;
+						$.each($("[id^='{{element.identifier}}-{{fee.identifier}}-rate-']"), function(index, value) {
+							currentSum += parseFloat($(value).val());
+						});
+						$("#{{element.identifier}}-{{fee.identifier}}-sum").val(currentSum);
+					{% endfor %}
+				{% endfor %}
 			}
 
 		</script>
@@ -40,15 +52,15 @@
 			<div class="row">
 				<table class="table table-bordered">
 					<tr><td class="col-lg-6">Client's code</td><td class="col-lg-6">{{container.name}}</td></tr>
-					<tr><td class="col-lg-6">Jurisdiction</td><td class="col-lg-6"><select class='form-control no-enter' id='jurisdiction' name='jurisdiction' onchange=''>{% with value="" %}{% include 'statics/country_iso2_en.html' %}{% endwith %}</select></td></tr>
-					<tr><td class="col-lg-6">Promoter</td><td class="col-lg-6"><select class='form-control no-enter' id='promoter' name='promoter' onchange=''>{% with value="" %}{% include 'statics/sequoia_bud_en.html' %}{% endwith %}</select></td></tr>
+					<tr><td class="col-lg-6">Jurisdiction</td><td class="col-lg-6"><select class='form-control no-enter' id='jurisdiction' name='jurisdiction' onchange=''>{% with value=custom_data.jurisdiction %}{% include 'statics/country_iso2_en.html' %}{% endwith %}</select></td></tr>
+					<tr><td class="col-lg-6">Promoter</td><td class="col-lg-6"><select class='form-control no-enter' id='promoter' name='promoter' onchange=''>{% with value=custom_data.promoter%}{% include 'statics/sequoia_bud_en.html' %}{% endwith %}</select></td></tr>
 					<tr><td class="col-lg-6">Strategy</td><td class="col-lg-6">
-						<div class="col-lg-6"><select class='form-control no-enter' id='strategy' name='strategy' onchange=''>{% with value="" %}{% include 'statics/sequoia_strategy_en.html' %}{% endwith %}</select></div>
-						<div class="col-lg-6"><select class='form-control no-enter' id='risk' name='risk' onchange=''>{% with value="" %}{% include 'statics/sequoia_risk_en.html' %}{% endwith %}</select></div></td></tr>
-					<tr><td class="col-lg-6">Bank Deposit</td><td class="col-lg-6">{% for company_relation in container.associated_companies.all %}{% if company_relation.role.identifier == 'SCR_BANK' %}{{company_relation.company.name}}{% endif %}{% endfor %}</td></tr>
-					<tr><td class="col-lg-6">Currency</td><td class="col-lg-6">{{container.currency.short_name}}</td></tr>
-					<tr><td class="col-lg-6">Amount</td><td class="col-lg-6"><input id="amount" name="amount" type="text" class="form-control text-center no-enter" value="-"></td></tr>
-					<tr><td class="col-lg-6">Inception date</td><td class="col-lg-6">{{ container.inception_date }}</td></tr>
+						<div class="col-lg-6"><select class='form-control no-enter' id='strategy' name='strategy' onchange=''>{% with value=custom_data.strategy_profile %}{% include 'statics/sequoia_strategy_en.html' %}{% endwith %}</select></div>
+						<div class="col-lg-6"><select class='form-control no-enter' id='risk' name='risk' onchange=''>{% with value=custom_data.risk_profile %}{% include 'statics/sequoia_risk_en.html' %}{% endwith %}</select></div></td></tr>
+					<tr><td class="col-lg-6">Bank Deposit</td><td class="col-lg-6">{{custom_data.bank}}</td></tr>
+					<tr><td class="col-lg-6">Currency</td><td class="col-lg-6">{{custom_data.currency}}</td></tr>
+					<tr><td class="col-lg-6">Amount</td><td class="col-lg-6"><input id="amount" name="amount" type="text" class="form-control text-center no-enter" value="{{custom_data.amount}}"></td></tr>
+					<tr><td class="col-lg-6">Inception date</td><td class="col-lg-6">{{custom_data.inception_date}}</td></tr>
 				</table>
 			</div>
 			<div class="row">&nbsp;</div>
@@ -56,22 +68,52 @@
 			<blockquote class="h5"><b>Net Attributable Turnover (NAT) = GROSS TURNOVER</b> (Management Fees (MF) and/or Performance Fees (PF) and/or Commissions (OTHER) related to the current business presented and/or managed and/or shared with one or several other brokers and/or SEQUOIA' s employees, to the extent that these fees and/or commissions have been accepted, accounted for and effectively received by SEQUOIA and are not claimed by any third party), <b>MINUS</b> 60 basis point (60bp) or 30% of Gross Turnover (the highest applicable) calculated on current client's Asset Under Management (AUM) in order to compensate SEQUOIA for its services, licences and expenses, <b>MINUS</b> all fees payable to external introducing brokers and all taxes related to the turnover generated in respect to each client account, including but not limited to professional taxes ( e.g. taxe professionnelle) irrespective of whether this has been paid in advance or not.</blockquote>
 			</div>
 			<div class="row">&nbsp;</div>
-			<div class="row text-center">
-				<div class="col-lg-3 swm-text-back swm-up-left-border"><b>External payout</b></div>
-				<div class="col-lg-1 swm-up-right-border">% of NT</div>
+			<div class="row h5">
+				<table class="table table-bordered">
+					<tr>
+						<td class="swm-text-back"><b>External payout</b></td>
+						<td class="text-center"><b>% of NT</b></td>
+						<td></td>
+						<td></td>
+						<td class="text-center"><a href="#modal_create_entry" class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Create a new entry in the BUD/MAP">
+				<span class="glyphicon glyphicon-plus"></span></a></td>
+					</tr>
+					{% for element in all_types.sequoia_charge_top.all %}
+						{% for fee in all_types.sequoia_fees_type %}
+							{% for entry in custom_data|get_dict_key:fee.identifier|get_dict_key:element.identifier %}
+							<tr>
+								<td class="swm-whitetext-darkback text-center"><b>{{element.name}}</b></td>
+								<td><input id="{{element.identifier}}-{{fee.identifier}}-rate-{{forloop.counter0}}" name="{{element.identifier}}-{{fee.identifier}}-rate-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" value="{{entry.rate}}" onchange="computeAndAssignSums()" onblur="computeAndAssignSums()"></td>
+								<td class="text-center"><b><select class="form-control" id="{{element.identifier}}-{{fee.identifier}}-bud-{{forloop.counter0}}" name="{{element.identifier}}-{{fee.identifier}}-bud-{{forloop.counter0}}">{% with value=entry.bud%}{% include 'statics/sequoia_bud_en.html' %}{% endwith %}</select></b></td>
+								<td class="text-right swm-whitetext-darkback"><b>{{fee.short_name}}</b></td>
+								<td class="text-center"><a href="#modal_create_entry" class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Create a new entry in the BUD/MAP"><span class="glyphicon glyphicon-remove"></span></a></td>
+							</tr>
+							<tr><td></td><td class="text-center swm-whitetext-darkback"><b><input id="{{element.identifier}}-{{fee.identifier}}-sum" name="{{element.identifier}}-{{fee.identifier}}-sum-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>
+							{% endfor %}
+						{% endfor %}
+					{% endfor %}
+				</table>
 			</div>
-			{% for element in all_types.sequoia_charge_top.all %}
-				{% for fee in all_types.sequoia_fees_type %}
-			<div class="row text-center">
-				<div class="col-lg-3 swm-whitetext-back swm-center-left-border"><b>Advisor & Research</b></div>
-				<div class="col-lg-1 swm-center-center-border">0.62%</div>
-				<div class="col-lg-4 swm-text swm-right-out-border"><b>SWM</b></div>
-				<div class="col-lg-1 col-lg-offset-3 swm-whitetext-back"><b>{{fee.short_name}}</b></div>
+			<div class="row">&nbsp;</div>
+			<div class="row h5">
+				<table class="table table-bordered">
+					<tr><td class="swm-text-back"><b>External payout</b></td><td class="text-center"><b>% of NT</b></td></tr>
+					{% for fee in all_types.sequoia_fees_type %}
+						{% for element in all_types.sequoia_charge_low.all %}
+							{% for entry in custom_data|get_dict_key:fee.identifier|get_dict_key:element.identifier %}
+							<tr>
+								<td class="swm-text text-center"><b>{{element.short_name}} - {{element.name}}</b></td>
+								<td><input id="{{element.identifier}}-{{fee.identifier}}-{{forloop.counter0}}" name="{{element.identifier}}-{{fee.identifier}}-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" value="{{entry.rate}}" onchange="computeAndAssignSums()"></td>
+								<td><select class='form-control no-enter' id='promoter' name='promoter' onchange=''>{% with value=entry.bud %}{% include 'statics/sequoia_bud_en.html' %}{% endwith %}</select></td>
+								<td class="text-right swm-whitetext-darkback"><b>{{fee.short_name}}</b></td>
+							</tr>
+							{% endfor %}
+							{% if custom_data|get_dict_key:fee.identifier|get_dict_key:element.identifier %}
+							<tr><td></td><td class="text-center swm-text  "><b><input id="{{element.identifier}}-{{fee.identifier}}-sum" name="{{element.identifier}}-{{fee.identifier}}-sum-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" readonly value="0.62%"></b></td></tr>
+							{% endif %}
+						{% endfor %}
+					{% endfor %}
+				</table>
 			</div>
-			<div class="row text-center">
-				<div class="col-lg-1 col-lg-offset-3 swm-whitetext-back swm-down-out-border"><b>0.62%</b></div>
-			</div>
-				{% endfor %}
-			{% endfor %}
 		</form>
 {% endblock %}

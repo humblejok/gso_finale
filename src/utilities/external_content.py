@@ -30,6 +30,8 @@ LOGGER = logging.getLogger(__name__)
 
 client = MongoClient(MONGO_URL)
 
+custom = client.custom
+
 
 QUERIES = { 'guardian': {'securities': 
                             {'query': "select * from tit where cod_tiptit not like 'A%%' and cod_tiptit not like 'C%%' and cod_tiptit not in ('Z300', 'ZZZZ') and des_tit<>'N/D' order by des_tit",
@@ -373,3 +375,45 @@ def get_securities_by_isin(data_source, isin):
     database = getattr(client, data_source)
     if data_source=='guardian':
         return database['securities'].find({'cod_isin':isin})
+    
+    
+def get_sequoia_map():
+    results = custom.sequoia_map.find().sort("_id", -1)
+    if results.count()>0:
+        return results[0]
+    else:
+        return {}
+    
+def set_sequoia_map(values):
+    values['_id'] = epoch_time(datetime.datetime.today())
+    custom.sequoia_map.insert(values)
+    
+def create_sequoia_map_entry(container):
+    entry = {}
+    entry['jurisdiction'] = 'ISO2_COUNTRY_CH'
+    
+    rm_role = container.associated_thirds.filter(role__identifier='STR_RM')
+    if rm_role.exists():
+        # TODO Map with custom field
+        entry['promoter'] = 'SEQUOIA_BUD_NOT_AVAILABLE'
+    else:
+        entry['promoter'] = 'SEQUOIA_BUD_NOT_AVAILABLE'
+    entry['strategy_profile'] = 'SEQUOIA_STRAT_NOT_AVAILABLE'
+    entry['risk_profile'] = 'SEQUOIA_RISK_NOT_AVAILABLE'
+    
+    bank_role = container.associated_thirds.filter(role__identifier='SCR_BANK')
+    if bank_role.exists():
+        entry['bank'] =  bank_role.company.name
+    else:
+        entry['bank'] = ''
+    entry['currency'] = container.currency.short_name
+    entry['amount'] = '-'
+    entry['inception_date'] = str(container.inception_date)
+    sequoia_fees = Attributes.objects.filter(type='sequoia_fees_type', active=True)
+    sequoia_buds = Attributes.objects.filter(type='sequoia_charge_top', active=True)
+    for fee in sequoia_fees:
+        if not entry.has_key(fee.identifier):
+            entry[fee.identifier] = {}
+        for bud in sequoia_buds:
+            entry[fee.identifier][bud.identifier] = [{'rate': 0.0, 'bud': 'SEQUOIA_BUD_NOT_AVAILABLE'}]
+    return entry
