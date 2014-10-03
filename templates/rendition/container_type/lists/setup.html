@@ -31,8 +31,11 @@
 		});
 		var updateForm = new FormData();
 		updateForm.append('container_setup', JSON.stringify(containerSetup));
+		updateForm.append('item',urlParams['item']);
+		updateForm.append('type',urlParams['type']);
+		updateForm.append('render_name','results');
 		$.ajax({
-			url: '/container_list_save.html',
+			url: '/container_setup_save.html',
 			type: 'POST',
 			data: updateForm,
 			processData: false,

@@ -670,6 +670,10 @@ class Address(CoreModel):
 
     def get_fields(self):
         return ['address_type','line_1','line_2','zip_code','city']
+    
+    @staticmethod
+    def get_filtering_field():
+        return "address_type"
 
 class Email(CoreModel):
     address_type = models.ForeignKey(Attributes, limit_choices_to={'type':'email_type'}, related_name='email_type_rel', null=True)
@@ -681,9 +685,17 @@ class Email(CoreModel):
     def get_fields(self):
         return ['address_type','address']
     
+    @staticmethod
+    def get_filtering_field():
+        return "address_type"
+    
 class Phone(CoreModel):
     line_type = models.ForeignKey(Attributes, limit_choices_to={'type':'phone_type'}, related_name='phone_type_rel', null=True)
     phone = models.TextField(max_length=32)
+
+    @staticmethod
+    def get_filtering_field():
+        return "line_type"
 
     def get_identifier(self):
         return 'id'
@@ -701,6 +713,10 @@ class Alias(CoreModel):
     
     def get_fields(self):
         return ['alias_type','alias_value','alias_additional']
+    
+    @staticmethod
+    def get_filtering_field():
+        return "alias_type"
     
     @staticmethod
     def retrieve_or_create(parent, source, key, value):
@@ -880,6 +896,10 @@ class CompanySubsidiary(CoreModel):
     
     def get_fields(self):
         return ['company','role']
+    
+    @staticmethod
+    def get_filtering_field():
+        return "role"
 
 class CompanyMember(CoreModel):
     person = models.ForeignKey(PersonContainer, null=True)
@@ -890,6 +910,10 @@ class CompanyMember(CoreModel):
 
     def get_fields(self):
         return ['person','role']
+    
+    @staticmethod
+    def get_filtering_field():
+        return "role"
 
 class CompanyContainer(ThirdPartyContainer):
     members = models.ManyToManyField(CompanyMember)
@@ -911,6 +935,10 @@ class AccountContainer(FinancialContainer):
     def get_fields(self):
         return super(AccountContainer, self).get_fields() + ['account_type','bank']
     
+    @staticmethod
+    def get_filtering_field():
+        return "account_type"
+    
 class RelatedCompany(CoreModel):
     company = models.ForeignKey(CompanyContainer, null=True)
     role = models.ForeignKey(Attributes, limit_choices_to={'type':'security_company_role'}, related_name='security_company_role_rel', null=True)
@@ -920,6 +948,10 @@ class RelatedCompany(CoreModel):
 
     def get_fields(self):
         return ['company','role']
+    
+    @staticmethod
+    def get_filtering_field():
+        return "role"
     
     @staticmethod
     def retrieve_or_create(parent, source, key, value):
@@ -955,6 +987,10 @@ class RelatedThird(CoreModel):
 
     def get_fields(self):
         return ['third','role']
+    
+    @staticmethod
+    def get_filtering_field():
+        return "role"
     
 class PortfolioContainer(FinancialContainer):
     accounts = models.ManyToManyField('AccountContainer', related_name='portfolio_accounts_rel')

@@ -1,0 +1,220 @@
+{% extends "finale_base.html" %}
+{% block title %}Financial Lightweight Editor - Setup{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+				containerChanged();
+{% endblock %}
+{% block headeroptions %}
+<script>
+
+	var allItems = {{global|safe}};
+	var initialLoad = true;
+	var allFields = {};
+
+	function onCallError(e) {
+		alert(e.status);
+	}
+
+	function onForeignClick(fieldName) {
+		$(".sub-" + fieldName).toggleClass("hidden");
+	}
+
+	function containerFieldsSaved(e) {
+
+	}
+
+	function allowDrop(e) {
+		e.preventDefault();
+	}
+
+	function drop(e) {
+		e.preventDefault();
+		var data = e.dataTransfer.getData("text/html");
+		e.target.appendChild(document.getElementById(data));
+	}
+
+
+	function drag(e) {
+		e.dataTransfer.setData("text/html", e.target.id);
+	}
+
+	function filteringEntryLoaded(e) {
+		$.each(e.result, function(index, value) {
+			$("#filtersList").append("<div id='" + value.identifier + "' class='list-group-item' draggable='true' ondragstart='drag(event)'>" + value.name + "</div>");
+		});
+	}
+
+	function saveListSetup() {
+		var containerSetup = {}
+		containerSetup.type = $("#containerType").val();
+		containerSetup.fields = new Array();
+		$.each($("#selectedfieldsList").children(), function(index, value) {
+			containerSetup.fields.push($(value).text());
+		});
+		var updateForm = new FormData();
+		updateForm.append('container_setup', JSON.stringify(containerSetup));
+		updateForm.append('item',urlParams['item']);
+		updateForm.append('type',urlParams['type']);
+		updateForm.append('render_name','edition');
+		$.ajax({
+			url: '/container_setup_save.html',
+			type: 'POST',
+			data: updateForm,
+			processData: false,
+			contentType: false,
+			success: containerFieldsSaved,
+			error: onCallError
+		});
+	}
+
+	function preparePopup(fieldName) {
+		$('#filtersList').empty();
+		$('#groupsList').empty();
+		var queryForm = new FormData();
+		queryForm.append('container_type', $("#containerType").val());
+		queryForm.append('filtered_field', fieldName);
+		queryForm.append('filtering_field', allFields[fieldName].filter);
+		$.ajax({
+			url: '/get_filtering_entry.html',
+			type: 'POST',
+			data: queryForm,
+			processData: false,
+			contentType: false,
+			success: filteringEntryLoaded,
+			error: onCallError
+		});
+	}
+
+	function addGroup() {
+		$("#groupsList").append('<div class="list-group-item" ondrop="drop(event)" ondragover="allowDrop(event)"></div>')
+	}
+
+	function onFieldClick(fieldName) {
+		if ($(".main-" + fieldName).hasClass("list-group-item-success")) {
+			$(".select-" + fieldName).remove();
+		} else {
+			$("#selectedfieldsList").append('<a class="list-group-item select-' + fieldName + '" onclick="onFieldClick(\'' + fieldName + '\')" role="button">' + fieldName + '</a>');
+			if (allFields[fieldName].type==='ManyToManyField') {
+				$("#selectedfieldsOptions").append('<a class="list-group-item select-' + fieldName + '" href="#modal_define_option" role="button" data-toggle="modal" data-placement="bottom" title="Define the options regarding many to many relations" onclick="preparePopup(\'' + fieldName + '\')">Define</a>')
+			} else {
+				$("#selectedfieldsOptions").append('<div class="list-group-item select-' + fieldName + '">-</div>')
+			}
+		}
+		$(".main-" + fieldName + ":not(.multiple-slave)").toggleClass("list-group-item-success");
+
+		if (!initialLoad) {
+			saveListSetup();
+		}
+	}
+
+	function fieldsLoaded(e) {
+		var currentList = [];
+		var preSelection = [];
+
+		allFields = e.result;
+
+		$("#selectedfieldsList").empty();
+		$("#selectedfieldsOptions").empty();
+
+		if (allItems.hasOwnProperty($("#containerType").val())) {
+			preSelection = allItems[$("#containerType").val()];
+		}
+
+		$("#fieldsList").empty();
+
+		$.each(e.result, function(index, value) {
+			currentList.push(index);
+		});
+		currentList.sort();
+		$.each(currentList, function(index, value) {
+			$("#fieldsList").append('<a class="list-group-item main-' + value + '" onclick="onFieldClick(\'' + value + '\')">' + value + '</a>');
+		});
+		$.each(preSelection, function(index, value) {
+			var selected;
+			$(".main-" + value).click();
+		});
+		initialLoad = false;
+	}
+
+	function containerChanged() {
+		initialLoad = true;
+		var fieldsForm = new FormData();
+		fieldsForm.append('container_type', $("#containerType").val());
+		$.ajax({
+			url: '/object_fields_get.html',
+			type: 'POST',
+			data: fieldsForm,
+			processData: false,
+			contentType: false,
+			success: fieldsLoaded,
+			error: onCallError
+		});
+	}
+</script>
+{% endblock %}
+	</head>
+	<body>
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">Mandatory fields while creating containers</h1>
+	  			<p class="lead">Define the all fields that are mandatory while creating<br/>
+			</div>
+		</div>
+		<div class="row">
+			<select class="form-control no-enter" id="containerType" name="containerType" onchange="containerChanged()">
+				{% with value='' %}
+					{% include selection_template %}
+				{% endwith %}
+			</select>
+			<b
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div class="col-lg-offset-1 col-lg-3 text-center">
+				<h4>Available fields</h4>
+			</div>
+			<div class="col-lg-3 col-lg-offset-3 text-center">
+				<h4>Selected fields</h4>
+			</div>
+			<div class="col-lg-1 text-center">
+				<h4>Options</h4>
+			</div>
+		</div>
+		<div class="row">
+			<div id="fieldsList" class="list-group col-lg-offset-1 col-lg-3">
+			</div>
+			<div id="selectedfieldsList" class="list-group col-lg-3 col-lg-offset-3">
+			</div>
+			<div id="selectedfieldsOptions" class="list-group text-center col-lg-1">
+			</div>
+		</div>
+		<div class="modal fade" id="modal_define_option" tabindex="-1" role="dialog" aria-labelledby="modal_define_option_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create_internal_label">Define the options regarding many to many relations</h4>
+					</div>
+					<form id="create_form_internal" role="form" action="#" method="POST">{% csrf_token %}
+						<div id="optionBody"  class="modal-body">
+							<div class="row">
+								<h4>Create an new group and then drag a filtering option in that group</h4>
+								<h6>Each group indicates a mandatory user input. All filters within a group are "OR" relations.</h6>
+							<div>
+							<div class="row"><a id="addButton" class="btn btn-default col-lg-10 col-lg-offset-1" onclick="addGroup()">Add a group</a></div>
+							<div class="row">&nbsp;</div>
+							<div class="row">
+								<div id="filtersList" class="col-lg-4 col-lg-offset-1 list-group"></div>
+								<div id="groupsList" class="col-lg-4 col-lg-offset-2 list-group"></div>
+							</div>
+						</div>
+					</form>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm options setup" onclick="">Validate</button>
+					</div>
+				</div>
+			</div>
+		</div>
+{% endblock %}

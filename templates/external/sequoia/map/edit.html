@@ -4,24 +4,145 @@
 {% block readyoptions %}
 		     	$(".btn").not('#comment').tooltip();
 		     	$(".comment").popover();
-		     	computeAndAssignSums();
+		     	renderCurrentBud();
 {% endblock %}
 {% block headeroptions %}
 		<script>
+			var all_types = {{all_types_json|safe}}
+			var workingData = {{custom_data_json|safe}};
+
 			function onCallError(e) {
 				alert(e.status);
 			}
 
+			function dataSaved(e) {
+			}
+
+			function saveData() {
+				var updateForm = new FormData();
+				updateForm.append('container_id', {{container.id}});
+				updateForm.append('custom', 'sequoia');
+				updateForm.append('target', 'map');
+				updateForm.append('new_data', JSON.stringify(workingData))
+				$.ajax({
+					url: '/custom_save.html',
+					type: 'POST',
+					data: updateForm,
+					processData: false,
+					contentType: false,
+					success: dataSaved,
+					error: onCallError
+				});
+			}
+
 			function computeAndAssignSums() {
-				{% for element in all_types.sequoia_charge_top.all %}
-					{% for fee in all_types.sequoia_fees_type %}
+				$.each(all_types["sequoia_fees_type"], function(indexFees, valueFees) {
+					$.each(all_types["sequoia_charge_top"], function(indexCharge, valueCharge) {
 						var currentSum = 0.0;
-						$.each($("[id^='{{element.identifier}}-{{fee.identifier}}-rate-']"), function(index, value) {
+						$.each($("[id^='" + valueCharge.identifier + "-" + valueFees.identifier + "-rate-']"), function(index, value) {
+							var info = String(this.id).split('-');
+							workingData[info[1]][info[0]][info[3]] = {"bud": $("#" + String(this.id).replace("-rate-","-bud-")).val(), "rate": parseFloat($(value).val())};
 							currentSum += parseFloat($(value).val());
 						});
-						$("#{{element.identifier}}-{{fee.identifier}}-sum").val(currentSum);
-					{% endfor %}
-				{% endfor %}
+						$("#" + valueCharge.identifier + "-" + valueFees.identifier + "-sum").val(currentSum);
+					});
+					$.each(all_types["sequoia_charge_low"], function(indexCharge, valueCharge) {
+						var currentSum = 0.0;
+						$.each($("[id^='" + valueCharge.identifier + "-" + valueFees.identifier + "-rate-']"), function(index, value) {
+							var info = String(this.id).split('-');
+							workingData[info[1]][info[0]][info[3]] = {"bud": $("#" + String(this.id).replace("-rate-","-bud-")).val(), "rate": parseFloat($(value).val())};
+							currentSum += parseFloat($(value).val());
+						});
+						$("#" + valueCharge.identifier + "-" + valueFees.identifier + "-sum").val(currentSum);
+					});
+				});
+				saveData();
+			}
+
+			function removeBUDEntry(payout, bud, fees) {
+				var newArray = [];
+				$.each(workingData[fees][payout], function(index, value) {
+					if (value.bud!==bud) {
+						newArray.push(value);
+					}
+				});
+				workingData[fees][payout] = newArray;
+				renderCurrentBud();
+			}
+
+			function renderCurrentBud() {
+				$(".payout-content").remove();
+				var allNodesExternal = '';
+				var allNodesInternal = '';
+				var budSelects = [];
+				$.each(all_types["sequoia_fees_type"], function(indexFees, valueFees) {
+					$.each(all_types["sequoia_charge_top"], function(indexCharge, valueCharge) {
+
+						if (workingData.hasOwnProperty(valueFees.identifier) && workingData[valueFees.identifier].hasOwnProperty(valueCharge.identifier)) {
+							$.each(workingData[valueFees.identifier][valueCharge.identifier], function(indexEntry, valueEntry){
+								allNodesExternal += '<tr class="payout-content">';
+								allNodesExternal += '<td class="swm-whitetext-darkback text-center"><b>' + valueCharge.name + '</b></td>';
+								allNodesExternal += '<td><input id="' + valueCharge.identifier + '-' + valueFees.identifier + '-rate-' + indexEntry + '" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-rate-' + indexEntry + '" type="text" class="form-control text-center no-enter" value="' + valueEntry.rate + '" onchange="computeAndAssignSums()" onblur="computeAndAssignSums()"></td>';
+								allNodesExternal += '<td class="text-center"><b><select class="form-control" id="' + valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry + '" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry + '"></select></b></td>';
+								if (indexEntry===0) {
+									allNodesExternal += '<td class="text-center swm-whitetext-darkback valigned" rowspan="' + workingData[valueFees.identifier][valueCharge.identifier].length + '"><b>' + valueFees.short_name + '</b></td>';
+								}
+								allNodesExternal += '<td class="text-center"><a class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Remove this entry from the BUD/MAP" onclick="removeBUDEntry(\'' + valueCharge.identifier + '\',\'' + valueEntry.bud + '\',\'' + valueFees.identifier + '\')"><span class="glyphicon glyphicon-remove"></span></a></td>';
+								allNodesExternal += '</tr>';
+								budSelects.push(valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry);
+							});
+							if (workingData[valueFees.identifier][valueCharge.identifier].length>0) {
+								allNodesExternal += '<tr class="payout-content"><td></td><td class="text-center swm-whitetext-darkback"><b><input id="' + valueCharge.identifier + '-' + valueFees.identifier + '-sum" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-sum" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>';
+							}
+						}
+					});
+
+					$.each(all_types["sequoia_charge_low"], function(indexCharge, valueCharge) {
+						if (workingData.hasOwnProperty(valueFees.identifier) && workingData[valueFees.identifier].hasOwnProperty(valueCharge.identifier)) {
+							$.each(workingData[valueFees.identifier][valueCharge.identifier], function(indexEntry, valueEntry){
+								allNodesInternal += '<tr class="payout-content">';
+								allNodesInternal += '<td class="swm-text text-center"><b>' + valueCharge.short_name + ' - ' + valueCharge.name + '</b></td>';
+								allNodesInternal += '<td><input id="' + valueCharge.identifier + '-' + valueFees.identifier + '-rate-' + indexEntry + '" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-rate-' + indexEntry + '" type="text" class="form-control text-center no-enter" value="' + valueEntry.rate + '" onchange="computeAndAssignSums()" onblur="computeAndAssignSums()"></td>';
+								allNodesInternal += '<td class="text-center"><b><select class="form-control" id="' + valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry + '" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry + '"></select></b></td>';
+								if (indexEntry===0) {
+									allNodesInternal += '<td class="text-center swm-whitetext-darkback valigned" rowspan="' + workingData[valueFees.identifier][valueCharge.identifier].length + '"><b>' + valueFees.short_name + '</b></td>';
+								}
+								allNodesInternal += '<td class="text-center"><a class="btn btn-default btn-sm" onclick="removeBUDEntry(\'' + valueCharge.identifier + '\',\'' + valueEntry.bud + '\',\'' + valueFees.identifier + '\')" role="button" data-toggle="modal" data-placement="bottom" title="Remove this entry from the BUD/MAP"><span class="glyphicon glyphicon-remove"></span></a></td>';
+								allNodesInternal += '</tr>';
+								budSelects.push(valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry);
+							});
+							if (workingData[valueFees.identifier][valueCharge.identifier].length>0) {
+								allNodesInternal += '<tr class="payout-content"><td></td><td class="text-center swm-text"><b><input id="' + valueCharge.identifier + '-' + valueFees.identifier + '-sum" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-sum" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>';
+							}
+						}
+					});
+
+				});
+				$("#externalTable").append(allNodesExternal);
+				$("#internalTable").append(allNodesInternal);
+						
+
+				$.each(budSelects, function(index, value) {
+					$("#" + value).load('/static/templates/sequoia_bud_select_en.html', function() {
+						var info = value.split('-');
+						$("#" + value).val(workingData[info[1]][info[0]][info[3]].bud);
+						if (index==budSelects.length-1) {
+							computeAndAssignSums();
+						}
+					});
+				});
+			}
+
+			function createNewEntry(caller, payout, bud, fees, percentage) {
+				$('#' + caller).modal('toggle');
+				if (!workingData.hasOwnProperty(fees)) {
+					workingData[fees] = {};
+				}
+				if (!workingData[fees].hasOwnProperty(payout)) {
+					workingData[fees][payout] = [];
+				}
+				workingData[fees][payout].push({"rate": percentage, "bud": bud});
+				renderCurrentBud();
 			}
 
 		</script>
@@ -69,51 +190,130 @@
 			</div>
 			<div class="row">&nbsp;</div>
 			<div class="row h5">
-				<table class="table table-bordered">
-					<tr>
+				<table class="table table-bordered" id="externalTable">
+					<tr class="payout-header">
 						<td class="swm-text-back"><b>External payout</b></td>
 						<td class="text-center"><b>% of NT</b></td>
-						<td></td>
-						<td></td>
-						<td class="text-center"><a href="#modal_create_entry" class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Create a new entry in the BUD/MAP">
-				<span class="glyphicon glyphicon-plus"></span></a></td>
+						<td class="text-center" colspan="3"><a href="#modal_create_external" class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Create a new entry in the BUD/MAP"><span class="glyphicon glyphicon-plus"></span></a></td>
 					</tr>
-					{% for element in all_types.sequoia_charge_top.all %}
-						{% for fee in all_types.sequoia_fees_type %}
-							{% for entry in custom_data|get_dict_key:fee.identifier|get_dict_key:element.identifier %}
-							<tr>
-								<td class="swm-whitetext-darkback text-center"><b>{{element.name}}</b></td>
-								<td><input id="{{element.identifier}}-{{fee.identifier}}-rate-{{forloop.counter0}}" name="{{element.identifier}}-{{fee.identifier}}-rate-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" value="{{entry.rate}}" onchange="computeAndAssignSums()" onblur="computeAndAssignSums()"></td>
-								<td class="text-center"><b><select class="form-control" id="{{element.identifier}}-{{fee.identifier}}-bud-{{forloop.counter0}}" name="{{element.identifier}}-{{fee.identifier}}-bud-{{forloop.counter0}}">{% with value=entry.bud%}{% include 'statics/sequoia_bud_en.html' %}{% endwith %}</select></b></td>
-								<td class="text-right swm-whitetext-darkback"><b>{{fee.short_name}}</b></td>
-								<td class="text-center"><a href="#modal_create_entry" class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Create a new entry in the BUD/MAP"><span class="glyphicon glyphicon-remove"></span></a></td>
-							</tr>
-							<tr><td></td><td class="text-center swm-whitetext-darkback"><b><input id="{{element.identifier}}-{{fee.identifier}}-sum" name="{{element.identifier}}-{{fee.identifier}}-sum-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>
-							{% endfor %}
-						{% endfor %}
-					{% endfor %}
 				</table>
 			</div>
 			<div class="row">&nbsp;</div>
 			<div class="row h5">
-				<table class="table table-bordered">
-					<tr><td class="swm-text-back"><b>External payout</b></td><td class="text-center"><b>% of NT</b></td></tr>
-					{% for fee in all_types.sequoia_fees_type %}
-						{% for element in all_types.sequoia_charge_low.all %}
-							{% for entry in custom_data|get_dict_key:fee.identifier|get_dict_key:element.identifier %}
-							<tr>
-								<td class="swm-text text-center"><b>{{element.short_name}} - {{element.name}}</b></td>
-								<td><input id="{{element.identifier}}-{{fee.identifier}}-{{forloop.counter0}}" name="{{element.identifier}}-{{fee.identifier}}-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" value="{{entry.rate}}" onchange="computeAndAssignSums()"></td>
-								<td><select class='form-control no-enter' id='promoter' name='promoter' onchange=''>{% with value=entry.bud %}{% include 'statics/sequoia_bud_en.html' %}{% endwith %}</select></td>
-								<td class="text-right swm-whitetext-darkback"><b>{{fee.short_name}}</b></td>
-							</tr>
-							{% endfor %}
-							{% if custom_data|get_dict_key:fee.identifier|get_dict_key:element.identifier %}
-							<tr><td></td><td class="text-center swm-text  "><b><input id="{{element.identifier}}-{{fee.identifier}}-sum" name="{{element.identifier}}-{{fee.identifier}}-sum-{{forloop.counter0}}" type="text" class="form-control text-center no-enter" readonly value="0.62%"></b></td></tr>
-							{% endif %}
-						{% endfor %}
-					{% endfor %}
+				<table class="table table-bordered" id="internalTable">
+					<tr class="payout-header">
+						<td class="swm-text-back"><b>Internal payout</b></td>
+						<td class="text-center"><b>% of NT</b></td>
+						<td class="text-center" colspan="3"><a href="#modal_create_internal" class="btn btn-default btn-sm" role="button" data-toggle="modal" data-placement="bottom" title="Create a new entry in the BUD/MAP"><span class="glyphicon glyphicon-plus"></span></a></td>
+					</tr>
 				</table>
 			</div>
 		</form>
+		<div class="row">&nbsp;</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">&nbsp;</div>
+		<div class="modal fade" id="modal_create_external" tabindex="-1" role="dialog" aria-labelledby="modal_create_external_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create_external_label">Create a new external payout entry</h4>
+					</div>
+					<form id="create_form_external" role="form" action="#" method="POST">{% csrf_token %}
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="payoutTarget" class="control-label">Payout target</label>
+								<div>
+									<select class='form-control no-enter' id='payoutTarget' name='payoutTarget'>
+										{% with value="" %}
+											{% include 'statics/sequoia_charge_top_en.html' %}
+										{% endwith %}
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="targetedBUD" class="control-label">Targeted BUD</label>
+								<div>
+									<select class='form-control no-enter' id='targetedBUD' name='targetedBUD'>
+										{% with value="" %}
+											{% include 'statics/sequoia_bud_en.html' %}
+										{% endwith %}
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="targetedFees" class="control-label">Targeted fees</label>
+								<div>
+									<select class='form-control no-enter' id='targetedFees' name='targetedFees'>
+										{% with value="" %}
+											{% include 'statics/sequoia_fees_type_en.html' %}
+										{% endwith %}
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="percentageNT">Percentage of net turnover</label>
+								<input name="percentageNT" type="text" class="form-control no-enter" id="percentageNT" placeholder="Enter a percentage value" value=""/>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm external BUD entry creation" onclick="createNewEntry('modal_create_external', create_form_external.payoutTarget.value, create_form_external.targetedBUD.value, create_form_external.targetedFees.value, create_form_external.percentageNT.value)">Validate</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+		<div class="modal fade" id="modal_create_internal" tabindex="-1" role="dialog" aria-labelledby="modal_create_internal_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create_internal_label">Create a new internal payout entry</h4>
+					</div>
+					<form id="create_form_internal" role="form" action="#" method="POST">{% csrf_token %}
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="payoutTarget" class="control-label">Payout target</label>
+								<div>
+									<select class='form-control no-enter' id='payoutTarget' name='payoutTarget'>
+										{% with value="" %}
+											{% include 'statics/sequoia_charge_low_en.html' %}
+										{% endwith %}
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="targetedBUD" class="control-label">Targeted BUD</label>
+								<div>
+									<select class='form-control no-enter' id='targetedBUD' name='targetedBUD'>
+										{% with value="" %}
+											{% include 'statics/sequoia_bud_en.html' %}
+										{% endwith %}
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="targetedFees" class="control-label">Targeted fees</label>
+								<div>
+									<select class='form-control no-enter' id='targetedFees' name='targetedFees'>
+										{% with value="" %}
+											{% include 'statics/sequoia_fees_type_en.html' %}
+										{% endwith %}
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="percentageNT">Percentage of net turnover</label>
+								<input name="percentageNT" type="text" class="form-control no-enter" id="percentageNT" placeholder="Enter a percentage value" value=""/>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm internal BUD entry creation" onclick="createNewEntry('modal_create_internal', create_form_internal.payoutTarget.value, create_form_internal.targetedBUD.value, create_form_internal.targetedFees.value, create_form_internal.percentageNT.value)">Validate</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
 {% endblock %}

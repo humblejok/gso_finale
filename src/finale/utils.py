@@ -79,10 +79,10 @@ def get_static_fields(clazz, trail = []):
                     else:
                         linked_to = {}
                     if foreign_class.__name__!=clazz.__name__ and foreign_class.__name__ not in trail:
-                        object_static_fields[field_name] = {'type': clazz._meta.get_field(field_name).get_internal_type(), 'fields': get_static_fields(foreign_class, trail + [foreign_class.__name__]), 'link': linked_to}
+                        object_static_fields[field_name] = {'type': clazz._meta.get_field(field_name).get_internal_type(), 'fields': get_static_fields(foreign_class, trail + [foreign_class.__name__]), 'link': linked_to, 'filter': foreign_class.get_filtering_field() if getattr(foreign_class, 'get_filtering_field', None)!=None else None}
                     else:
+                        # TODO Get effective type, you'll never know if you won't need it in the future
                         object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT', 'link': linked_to}
-                    foreign_class
                 else:
                     object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT'}
         except FieldDoesNotExist:

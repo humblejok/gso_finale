@@ -20,23 +20,21 @@ urlpatterns = patterns('',
     
     url(r'^call_external.html', 'universe.views.call_external', name='call_external'),
     
-    url(r'^container_delete.html', 'universe.views.container_delete', name='container_delete'),
-    url(r'^container_list_save.html', 'universe.views.container_list_save', name='container_list_save'),    
-    
     url(r'^object_base_edit.html', 'universe.views.object_base_edit', name='object_base_edit'),
     url(r'^object_delete.html', 'universe.views.object_delete', name='object_delete'),
     url(r'^object_fields_get.html', 'universe.views.object_fields_get', name='object_fields_get'),
     
     url(r'^object_save.html', 'universe.views.object_save', name='object_save'),
     
+    url(r'^get_filtering_entry.html', 'universe.views.get_filtering_entry', name='get_filtering_entry'),
+
     # Setup views
     url(r'^setup.html', 'universe.views.setup', name='setup'),
-    url(r'^container_definition_save.html','universe.views.container_definition_save', name='container_definition_save'),
     
     # Custom view
     url(r'^custom_edit.html', 'universe.views.custom_edit', name='custom_edit'),
     url(r'^custom_view.html', 'universe.views.custom_view', name='custom_view'),
-    
+    url(r'^custom_save.html', 'universe.views.custom_save', name='custom_save'),
 
     # Universes related views
     url(r'^universes.html$', 'universe.views.universes', name='universes'),
@@ -60,20 +58,16 @@ urlpatterns = patterns('',
     url(r'^bloomberg_update.html', 'universe.views.bloomberg_update', name='bloomberg_update'),
     url(r'^financials_bloomberg_wizard.html', 'universe.views.bloomberg_wizard', name='bloomberg_wizard', kwargs={'entity':'financials'}),
     url(r'^financials_bloomberg_wizard_execute.html', 'universe.views.bloomberg_wizard_execute', name='bloomberg_wizard_execute', kwargs={'entity':'financials'}),
-    url(r'^financial_container_get.html', 'universe.views.financial_container_get', name='financial_container_get'),
-    # Securities views
-    url(r'^securities.html', 'universe.views.securities', name='securities'),
-    url(r'^security_search.html', 'universe.views.security_search', name='security_search'),
-    
-    
-    url(r'^containers.html', 'universe.views.containers', name='containers'),
-    
-    # Companies views
-    url(r'^company_base_edit.html', 'universe.views.company_base_edit', name='company_base_edit'),
-    
-    # Portfolios views
-    url(r'^portfolio_base_edit.html', 'universe.views.portfolio_base_edit', name='portfolio_base_edit'),
 
+    # Containers views
+    url(r'^containers.html', 'universe.container.views.list', name='containers'),
+    url(r'^container_definition_save.html','universe.container.views.definition_save', name='container_definition_save'),
+    url(r'^container_delete.html', 'universe.container.views.delete', name='container_delete'),
+    url(r'^container_get.html', 'universe.container.views.get', name='container_get'),
+    url(r'^container_setup_save.html', 'universe.container.views.setup_save', name='container_setup_save'),
+    url(r'^container_search.html', 'universe.container.views.search', name='container_search'),
+    url(r'^container_base_edit.html', 'universe.container.views.base_edit', name='container_base_edit'),
+    
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),
     

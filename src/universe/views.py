@@ -32,6 +32,7 @@ from django.template.context import Context
 from django.template import loader
 from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH
 from django.db.models.fields import FieldDoesNotExist
+from django.forms.models import model_to_dict
 
 
 LOGGER = logging.getLogger(__name__)
@@ -51,6 +52,23 @@ def get_attributes(request):
     attributes = Attributes.objects.filter(type=attributes_type, active=True)
     attributes = [attribute.get_short_json() for attribute in attributes]
     return HttpResponse('{"result": ' + dumps(attributes) + ', "attribute_type":"' + attributes_type + '""status_message": "Loaded"}',"json")
+
+def get_filtering_entry(request):
+    user = User.objects.get(id=request.user.id)
+    # TODO: Check user
+    container_type = request.POST['container_type']
+    filtered_field = request.POST['filtered_field']
+    filtering_field = request.POST['filtering_field']
+    
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    target_class = effective_class._meta.get_field(filtered_field).rel.to
+    limit = dict(target_class._meta.get_field(str(filtering_field)).rel.limit_choices_to)
+    limit['active'] = True
+    results = dumps([model_to_dict(item) for item in target_class._meta.get_field(filtering_field).rel.to.objects.filter(**limit)])
+    return HttpResponse('{"result": ' + results + ', "status_message": "Saved"}',"json")
 
 def backtest_wizard_execute(request):
     # TODO: Check user
@@ -166,41 +184,7 @@ def check_execution(request):
     else:
         return HttpResponse('{"result": false, "status_message":' + str(cache.get(response_key)) + '}',"json")
 
-def containers(request):
-    # TODO: Check user
-    container_type = request.GET['item']
-    container_class = container_type + '_CLASS'
-    # TODO: Handle error
-    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
-    effective_class = classes.my_class_import(effective_class_name)
-    print effective_class
-    results = effective_class.objects.all().order_by('name')
-    context = {'containers': results,}
-    return render(request, 'statics/' + container_type + '_results_list_en.html', context)
 
-def container_list_save(request):
-    # TODO: Check user
-    user = User.objects.get(id=request.user.id)
-    container_setup = request.POST['container_setup']
-    container_setup = json.loads(container_setup)
-    all_data = setup_content.get_container_type_lists()
-    all_data[container_setup["type"]] = container_setup["fields"]
-    setup_content.set_container_type_lists(all_data)
-    context = Context({"fields": container_setup["fields"], "container" : container_setup["type"]})
-    template = loader.get_template('rendition/container_type/lists/results.html')
-    rendition = template.render(context)
-    # TODO Implement multi-langage
-    outfile = os.path.join(STATICS_PATH, container_setup["type"] + '_results_list_en.html')
-    with open(outfile,'w') as o:
-        o.write(rendition.encode('utf-8'))
-    return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
-
-def companies(request):
-    # TODO: Check user
-    results = CompanyContainer.objects.all().order_by('name')
-    results_list = [result.get_short_json() for result in results]
-    context = {'companies': results_list,}
-    return render(request, 'companies.html', context)
 
 def custom_edit(request):
     # TODO: Check user
@@ -215,11 +199,26 @@ def custom_edit(request):
     tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
     context = {'container': container, 'tracks': tracks, 'all_types': {}}
     all_types = Attributes.objects.filter(type__startswith=custom_id).order_by('type').distinct('type')
+    all_types_json = {}
     for a_type in all_types:
-        context['all_types'][a_type.type] = Attributes.objects.filter(type=a_type.type, active=True).order_by('identifier')
-    content = external_content.get_sequoia_map()
-    context['custom_data'] = content[container_id] if content.has_key(container_id) else getattr(external_content,"create_" + custom_id + "_" + target + "_entry")(container)
+        all_types_json[a_type.type] = [attribute.get_short_json() for attribute in Attributes.objects.filter(type=a_type.type, active=True).order_by('identifier')]
+    context['all_types_json'] = dumps(all_types_json);
+    content = getattr(external_content, 'get_' + custom_id + "_" + target)()
+    context['custom_data'] = content[container_id] if content.has_key(container_id) else getattr(external_content,'create_' + custom_id + '_' + target + '_entry')(container)
+    context['custom_data_json'] = dumps(context['custom_data'])
     return render(request, 'external/' + custom_id + '/' + target +'/edit.html', context)
+
+def custom_save(request):
+    # TODO: Check user
+    container_id = request.POST['container_id']
+    custom_id = request.POST['custom']
+    target = request.POST['target']
+    custom_data = request.POST['new_data']
+    custom_data = json.loads(custom_data)
+    content = getattr(external_content, 'get_' + custom_id + "_" + target)()
+    content[container_id] = custom_data
+    getattr(external_content, 'set_' + custom_id + "_" + target)(content)
+    return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
 def custom_view(request):
     # TODO: Check user
@@ -235,20 +234,6 @@ def custom_view(request):
     context = {'container': container, 'tracks': tracks}
     return render(request, 'external/' + custom_id + '/' + target +'/view.html', context)
 
-def persons(request):
-    # TODO: Check user
-    results = PersonContainer.objects.all().order_by('name')
-    results_list = [result.get_short_json() for result in results]
-    context = {'persons': results_list,}
-    return render(request, 'persons.html', context)
-
-def portfolios(request):
-    # TODO: Check user
-    results = PortfolioContainer.objects.all().order_by('name')
-    results_list = [result.get_short_json() for result in results]
-    context = {'portfolios': results_list,}
-    return render(request, 'portfolios.html', context)
-
 def setup(request):
     # TODO: Check user
     item = request.GET['item']
@@ -257,46 +242,6 @@ def setup(request):
     context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': dumps(all_data) if not all_data.has_key('global') else dumps(all_data['global']), 'user': {} if not all_data.has_key('user') else dumps(all_data['user'])}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
-
-def container_definition_save(request):
-    # TODO: Check user
-    user = User.objects.get(id=request.user.id)
-    container = request.POST['container']
-    definitions = request.POST['definitions']
-    definitions = json.loads(definitions)
-    all_data = setup_content.get_container_type_fields()
-    all_data[container] = definitions
-    setup_content.set_container_type_fields(all_data)
-    return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
-
-def portfolio_base_edit(request):
-    # TODO: Check user
-    user = User.objects.get(id=request.user.id)
-    active_status = Attributes.objects.get(identifier='STATUS_ACTIVE')
-    portfolio_container = Attributes.objects.get(identifier='CONT_PORTFOLIO')
-    if request.POST.has_key('portfolio_id'):
-        portfolio_id = request.POST['portfolio_id']
-        try:
-            source = PortfolioContainer.objects.get(Q(id=portfolio_id))
-        except:
-            # TODO: Return error message
-            return redirect('portfolios.html')
-    else:
-        source = PortfolioContainer()
-    
-    source.type = portfolio_container
-    source.name = request.POST['name']
-    source.short_name = request.POST['short_name']
-    source.status = active_status
-    source.save()
-    source.currency = Attributes.objects.get(identifier=request.POST['currency'])
-    source.frequency = Attributes.objects.get(identifier=request.POST['frequency'])
-    # TODO: Handle
-    source.frequency_reference = None
-    source.save()
-    # TODO: Return success message
-    # return redirect('/company_details_edit.html?company_id=' + str(source.id))
-    return redirect('/containers.html?item=CONT_PORTFOLIO')
 
 def object_fields_get(request):
     # TODO: Check user
@@ -358,43 +303,6 @@ def object_save(request):
     setup_content.set_object_type_fields(all_data)
     return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
-def company_base_edit(request):
-    # TODO: Check user
-    user = User.objects.get(id=request.user.id)
-    active_status = Attributes.objects.get(identifier='STATUS_ACTIVE')
-    
-    if request.POST.has_key('company_id'):
-        company_id = request.POST['company_id']
-        try:
-            source = CompanyContainer.objects.get(Q(id=company_id))
-        except:
-            # TODO: Return error message
-            return redirect('companies.html')
-    else:
-        source = CompanyContainer()
-         
-    source.name = request.POST['name']
-    source.short_name = request.POST['short_name']
-    source.status = active_status
-    source.save()
-
-    if request.POST.has_key('provider'):
-        LOGGER.info("Creating " + source.name + " as a data providing company.")
-        data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
-        new_provider = RelatedCompany()
-        new_provider.company = source
-        new_provider.role = data_provider
-        new_provider.save()
-
-    # TODO: Return success message
-    # return redirect('/company_details_edit.html?company_id=' + str(source.id))
-    return redirect('/companies.html')
-
-def container_delete(request):
-    user = User.objects.get(id=request.user.id)
-    container_id = request.GET['container_id']
-    Container.objects.get(id=container_id).delete()
-    return HttpResponse('{"result": true, "status_message": "Deleted"}',"json")
 
 def get_execution(request):
     if request.POST.has_key('response_key'):
@@ -418,46 +326,6 @@ def external_import(request):
     else:
         import_external_data(provider, data_type)
     return HttpResponse('{"result": true, "status_message": "Job done."}',"json")
-
-
-
-def financial_container_get(request):
-    # TODO: Check user
-    user = User.objects.get(id=request.user.id)
-    container_id = request.GET['container_id']
-    container = FinancialContainer.objects.get(id=container_id)
-    if container.type.id==Attributes.objects.get(identifier='CONT_PORTFOLIO').id:
-        container = PortfolioContainer.objects.get(id=container_id)
-    else:
-        container = SecurityContainer.objects.get(id=container_id)
-    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
-    context = {'container': container, 'tracks': tracks}
-    return render(request,'container/' + container.type.identifier + '.html', context)
-
-def securities(request):
-    # TODO: Check user
-    results = SecurityContainer.objects.all().order_by('name')
-    results_list = [result.get_short_json() for result in results]
-    context = {'securities': results_list,}
-    return render(request, 'securities.html', context)
-
-def security_search(request):
-    context = {}
-    try:
-        searching = request.POST[u'searching']
-        if not isinstance(searching, basestring):
-            searching = searching[0]
-        action = request.POST['action']
-        print action
-        # TODO: Check user
-        user = User.objects.get(id=request.user.id)
-        results = SecurityContainer.objects.filter(Q(name__icontains=searching) | Q(short_name__icontains=searching) | Q(aliases__alias_value__icontains=searching)).order_by('name').distinct()
-        results_list = [result.get_short_json() for result in results]
-        context['securities'] = results_list
-        context['action'] = action
-    except:
-        context['message'] = 'Error while querying for:' + searching
-    return render(request, 'rendition/securities_list.html', context)
 
 def track_get(request):
     # TODO: Check user

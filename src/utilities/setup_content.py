@@ -44,10 +44,21 @@ def get_container_type_lists():
         return results[0]
     else:
         return {}
+    
+def get_container_type_creations():
+    results = setup.container_type_creations.find().sort("_id", -1)
+    if results.count()>0:
+        return results[0]
+    else:
+        return {}
 
 def set_container_type_lists(values):
     values['_id'] = epoch_time(datetime.datetime.today())
     setup.container_type_lists.insert(values)
+    
+def set_container_type_creations(values):
+    values['_id'] = epoch_time(datetime.datetime.today())
+    setup.container_type_creations.insert(values)
 
 def get_container_type_fields():
     results = setup.container_type_fields.find().sort("_id", -1)
