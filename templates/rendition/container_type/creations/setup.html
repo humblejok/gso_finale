@@ -11,6 +11,10 @@
 	var initialLoad = true;
 	var allFields = {};
 
+	var currentOption;
+	var currentOptionIndex = 0;
+
+
 	function onCallError(e) {
 		alert(e.status);
 	}
@@ -27,30 +31,58 @@
 		e.preventDefault();
 	}
 
+	function removeDropped(element) {
+		var parent = $(element).parent();
+
+		var index = parseInt($(element).parent().attr('id').replace('group_',''));
+		var subIndex = $(element).index();
+
+		allItems[$("#containerType").val()][currentOption].options[index].splice(subIndex, 1);
+
+		if (allItems[$("#containerType").val()][currentOption].options[index].length==0) {
+			allItems[$("#containerType").val()][currentOption].options.splice(index, 1);
+		}
+		$(element).remove();
+		if (parent.children().length==0) {
+			parent.remove();
+			currentOptionIndex = currentOptionIndex - 1;
+			$.each($(".top-level-group"), function(index, value) {
+				$(value).attr('id', 'group_' + index);
+			});
+		}
+		saveListSetup();
+	}
+
 	function drop(e) {
 		e.preventDefault();
-		var data = e.dataTransfer.getData("text/html");
-		e.target.appendChild(document.getElementById(data));
+		var identifier = e.dataTransfer.getData("identifier");
+		var label = e.dataTransfer.getData("label");
+		var effectiveTarget = $(e.target);
+		while (!effectiveTarget.hasClass("top-level-group")) {
+			effectiveTarget = effectiveTarget.parent();
+		}
+		effectiveTarget.append("<div id='" + identifier.replace("source_", "target_") + "' class='list-group-item' onclick='removeDropped(this)'>" + label + "</div>");
+		var index = parseInt(effectiveTarget.attr('id').replace('group_',''));
+		allItems[$("#containerType").val()][currentOption].options[index].push(identifier.replace("source_", ""));
+		saveListSetup();
 	}
 
 
 	function drag(e) {
-		e.dataTransfer.setData("text/html", e.target.id);
+		e.dataTransfer.setData("identifier", e.target.id);
+		e.dataTransfer.setData("label", $(e.target).text());
 	}
 
 	function filteringEntryLoaded(e) {
 		$.each(e.result, function(index, value) {
-			$("#filtersList").append("<div id='" + value.identifier + "' class='list-group-item' draggable='true' ondragstart='drag(event)'>" + value.name + "</div>");
+			$("#filtersList").append("<div id='source_" + value.identifier + "' class='list-group-item' draggable='true' ondragstart='drag(event)' identifier=" + value.identifier + ">" + value.name + "</div>");
 		});
 	}
 
 	function saveListSetup() {
 		var containerSetup = {}
 		containerSetup.type = $("#containerType").val();
-		containerSetup.fields = new Array();
-		$.each($("#selectedfieldsList").children(), function(index, value) {
-			containerSetup.fields.push($(value).text());
-		});
+		containerSetup.fields = allItems[$("#containerType").val()];
 		var updateForm = new FormData();
 		updateForm.append('container_setup', JSON.stringify(containerSetup));
 		updateForm.append('item',urlParams['item']);
@@ -70,6 +102,9 @@
 	function preparePopup(fieldName) {
 		$('#filtersList').empty();
 		$('#groupsList').empty();
+
+		currentOption = fieldName;
+
 		var queryForm = new FormData();
 		queryForm.append('container_type', $("#containerType").val());
 		queryForm.append('filtered_field', fieldName);
@@ -86,12 +121,15 @@
 	}
 
 	function addGroup() {
-		$("#groupsList").append('<div class="list-group-item" ondrop="drop(event)" ondragover="allowDrop(event)"></div>')
+		$("#groupsList").append('<div class="list-group-item top-level-group" ondrop="drop(event)" ondragover="allowDrop(event)" id="group_' + currentOptionIndex + '"></div>');
+		allItems[$("#containerType").val()][currentOption].options.push(new Array());
+		currentOptionIndex = currentOptionIndex + 1;
 	}
 
 	function onFieldClick(fieldName) {
 		if ($(".main-" + fieldName).hasClass("list-group-item-success")) {
 			$(".select-" + fieldName).remove();
+			delete allItems[$("#containerType").val()][fieldName];
 		} else {
 			$("#selectedfieldsList").append('<a class="list-group-item select-' + fieldName + '" onclick="onFieldClick(\'' + fieldName + '\')" role="button">' + fieldName + '</a>');
 			if (allFields[fieldName].type==='ManyToManyField') {
@@ -99,8 +137,12 @@
 			} else {
 				$("#selectedfieldsOptions").append('<div class="list-group-item select-' + fieldName + '">-</div>')
 			}
+			if (!allItems.hasOwnProperty($("#containerType").val())) {
+				allItems[$("#containerType").val()] = {};
+			}
+			allItems[$("#containerType").val()][fieldName] = {'field': fieldName, 'options':[]};
 		}
-		$(".main-" + fieldName + ":not(.multiple-slave)").toggleClass("list-group-item-success");
+		$(".main-" + fieldName).toggleClass("list-group-item-success");
 
 		if (!initialLoad) {
 			saveListSetup();
@@ -131,7 +173,7 @@
 		});
 		$.each(preSelection, function(index, value) {
 			var selected;
-			$(".main-" + value).click();
+			$(".main-" + index).click();
 		});
 		initialLoad = false;
 	}

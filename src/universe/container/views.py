@@ -41,6 +41,7 @@ def setup_save(request):
     item_view_type = request.POST['type']
     item_render_name = request.POST['render_name']
     container_setup = json.loads(container_setup)
+    print container_setup
     all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
     all_data[container_setup["type"]] = container_setup["fields"]
     getattr(setup_content, 'set_' + item + '_' + item_view_type)(all_data)

@@ -239,6 +239,7 @@ def setup(request):
     item = request.GET['item']
     item_view_type = request.GET['type']
     all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
+    print all_data
     context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': dumps(all_data) if not all_data.has_key('global') else dumps(all_data['global']), 'user': {} if not all_data.has_key('user') else dumps(all_data['user'])}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
