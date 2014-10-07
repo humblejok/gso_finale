@@ -29,17 +29,19 @@
 						
 						<th>name</th>
 						
-						<th>currency.name</th>
+						<th>short_name</th>
+						
+						<th>security_type.name</th>
 						
 						<th>frequency.name</th>
 						
-						<th>status.name</th>
-						
-						<th>type.name</th>
+						<th>country.name</th>
 						
 						<th>inception_date</th>
 						
 						<th>closed_date</th>
+						
+						<th>currency.short_name</th>
 						
 						<th></th>
 					</tr>
@@ -48,17 +50,19 @@
 						
 						<td>{{item.name}}</td>
 						
-						<td>{{item.currency.name}}</td>
+						<td>{{item.short_name}}</td>
+						
+						<td>{{item.security_type.name}}</td>
 						
 						<td>{{item.frequency.name}}</td>
 						
-						<td>{{item.status.name}}</td>
-						
-						<td>{{item.type.name}}</td>
+						<td>{{item.country.name}}</td>
 						
 						<td>{{item.inception_date}}</td>
 						
 						<td>{{item.closed_date}}</td>
+						
+						<td>{{item.currency.short_name}}</td>
 						
 						<td>
 							<div class="btn-group">
@@ -98,7 +102,7 @@
 								<input name="short_name" type="text" class="form-control" id="short_name" placeholder="Enter an alias" value=""/>
 							</div>
 							
-							{% include "statics/CONT_PORTFOLIO_edition_creations_en.html" %}
+							{% include "statics/CONT_SECURITY_edition_creations_en.html" %}
 							
 						</div>
 						<div class="modal-footer">

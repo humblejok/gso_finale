@@ -1,0 +1,16 @@
+{% load universe_tags %}
+							{% for entry in fields %}
+							{% with current_field=fields|get_dict_key:entry%}
+							{% if current_field.options %}
+							<div class="form-group">
+								<label for="{{current_field.field}}">{{current_field.field}} {{current_field.target_class}} - {{current_field.link}} - {{current_field.filter}}</label>
+								<input name="{{current_field.field}}" type="text" class="form-control" id="{{current_field.field}}" placeholder="Enter a {{current_field.field}}" value=""/>
+							</div>
+							{% else %}
+							<div class="form-group">
+								<label for="{{current_field.field}}">{{current_field.field}} {{current_field.target_class}} - {{current_field.link}} - {{current_field.filter}}</label>
+								<input name="{{current_field.field}}" type="text" class="form-control{% if current_field.type == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{current_field.field}}" placeholder="Enter a {{current_field.field}}" value=""/>
+							</div>
+							{% endif %}
+							{% endwith %}
+							{% endfor %}

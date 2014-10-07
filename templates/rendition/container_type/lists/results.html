@@ -10,7 +10,7 @@
 {% templatetag openblock %} block content {% templatetag closeblock %}
 		<div class="row">
 			<div class="col-lg-11">
-				<h1 class="">All portfolios</h1>
+				<h1 class="">All {% templatetag openvariable %}container_label|lower{% templatetag closevariable %}s</h1>
 	  			<p class="lead">Manage and explore all {% templatetag openvariable %}container_label|lower{% templatetag closevariable %}s from here<br/>
 			</div>
 		</div>
@@ -73,6 +73,9 @@
 								<label for="short_name">Short name</label>
 								<input name="short_name" type="text" class="form-control" id="short_name" placeholder="Enter an alias" value=""/>
 							</div>
+							{% with template_name=container|add:"_edition_creations_en.html" %}
+							{% templatetag openblock %} include "statics/{{template_name}}" {% templatetag closeblock %}
+							{% endwith %}
 						</div>
 						<div class="modal-footer">
 							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

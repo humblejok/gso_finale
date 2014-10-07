@@ -18,6 +18,7 @@ from django.db.models import Q
 from finale.settings import STATICS_PATH
 
 from django.http.response import HttpResponse
+from finale.utils import complete_fields_information
 
 
 LOGGER = logging.getLogger(__name__)
@@ -31,21 +32,28 @@ def list(request):
     effective_class = classes.my_class_import(effective_class_name)
     results = effective_class.objects.all().order_by('name')
     context = {'containers': results, 'container_type': container_type, 'container_label': Attributes.objects.get(identifier=container_type).name}
-    return render(request, 'statics/' + container_type + '_results_list_en.html', context)
+    return render(request, 'statics/' + container_type + '_results_lists_en.html', context)
 
 def setup_save(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
+    
     container_setup = request.POST['container_setup']
+    container_setup = json.loads(container_setup)
+    
     item = request.POST['item']
     item_view_type = request.POST['type']
     item_render_name = request.POST['render_name']
-    container_setup = json.loads(container_setup)
-    print container_setup
+    
+    container_class = container_setup["type"] + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
     all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
     all_data[container_setup["type"]] = container_setup["fields"]
     getattr(setup_content, 'set_' + item + '_' + item_view_type)(all_data)
-    context = Context({"fields": container_setup["fields"], "container" : container_setup["type"]})
+    context = Context({"fields":complete_fields_information(effective_class,  container_setup["fields"]), "container" : container_setup["type"]})
     template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
     rendition = template.render(context)
     # TODO Implement multi-langage

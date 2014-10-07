@@ -63,7 +63,13 @@ def batch(iterable, n = 1):
     l = len(iterable)
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx+n, l)]
-        
+
+def complete_fields_information(model_class, information):
+    all_fields = get_static_fields(model_class)
+    for field in information:
+        information[field].update(all_fields[field])
+    return information
+
 def get_static_fields(clazz, trail = []):
     object_static_fields = {}
     LOGGER.debug("Parsing ->" + str(clazz))
@@ -79,12 +85,36 @@ def get_static_fields(clazz, trail = []):
                     else:
                         linked_to = {}
                     if foreign_class.__name__!=clazz.__name__ and foreign_class.__name__ not in trail:
-                        object_static_fields[field_name] = {'type': clazz._meta.get_field(field_name).get_internal_type(), 'fields': get_static_fields(foreign_class, trail + [foreign_class.__name__]), 'link': linked_to, 'filter': foreign_class.get_filtering_field() if getattr(foreign_class, 'get_filtering_field', None)!=None else None}
+                        object_static_fields[field_name] = {'type': clazz._meta.get_field(field_name).get_internal_type(),
+                                                            'fields': get_static_fields(foreign_class, trail + [foreign_class.__name__]),
+                                                            'link': linked_to,
+                                                            'filter': foreign_class.get_filtering_field() if getattr(foreign_class, 'get_filtering_field', None)!=None else None,
+                                                            'target_class': foreign_class.__module__ + '.' + foreign_class.__name__}
                     else:
                         # TODO Get effective type, you'll never know if you won't need it in the future
-                        object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT', 'link': linked_to}
+                        object_static_fields[field_name] = {'type': 'FIELD_TYPE_CHOICE', 'link': linked_to}
                 else:
-                    object_static_fields[field_name] = {'type': 'FIELD_TYPE_TEXT'}
+                    object_static_fields[field_name] = {'type': get_internal_type(clazz._meta.get_field(field_name).get_internal_type())}
         except FieldDoesNotExist:
             None
     return object_static_fields
+
+def get_internal_type(external_type):
+    if external_type=='BooleanField':
+        return 'FIELD_TYPE_CHOICE'
+    elif external_type=='CharField':
+        return 'FIELD_TYPE_TEXT'
+    elif external_type=='TextField':
+        return 'FIELD_TYPE_TEXT'
+    elif external_type=='DateField':
+        return 'FIELD_TYPE_DATE'
+    elif external_type=='DateTimeField':
+        return 'FIELD_TYPE_DATETIME'
+    elif external_type=='AutoField':
+        return 'FIELD_TYPE_INTEGER'
+    elif external_type=='FloatField':
+        return 'FIELD_TYPE_FLOAT'
+    elif external_type=='IntegerField':
+        return 'FIELD_TYPE_INTEGER'
+    
+    return 'FIELD_TYPE_TEXT'

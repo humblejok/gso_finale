@@ -10,6 +10,7 @@
 	var allItems = {{global|safe}};
 	var initialLoad = true;
 	var allFields = {};
+	var filteringEntry;
 
 	var currentOption;
 	var currentOptionIndex = 0;
@@ -74,8 +75,16 @@
 	}
 
 	function filteringEntryLoaded(e) {
+		filteringEntry = {};
 		$.each(e.result, function(index, value) {
 			$("#filtersList").append("<div id='source_" + value.identifier + "' class='list-group-item' draggable='true' ondragstart='drag(event)' identifier=" + value.identifier + ">" + value.name + "</div>");
+			filteringEntry[value.identifier] = value.name;
+		});
+		$.each(allItems[$("#containerType").val()][currentOption].options, function(index, value) {
+			addGroup(true);
+			$.each(value, function(subIndex, subValue) {
+				$("#groupsList :nth-child(" + currentOptionIndex + ")").append("<div id='target_" + subValue + "' class='list-group-item' onclick='removeDropped(this)'>" + filteringEntry[subValue] + "</div>");
+			});
 		});
 	}
 
@@ -103,6 +112,8 @@
 		$('#filtersList').empty();
 		$('#groupsList').empty();
 
+		currentOptionIndex = 0;
+
 		currentOption = fieldName;
 
 		var queryForm = new FormData();
@@ -120,9 +131,11 @@
 		});
 	}
 
-	function addGroup() {
+	function addGroup(building) {
 		$("#groupsList").append('<div class="list-group-item top-level-group" ondrop="drop(event)" ondragover="allowDrop(event)" id="group_' + currentOptionIndex + '"></div>');
-		allItems[$("#containerType").val()][currentOption].options.push(new Array());
+		if (!building) {
+			allItems[$("#containerType").val()][currentOption].options.push(new Array());
+		}
 		currentOptionIndex = currentOptionIndex + 1;
 	}
 
@@ -140,7 +153,9 @@
 			if (!allItems.hasOwnProperty($("#containerType").val())) {
 				allItems[$("#containerType").val()] = {};
 			}
-			allItems[$("#containerType").val()][fieldName] = {'field': fieldName, 'options':[]};
+			if (!allItems[$("#containerType").val()].hasOwnProperty(fieldName)) {
+				allItems[$("#containerType").val()][fieldName] = {'field': fieldName, 'options':[]};
+			}
 		}
 		$(".main-" + fieldName).toggleClass("list-group-item-success");
 
@@ -241,10 +256,10 @@
 					<form id="create_form_internal" role="form" action="#" method="POST">{% csrf_token %}
 						<div id="optionBody"  class="modal-body">
 							<div class="row">
-								<h4>Create an new group and then drag a filtering option in that group</h4>
+								<h4>Create a new group and then drag a filtering option in that group</h4>
 								<h6>Each group indicates a mandatory user input. All filters within a group are "OR" relations.</h6>
 							<div>
-							<div class="row"><a id="addButton" class="btn btn-default col-lg-10 col-lg-offset-1" onclick="addGroup()">Add a group</a></div>
+							<div class="row"><a id="addButton" class="btn btn-default col-lg-10 col-lg-offset-1" onclick="addGroup(false)">Add a group</a></div>
 							<div class="row">&nbsp;</div>
 							<div class="row">
 								<div id="filtersList" class="col-lg-4 col-lg-offset-1 list-group"></div>
@@ -253,8 +268,7 @@
 						</div>
 					</form>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Confirm options setup" onclick="">Validate</button>
+						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Close the popup" onclick="" data-dismiss="modal">Close</button>
 					</div>
 				</div>
 			</div>
