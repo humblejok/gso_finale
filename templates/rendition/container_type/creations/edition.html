@@ -1,15 +1,28 @@
 {% load universe_tags %}
-							{% for entry in fields %}
-							{% with current_field=fields|get_dict_key:entry%}
+							{% for entry in complete_fields %}
+							{% with current_field=complete_fields|get_dict_key:entry%}
 							{% if current_field.options %}
+							{% for option in current_field.options %}
 							<div class="form-group">
-								<label for="{{current_field.field}}">{{current_field.field}} {{current_field.target_class}} - {{current_field.link}} - {{current_field.filter}}</label>
-								<input name="{{current_field.field}}" type="text" class="form-control" id="{{current_field.field}}" placeholder="Enter a {{current_field.field}}" value=""/>
+								<label for="{{current_field.field}}">{{current_field.field}}</label>
+								<select id="{{current_field.field}}-{{current_field.filter}}" name="{{current_field.field}}-{{current_field.filter}}" class="form-control">
+									{% with value="" active_list=option %}
+										{% include current_field.template %}
+									{% endwith %}
+								</select>
+								<input name="{{current_field.field}}" id="{{current_field.field}}" type="text" class="form-control with-autocomplete" placeholder="Enter a {{current_field.field}}" value="" datasource="{{current_field.datasource}}"/>
 							</div>
+							{% endfor %}
 							{% else %}
 							<div class="form-group">
-								<label for="{{current_field.field}}">{{current_field.field}} {{current_field.target_class}} - {{current_field.link}} - {{current_field.filter}}</label>
+								<label for="{{current_field.field}}">{{current_field.field}}</label>
+								{% if current_field.template %}
+									<select id="{{current_field.field}}" name="{{current_field.field}}" class="form-control">
+									{% include current_field.template %}
+									</select>
+								{% else %}
 								<input name="{{current_field.field}}" type="text" class="form-control{% if current_field.type == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{current_field.field}}" placeholder="Enter a {{current_field.field}}" value=""/>
+								{% endif %}
 							</div>
 							{% endif %}
 							{% endwith %}

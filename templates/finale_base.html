@@ -4,10 +4,10 @@
 	<head>
 		<title>{% block title %}Financial Lightweight Editor{% endblock %}</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<link href="/static/css/gammasimos.css" rel="stylesheet" type="text/css"/>
-		<link href="/static/css/sequoia.css" rel="stylesheet" type="text/css"/>
 		<link href="/static/themes/redmond/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
 		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/css/gammasimos.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/css/sequoia.css" rel="stylesheet" type="text/css"/>
 		<script src="/static/jquery-2.1.0.min.js" type="text/javascript"></script>
 		<script src="/static/jquery-ui.js" type="text/javascript"></script>
 		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
@@ -57,7 +57,38 @@
 						e.preventDefault();
 					}
 				});
+
 				$(".date-form-field").datepicker({ dateFormat: "yy-mm-dd" });
+
+				$(".with-autocomplete").each(function(index, value){
+					value = $(value);
+					value.autocomplete({
+						source: function(request, response) {
+							$.ajax({
+								url: value.attr("datasource") + "&term=" + request.term,
+								type: 'GET',
+								dataType: 'json',
+								processData: false,
+								contentType: false,
+								success: function(data) {
+									response(
+										$.map(data.result, function(item) {
+											console.log(item);
+											return {
+												id: item.id,
+												label: item.name,
+												value: item.name,
+											};
+										})
+									);
+								},
+								error: taskFailed
+							});
+						},
+						minLength: 2,
+					});
+				});
+
 		     	{% block readyoptions %}
 		     	{% endblock %}
 			});

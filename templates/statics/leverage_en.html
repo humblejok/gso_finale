@@ -1,1 +1,1 @@
-<option value='LEVERAGE_NONE' {% if value == 'LEVERAGE_NONE' %}selected{% endif %}>None</option>
+{% if not active_list or "LEVERAGE_NONE" in active_list %}<option value='LEVERAGE_NONE' {% if value == 'LEVERAGE_NONE' %}selected{% endif %}>None</option>{% endif %}

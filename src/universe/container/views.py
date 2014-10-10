@@ -18,12 +18,15 @@ from django.db.models import Q
 from finale.settings import STATICS_PATH
 
 from django.http.response import HttpResponse
-from finale.utils import complete_fields_information
+from finale.utils import complete_fields_information, dict_to_json_compliance
+from django.forms.models import model_to_dict
+from json import dumps
+from bson import json_util
 
 
 LOGGER = logging.getLogger(__name__)
 
-def list(request):
+def lists(request):
     # TODO: Check user
     container_type = request.GET['item']
     container_class = container_type + '_CLASS'
@@ -53,7 +56,14 @@ def setup_save(request):
     all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
     all_data[container_setup["type"]] = container_setup["fields"]
     getattr(setup_content, 'set_' + item + '_' + item_view_type)(all_data)
-    context = Context({"fields":complete_fields_information(effective_class,  container_setup["fields"]), "container" : container_setup["type"]})
+    data_as_dict = container_setup["fields"]
+    # TODO Clean the mess
+    if isinstance(container_setup["fields"], list):
+        data_as_dict = {}
+        for field in container_setup["fields"]:
+            if '.' not in field:
+                data_as_dict[field] = {'name': field}
+    context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
     template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
     rendition = template.render(context)
     # TODO Implement multi-langage
@@ -74,7 +84,6 @@ def definition_save(request):
     setup_content.set_container_type_fields(all_data)
     return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
-
 def base_edit(request):
     # TODO: Check user
     container_type = request.POST['container_type']
@@ -94,12 +103,33 @@ def base_edit(request):
             return redirect('/containers.html?item=' + container_type)
     else:
         source = effective_class()
-    
+    # Initial setup
+    # TODO: Check if name already exists for that container type
     source.type = container_attribute
     source.name = request.POST['name']
     source.short_name = request.POST['short_name']
     source.status = active_status
     source.save()
+    # Working on creations mandatory fields
+    creation_data = setup_content.get_container_type_creations()
+    if creation_data.has_key(container_type):
+        creation_data = creation_data[container_type]
+    else:
+        creation_data = {}
+    creation_data = complete_fields_information(effective_class,  creation_data)
+    for field in creation_data.keys():
+        if creation_data[field]['type'] in ['ForeignKey', 'ManyToManyField']:
+            if creation_data[field]['type']=='ForeignKey':
+                # TODO: Implement not attribute
+                setattr(source, field, Attributes.objects.get(identifier=request.POST[field], active=True))
+                source.save()
+            else:
+                target_class = classes.my_class_import(creation_data[field]['target_class'])
+                new_instance = target_class.retrieve_or_create(source, 'FinaLE', request.POST[field + '-' + creation_data[field]['filter']], request.POST[field])
+                setattr(source, field,[new_instance])
+                source.save()
+        else:
+            setattr(source, field, request.POST[field])
     return redirect('/containers.html?item=' + container_type)
 
 def delete(request):
@@ -131,10 +161,37 @@ def get(request):
     return render(request,'container/' + container.type.identifier + '.html', context)
 
 
+def filters(request):
+    user = User.objects.get(id=request.user.id)
+    if request.GET.has_key('container_type'):
+        container_type = request.GET['container_type']
+        container_class = container_type + '_CLASS'
+        effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    else:
+        effective_class_name = request.GET['container_class']
+    effective_class = classes.my_class_import(effective_class_name)
+    if getattr(effective_class,'get_querying_class', None)!=None:
+        effective_class = effective_class.get_querying_class()
+    searching = request.GET['term']
+    query_filter = None
+    for field in effective_class.get_querying_fields():
+        query_dict = {}
+        field = field.replace('.','__') + '__icontains'
+        query_dict[field] = searching
+        if query_filter==None:
+            query_filter = Q(**query_dict)
+        else:
+            query_filter = query_filter | Q(**query_dict)
+    results = effective_class.objects.filter(query_filter).distinct()
+    results = dumps([dict_to_json_compliance(model_to_dict(item)) for item in results], default=json_util.default)
+    print results
+    return HttpResponse('{"result": ' + results + ', "status_message": "Deleted"}',"json")
+
 def search(request):
     context = {}
     try:
         searching = request.POST[u'searching']
+        
         if not isinstance(searching, basestring):
             searching = searching[0]
         action = request.POST['action']

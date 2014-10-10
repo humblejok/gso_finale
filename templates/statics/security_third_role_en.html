@@ -1,1 +1,1 @@
-<option value='STR_IM' {% if value == 'STR_IM' %}selected{% endif %}>Investment Manager</option><option value='STR_RM' {% if value == 'STR_RM' %}selected{% endif %}>Relationship Manager</option>
+{% if not active_list or "STR_IM" in active_list %}<option value='STR_IM' {% if value == 'STR_IM' %}selected{% endif %}>Investment Manager</option>{% endif %}{% if not active_list or "STR_RM" in active_list %}<option value='STR_RM' {% if value == 'STR_RM' %}selected{% endif %}>Relationship Manager</option>{% endif %}

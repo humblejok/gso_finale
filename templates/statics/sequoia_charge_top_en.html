@@ -1,1 +1,1 @@
-<option value='SEQUOIA_CHARGE_TOP_AR' {% if value == 'SEQUOIA_CHARGE_TOP_AR' %}selected{% endif %}>Advisor &amp; Research</option>
+{% if not active_list or "SEQUOIA_CHARGE_TOP_AR" in active_list %}<option value='SEQUOIA_CHARGE_TOP_AR' {% if value == 'SEQUOIA_CHARGE_TOP_AR' %}selected{% endif %}>Advisor &amp; Research</option>{% endif %}

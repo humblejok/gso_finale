@@ -60,13 +60,14 @@ urlpatterns = patterns('',
     url(r'^financials_bloomberg_wizard_execute.html', 'universe.views.bloomberg_wizard_execute', name='bloomberg_wizard_execute', kwargs={'entity':'financials'}),
 
     # Containers views
-    url(r'^containers.html', 'universe.container.views.list', name='containers'),
+    url(r'^containers.html', 'universe.container.views.lists', name='containers'),
     url(r'^container_definition_save.html','universe.container.views.definition_save', name='container_definition_save'),
     url(r'^container_delete.html', 'universe.container.views.delete', name='container_delete'),
     url(r'^container_get.html', 'universe.container.views.get', name='container_get'),
     url(r'^container_setup_save.html', 'universe.container.views.setup_save', name='container_setup_save'),
     url(r'^container_search.html', 'universe.container.views.search', name='container_search'),
     url(r'^container_base_edit.html', 'universe.container.views.base_edit', name='container_base_edit'),
+    url(r'^container_filter.html', 'universe.container.views.filters', name='container_filter'),
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

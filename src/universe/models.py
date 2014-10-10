@@ -21,6 +21,7 @@ import os
 import xlrd
 import traceback
 from django.template.context import Context
+import universe
 
 LOGGER = logging.getLogger(__name__)
 
@@ -715,6 +716,10 @@ class Alias(CoreModel):
         return ['alias_type','alias_value','alias_additional']
     
     @staticmethod
+    def get_querying_fields():
+        return ['alias_value','alias_additional']
+
+    @staticmethod
     def get_filtering_field():
         return "alias_type"
     
@@ -726,10 +731,10 @@ class Alias(CoreModel):
         else:
             translation = key
 
-        alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
+        alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
         if not parent.aliases.filter(alias_type__id=alias_type.id).exists():
             new_alias = Alias()        
-            new_alias.alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(name=translation) | Q(short_name=translation))
+            new_alias.alias_type = alias_type
             new_alias.alias_value = value
             new_alias.alias_additional = ''
             new_alias.save()
@@ -775,6 +780,10 @@ class Container(CoreModel):
                 None
         self.save()
         
+    @staticmethod
+    def get_querying_fields():
+        return ['name', 'short_name', 'short_description']
+        
     def clean(self):
         self.many_fields = {}
         for field_name in self._meta.get_all_field_names():
@@ -814,6 +823,10 @@ class FinancialContainer(Container):
     
     frequency = models.ForeignKey(Attributes, limit_choices_to={'type':'frequency'}, related_name='financial_frequency_rel', null=True)
     frequency_reference = models.ForeignKey(Attributes, limit_choices_to={'type':'date_reference'}, related_name='financial_date_reference_rel', null=True)
+    
+    @staticmethod
+    def get_querying_fields():
+        return ['name', 'short_name', 'short_description']
     
     def update_alias(self, alias_type, value, additional = '', append = False):
         wrk_alias = self.aliases.filter(alias_type__id=alias_type.id)
@@ -886,6 +899,10 @@ class PersonContainer(ThirdPartyContainer):
     
     def get_short_json(self):
         return {'id': self.id, 'first_name': self.first_name, 'last_name': self.last_name}
+    
+    @staticmethod
+    def get_querying_fields():
+        return ['name', 'short_name', 'short_description', 'first_name', 'last_name']
 
 class CompanySubsidiary(CoreModel):
     company = models.ForeignKey('CompanyContainer', null=True)
@@ -900,6 +917,10 @@ class CompanySubsidiary(CoreModel):
     @staticmethod
     def get_filtering_field():
         return "role"
+    
+    @staticmethod
+    def get_querying_class():
+        return universe.models.CompanyContainer
 
 class CompanyMember(CoreModel):
     person = models.ForeignKey(PersonContainer, null=True)
@@ -914,6 +935,10 @@ class CompanyMember(CoreModel):
     @staticmethod
     def get_filtering_field():
         return "role"
+    
+    @staticmethod
+    def get_querying_class():
+        return PersonContainer
 
 class CompanyContainer(ThirdPartyContainer):
     members = models.ManyToManyField(CompanyMember)
@@ -927,6 +952,10 @@ class CompanyContainer(ThirdPartyContainer):
         is_provider = RelatedCompany.objects.filter(company=self, role=data_provider).exists()
 
         return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'provider': is_provider}
+    
+    @staticmethod
+    def get_querying_fields():
+        return ['name', 'short_name']
 
 class AccountContainer(FinancialContainer):
     account_type = models.ForeignKey(Attributes, limit_choices_to={'type':'account_type'}, related_name='account_type_rel', null=True)
@@ -937,7 +966,11 @@ class AccountContainer(FinancialContainer):
     
     @staticmethod
     def get_filtering_field():
-        return "account_type"
+        return 'account_type'
+    
+    @staticmethod
+    def get_querying_class():
+        return CompanyContainer
     
 class RelatedCompany(CoreModel):
     company = models.ForeignKey(CompanyContainer, null=True)
@@ -952,6 +985,10 @@ class RelatedCompany(CoreModel):
     @staticmethod
     def get_filtering_field():
         return "role"
+    
+    @staticmethod
+    def get_querying_class():
+        return CompanyContainer
     
     @staticmethod
     def retrieve_or_create(parent, source, key, value):
@@ -973,7 +1010,7 @@ class RelatedCompany(CoreModel):
             company.save()
             
         new_relation = RelatedCompany()        
-        new_relation.role = Attributes.objects.get(Q(active=True), Q(type='security_company_role'), Q(name=translation) | Q(short_name=translation))
+        new_relation.role = Attributes.objects.get(Q(active=True), Q(type='security_company_role'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
         new_relation.company = company
         new_relation.save()
         return new_relation
@@ -991,6 +1028,35 @@ class RelatedThird(CoreModel):
     @staticmethod
     def get_filtering_field():
         return "role"
+    
+    @staticmethod
+    def get_querying_class():
+        return universe.models.PersonContainer
+    
+    @staticmethod
+    def retrieve_or_create(parent, source, key, value):
+        translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
+        if translation.exists():
+            translation = translation[0].short_name
+        else:
+            translation = key
+        third = PersonContainer.objects.filter(name=value)
+        if third.exists():
+            third = third[0]
+        else:
+            third = PersonContainer()
+            third.name = value
+            third.short_name = 'Company...'
+            tbv = Attributes.objects.get(active=True, type='status', identifier='STATUS_TO_BE_VALIDATED')
+            third.status = tbv
+            third.type = Attributes.objects.get(active=True, type='container_type', identifier='CONT_PERSON')
+            third.save()
+            
+        new_relation = RelatedThird()        
+        new_relation.role = Attributes.objects.get(Q(active=True), Q(type='security_third_role'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
+        new_relation.third = third
+        new_relation.save()
+        return new_relation
     
 class PortfolioContainer(FinancialContainer):
     accounts = models.ManyToManyField('AccountContainer', related_name='portfolio_accounts_rel')
@@ -1052,6 +1118,10 @@ class SecurityContainer(FinancialContainer):
             currency = ''
         
         return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'currency': currency, 'isin': isin, 'bloomberg': bloomberg}
+    
+    @staticmethod
+    def get_querying_fields():
+        return ['name', 'short_name', 'short_description']
 
 class BacktestContainer(FinancialContainer):
     universe = models.ForeignKey(Universe, related_name='backtest_universe_rel')

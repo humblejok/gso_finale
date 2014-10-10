@@ -1,1 +1,1 @@
-<option value='HISTORY_COMPLETION_NONE' {% if value == 'HISTORY_COMPLETION_NONE' %}selected{% endif %}>None</option>
+{% if not active_list or "HISTORY_COMPLETION_NONE" in active_list %}<option value='HISTORY_COMPLETION_NONE' {% if value == 'HISTORY_COMPLETION_NONE' %}selected{% endif %}>None</option>{% endif %}

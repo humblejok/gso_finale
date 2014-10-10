@@ -27,34 +27,26 @@
 				<table id="portfoliosTable" class="table table.striped">
 					<tr>
 						
-						<th>name</th>
-						
-						<th>short_name</th>
+						<th>closed_date</th>
 						
 						<th>inception_date</th>
 						
-						<th>status.name</th>
+						<th>name</th>
 						
-						<th>frequency.name</th>
-						
-						<th>currency.short_name</th>
+						<th>short_name</th>
 						
 						<th></th>
 					</tr>
 					{% for item in containers %}
 					<tr>
 						
-						<td>{{item.name}}</td>
-						
-						<td>{{item.short_name}}</td>
+						<td>{{item.closed_date}}</td>
 						
 						<td>{{item.inception_date}}</td>
 						
-						<td>{{item.status.name}}</td>
+						<td>{{item.name}}</td>
 						
-						<td>{{item.frequency.name}}</td>
-						
-						<td>{{item.currency.short_name}}</td>
+						<td>{{item.short_name}}</td>
 						
 						<td>
 							<div class="btn-group">
@@ -94,7 +86,7 @@
 								<input name="short_name" type="text" class="form-control" id="short_name" placeholder="Enter an alias" value=""/>
 							</div>
 							
-							{% include "statics/CONT_PORTFOLIO_edition_creations_en.html" %}
+							{% include "statics/CONT_COMPANY_edition_creations_en.html" %}
 							
 						</div>
 						<div class="modal-footer">

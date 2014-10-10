@@ -68,6 +68,13 @@ def complete_fields_information(model_class, information):
     all_fields = get_static_fields(model_class)
     for field in information:
         information[field].update(all_fields[field])
+        if information[field]['type'] in ['ForeignKey', 'ManyToManyField']:
+            if information[field]['target_class']=='universe.models.Attributes':
+                information[field]['template'] = 'statics/' + information[field]['link']['type'] + '_en.html'
+            else:
+                information[field]['template'] = 'statics/' + information[field]['fields'][information[field]['filter']]['link']['type'] + '_en.html'
+                information[field]['datasource'] = '/container_filter.html?container_class=' + information[field]['target_class']
+                
     return information
 
 def get_static_fields(clazz, trail = []):
@@ -118,3 +125,18 @@ def get_internal_type(external_type):
         return 'FIELD_TYPE_INTEGER'
     
     return 'FIELD_TYPE_TEXT'
+
+def dict_to_json_compliance(data):
+    if isinstance(data, datetime.date):
+        new_data = data.strftime('%Y-%m-%d')
+    elif isinstance(data, datetime.datetime):
+        new_data = data.strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(data, dict):
+        new_data = {}
+        for key in data.keys():
+            new_data[key] = dict_to_json_compliance(data[key])
+    elif isinstance(data, list):   
+        new_data = [dict_to_json_compliance(item) for item in data] 
+    else:
+        return data
+    return new_data
