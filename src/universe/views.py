@@ -184,8 +184,6 @@ def check_execution(request):
     else:
         return HttpResponse('{"result": false, "status_message":' + str(cache.get(response_key)) + '}',"json")
 
-
-
 def custom_edit(request):
     # TODO: Check user
     container_id = request.GET['container_id']
