@@ -46,14 +46,14 @@
 						});
 						$("#" + valueCharge.identifier + "-" + valueFees.identifier + "-sum").val(currentSum);
 					});
+					var currentSum = 0.0;
 					$.each(all_types["sequoia_charge_low"], function(indexCharge, valueCharge) {
-						var currentSum = 0.0;
 						$.each($("[id^='" + valueCharge.identifier + "-" + valueFees.identifier + "-rate-']"), function(index, value) {
 							var info = String(this.id).split('-');
 							workingData[info[1]][info[0]][info[3]] = {"bud": $("#" + String(this.id).replace("-rate-","-bud-")).val(), "rate": parseFloat($(value).val())};
 							currentSum += parseFloat($(value).val());
 						});
-						$("#" + valueCharge.identifier + "-" + valueFees.identifier + "-sum").val(currentSum);
+						$("#" + valueFees.identifier + "-sum").val(currentSum);
 					});
 				});
 				saveData();
@@ -97,6 +97,17 @@
 						}
 					});
 
+				});
+
+
+				$.each(all_types["sequoia_fees_type"], function(indexFees, valueFees) {
+					var rowsCount = 0;
+					var summaryDone = false;
+					$.each(all_types["sequoia_charge_low"], function(indexCharge, valueCharge) {
+						if (workingData.hasOwnProperty(valueFees.identifier) && workingData[valueFees.identifier].hasOwnProperty(valueCharge.identifier)) {
+							rowsCount += workingData[valueFees.identifier][valueCharge.identifier].length;
+						}
+					});
 					$.each(all_types["sequoia_charge_low"], function(indexCharge, valueCharge) {
 						if (workingData.hasOwnProperty(valueFees.identifier) && workingData[valueFees.identifier].hasOwnProperty(valueCharge.identifier)) {
 							$.each(workingData[valueFees.identifier][valueCharge.identifier], function(indexEntry, valueEntry){
@@ -104,20 +115,20 @@
 								allNodesInternal += '<td class="swm-text text-center"><b>' + valueCharge.short_name + ' - ' + valueCharge.name + '</b></td>';
 								allNodesInternal += '<td><input id="' + valueCharge.identifier + '-' + valueFees.identifier + '-rate-' + indexEntry + '" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-rate-' + indexEntry + '" type="text" class="form-control text-center no-enter" value="' + valueEntry.rate + '" onchange="computeAndAssignSums()" onblur="computeAndAssignSums()"></td>';
 								allNodesInternal += '<td class="text-center"><b><select class="form-control" id="' + valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry + '" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry + '"></select></b></td>';
-								if (indexEntry===0) {
-									allNodesInternal += '<td class="text-center swm-whitetext-darkback valigned" rowspan="' + workingData[valueFees.identifier][valueCharge.identifier].length + '"><b>' + valueFees.short_name + '</b></td>';
+								if (!summaryDone) {
+									allNodesInternal += '<td class="text-center swm-whitetext-darkback valigned fees-column" rowspan="' + rowsCount + '"><b>' + valueFees.short_name + '</b></td>';
+									summaryDone = true;
 								}
 								allNodesInternal += '<td class="text-center"><a class="btn btn-default btn-sm" onclick="removeBUDEntry(\'' + valueCharge.identifier + '\',\'' + valueEntry.bud + '\',\'' + valueFees.identifier + '\')" role="button" data-toggle="modal" data-placement="bottom" title="Remove this entry from the BUD/MAP"><span class="glyphicon glyphicon-remove"></span></a></td>';
 								allNodesInternal += '</tr>';
 								budSelects.push(valueCharge.identifier + '-' + valueFees.identifier + '-bud-' + indexEntry);
 							});
-							if (workingData[valueFees.identifier][valueCharge.identifier].length>0) {
-								allNodesInternal += '<tr class="payout-content"><td></td><td class="text-center swm-text"><b><input id="' + valueCharge.identifier + '-' + valueFees.identifier + '-sum" name="' + valueCharge.identifier + '-' + valueFees.identifier + '-sum" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>';
-							}
 						}
 					});
+					allNodesInternal += '<tr class="payout-content"><td></td><td class="text-center swm-text"><b><input id="' + valueFees.identifier + '-sum" name="' + valueFees.identifier + '-sum" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>';
 
 				});
+
 				$("#externalTable").append(allNodesExternal);
 				$("#internalTable").append(allNodesInternal);
 						

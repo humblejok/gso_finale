@@ -202,8 +202,10 @@ def custom_edit(request):
         all_types_json[a_type.type] = [attribute.get_short_json() for attribute in Attributes.objects.filter(type=a_type.type, active=True).order_by('identifier')]
     context['all_types_json'] = dumps(all_types_json);
     content = getattr(external_content, 'get_' + custom_id + "_" + target)()
+    print content
     context['custom_data'] = content[container_id] if content.has_key(container_id) else getattr(external_content,'create_' + custom_id + '_' + target + '_entry')(container)
     context['custom_data_json'] = dumps(context['custom_data'])
+    print context['custom_data_json']
     return render(request, 'external/' + custom_id + '/' + target +'/edit.html', context)
 
 def custom_save(request):

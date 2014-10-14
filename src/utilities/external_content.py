@@ -380,12 +380,14 @@ def get_securities_by_isin(data_source, isin):
 def get_sequoia_map():
     results = custom.sequoia_map.find().sort("_id", -1)
     if results.count()>0:
+        LOGGER.info("Returned id [" + str(results[0]['_id']) + "]" )
         return results[0]
     else:
         return {}
     
 def set_sequoia_map(values):
     values['_id'] = epoch_time(datetime.datetime.today())
+    LOGGER.info("Stored id [" + str(values['_id']) + "]" )
     custom.sequoia_map.insert(values)
     
 def create_sequoia_map_entry(container):
