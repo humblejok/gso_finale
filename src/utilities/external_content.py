@@ -17,13 +17,13 @@ from universe.models import SecurityContainer, Attributes, BloombergTrackContain
 from finale.utils import get_bloomberg_provider, get_universe_from_datasource,\
     to_bloomberg_code
 from finale.threaded import bloomberg_history_query
-from utilities.track_content import set_track_content, get_track_content
+from utilities.track_content import set_track_content
+from seq_common.utils.dates import epoch_time
+from datetime import datetime as dt
 
 import logging
 import threading
 import uuid
-from seq_common.utils.dates import epoch_time
-from datetime import datetime as dt
 import datetime
 
 LOGGER = logging.getLogger(__name__)
@@ -376,18 +376,17 @@ def get_securities_by_isin(data_source, isin):
     if data_source=='guardian':
         return database['securities'].find({'cod_isin':isin})
     
-    
 def get_sequoia_map():
     results = custom.sequoia_map.find().sort("_id", -1)
     if results.count()>0:
-        LOGGER.info("Returned id [" + str(results[0]['_id']) + "]" )
+        LOGGER.debug("Returned id [" + str(results[0]['_id']) + "]" )
         return results[0]
     else:
         return {}
     
 def set_sequoia_map(values):
     values['_id'] = epoch_time(datetime.datetime.today())
-    LOGGER.info("Stored id [" + str(values['_id']) + "]" )
+    LOGGER.debug("Stored id [" + str(values['_id']) + "]" )
     custom.sequoia_map.insert(values)
     
 def create_sequoia_map_entry(container):

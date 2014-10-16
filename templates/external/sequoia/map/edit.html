@@ -125,7 +125,9 @@
 							});
 						}
 					});
-					allNodesInternal += '<tr class="payout-content"><td></td><td class="text-center swm-text"><b><input id="' + valueFees.identifier + '-sum" name="' + valueFees.identifier + '-sum" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>';
+					if (rowsCount>0) {
+						allNodesInternal += '<tr class="payout-content"><td></td><td class="text-center swm-text"><b><input id="' + valueFees.identifier + '-sum" name="' + valueFees.identifier + '-sum" type="text" class="form-control text-center no-enter" readonly value=""></b></td></tr>';
+					}
 
 				});
 
@@ -177,7 +179,7 @@
 			</div>
 		</div>
 		<div class="row">
-			<h2><p class="text-center"><u>ROLE MAP (Addendum to the Mandate)</u></p></h2>
+			<h2><p class="text-center"><u>ROLE MAP (Addendum to the Mandate)</u><a href="/custom_export.html?container_id={{container.id}}&custom=sequoia&target=map&file_type=excel"><img style="float: right;" src="/static/icons/excel-3-32.png" class="img-responsive" alt="Export to Excel"></a></p></h2>
 		</div>
 		<div class="row">&nbsp;</div>
 		<form>
