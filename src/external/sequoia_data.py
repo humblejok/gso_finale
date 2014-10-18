@@ -3,6 +3,11 @@ Created on Oct 16, 2014
 
 @author: sdejonckheere
 '''
+
+SEQUOIA_STYLES = { 'SWM': {},
+                   'SAM': {}
+                  }
+
 ROLE_MAPS_TEMPLATE = {'SWM':[
                             {1:{'text':"ROLE MAP (Addendum to the Mandate)", 'format':'title_format', 'merge':{'start':1,'end':7}}},
                             None,
