@@ -33,6 +33,7 @@ from django.template import loader
 from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH
 from django.db.models.fields import FieldDoesNotExist
 from django.forms.models import model_to_dict
+from openpyxl.writer.excel import save_virtual_workbook
 
 
 LOGGER = logging.getLogger(__name__)
@@ -184,8 +185,6 @@ def check_execution(request):
     else:
         return HttpResponse('{"result": false, "status_message":' + str(cache.get(response_key)) + '}',"json")
 
-
-
 def custom_edit(request):
     # TODO: Check user
     container_id = request.GET['container_id']
@@ -208,6 +207,23 @@ def custom_edit(request):
     context['custom_data_json'] = dumps(context['custom_data'])
     return render(request, 'external/' + custom_id + '/' + target +'/edit.html', context)
 
+def custom_export(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    custom_id = request.GET['custom']
+    target = request.GET['target']
+    file_type = request.GET['file_type']
+    container = FinancialContainer.objects.get(id=container_id)
+    if container.type.id==Attributes.objects.get(identifier='CONT_PORTFOLIO').id:
+        container = PortfolioContainer.objects.get(id=container_id)
+    else:
+        container = SecurityContainer.objects.get(id=container_id)
+    external = classes.my_import('external.' + custom_id)
+    content = getattr(external, 'export_' + target)(container, getattr(external_content, 'get_' + custom_id + "_" + target)()[str(container.id)])
+    # TODO: handle mime-type
+    return HttpResponse(save_virtual_workbook(content), content_type='application/vnd.ms-excel')
+        
 def custom_save(request):
     # TODO: Check user
     container_id = request.POST['container_id']

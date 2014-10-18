@@ -34,6 +34,7 @@ urlpatterns = patterns('',
     # Custom view
     url(r'^custom_edit.html', 'universe.views.custom_edit', name='custom_edit'),
     url(r'^custom_view.html', 'universe.views.custom_view', name='custom_view'),
+    url(r'^custom_export.html', 'universe.views.custom_export', name='custom_export'),
     url(r'^custom_save.html', 'universe.views.custom_save', name='custom_save'),
 
     # Universes related views

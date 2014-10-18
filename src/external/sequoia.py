@@ -10,6 +10,7 @@ import traceback
 import os
 from finale.settings import WORKING_PATH
 from openpyxl.workbook import Workbook
+from external.sequoia_data import ROLE_MAPS_TEMPLATE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +24,58 @@ def define_xslx_header(sheet, headers):
         row_index += 1
         col_index = 1
     return row_index
+
+def execute_row_command(ws, row, row_index, all_formats, data_map, query_date):
+    hide = False
+    if row!=None:
+        for col_index in row.keys():
+            if row[col_index].has_key('merge'):
+                row_span = row[col_index]['merge']['row_span'] if row[col_index]['merge'].has_key('row_span') else 0
+                ws.merge_cells(start_row=row_index, start_column=row[col_index]['merge']['start'], end_row=row_index + row_span,end_column=row[col_index]['merge']['end'])
+            if row[col_index].has_key('text'):
+                value = row[col_index]['text']
+                if not isinstance(row[col_index]['text'], basestring):
+                    # value = [ row[col_index]['text'][i] if i%2==1 else all_formats[row[col_index]['text'][i]] for i in range(0, len(row[col_index]['text']))]
+                    value = 'TO BE IMPLEMENTED'
+                    #all_formats[row[col_index]['format']])
+                ws.cell(row=row_index, column=col_index).value = value
+            elif row[col_index].has_key('value'):
+                try:
+                    value = eval(row[col_index]['value'])
+                except:
+                    value = 'TO BE IMPLEMENTED'
+                    # value = row[col_index]['default']
+                if row[col_index].has_key('field'):
+                    if value!=None:
+                        value = 'TO BE IMPLEMENTED'
+                        #   value = getattr(value, row[col_index]['field'])
+                    else:
+                        value = '' if row[col_index]['default']==None else row[col_index]['default']
+                        hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
+                    ws.cell(row=row_index, column=col_index).value = value
+                    # all_formats[row[col_index]['format']])
+            elif row[col_index].has_key('formula'):
+                # Same as value for the time being, may change in the future
+                value = row[col_index]['formula']
+                ws.cell(row=row_index, column=col_index).value = value
+                # ws.write(row_index, col_index, value, all_formats[row[col_index]['format']])
+    return hide
+
+def export_map(container, data, workbook = None):
+    if workbook==None:
+        workbook = Workbook()
+        sheet = workbook.active
+    else:
+        sheet = workbook.create_sheet()
+    sheet.title = container.short_name
+    xlsx_rows_setup = ROLE_MAPS_TEMPLATE['SWM']
+    row_index = 1
+    
+    for row in xlsx_rows_setup:
+        hide = execute_row_command(sheet, row, row_index, None, data, None)
+            
+        row_index = row_index + 1
+    return workbook
 
 def export(parameters):
     working_date = parameters['workingDate']
