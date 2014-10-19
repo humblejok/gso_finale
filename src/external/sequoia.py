@@ -94,7 +94,7 @@ def export_map(container, data, workbook = None):
             sheet.row_dimensions[row_index].height = 19.5
         else:
             if hide:
-                sheet.row_dimensions[row_index].height = 0.0
+                sheet.row_dimensions[row_index] = RowDimension(hidden=True)
             else:
                 sheet.row_dimensions[row_index].height=27.0
         row_index = row_index + 1
