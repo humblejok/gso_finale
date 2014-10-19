@@ -30,7 +30,7 @@ from bson.json_util import dumps
 import json
 from django.template.context import Context
 from django.template import loader
-from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH
+from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH, WORKING_PATH
 from django.db.models.fields import FieldDoesNotExist
 from django.forms.models import model_to_dict
 from openpyxl.writer.excel import save_virtual_workbook
@@ -222,7 +222,16 @@ def custom_export(request):
     external = classes.my_import('external.' + custom_id)
     content = getattr(external, 'export_' + target)(container, getattr(external_content, 'get_' + custom_id + "_" + target)()[str(container.id)])
     # TODO: handle mime-type
-    return HttpResponse(save_virtual_workbook(content), content_type='application/vnd.ms-excel')
+    if file_type=='excel':
+        xlsx_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        path = os.path.join(WORKING_PATH, custom_id + '_' + target + '_' + container.short_name + '.xlsx')
+        content.save(path)
+        with open(path,'rb') as f:
+            content = f.read()
+        response = HttpResponse(content,xlsx_mime)
+        split_path = os.path.split(path)
+        response['Content-Disposition'] = 'attachement; filename="' + split_path[len(split_path)-1] + '"'
+    return response
         
 def custom_save(request):
     # TODO: Check user

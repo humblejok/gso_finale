@@ -10,7 +10,8 @@ import traceback
 import os
 from finale.settings import WORKING_PATH
 from openpyxl.workbook import Workbook
-from external.sequoia_data import ROLE_MAPS_TEMPLATE
+from external.sequoia_data import ROLE_MAPS_TEMPLATE, SEQUOIA_STYLES
+from openpyxl.worksheet.dimensions import RowDimension
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,40 +26,52 @@ def define_xslx_header(sheet, headers):
         col_index = 1
     return row_index
 
-def execute_row_command(ws, row, row_index, all_formats, data_map, query_date):
+def get_name_from_identifier(identifier):
+    return Attributes.objects.get(identifier=identifier, active=True).name
+
+def get_details(data, target, fees_type, index):
+    if index<len(data[fees_type][target]):
+        data[fees_type][target][index]['rate'] /= 100.0
+        return data[fees_type][target][index]
+    else:
+        return {'bud': None, 'rate': None}
+
+def execute_row_command(ws, row, row_index, container, data_map, query_date):
     hide = False
     if row!=None:
+        LOGGER.debug("Row:" + str(row_index) + ' - ' + str(row))
         for col_index in row.keys():
-            if row[col_index].has_key('merge'):
-                row_span = row[col_index]['merge']['row_span'] if row[col_index]['merge'].has_key('row_span') else 0
-                ws.merge_cells(start_row=row_index, start_column=row[col_index]['merge']['start'], end_row=row_index + row_span,end_column=row[col_index]['merge']['end'])
             if row[col_index].has_key('text'):
                 value = row[col_index]['text']
                 if not isinstance(row[col_index]['text'], basestring):
                     # value = [ row[col_index]['text'][i] if i%2==1 else all_formats[row[col_index]['text'][i]] for i in range(0, len(row[col_index]['text']))]
                     value = 'TO BE IMPLEMENTED'
-                    #all_formats[row[col_index]['format']])
-                ws.cell(row=row_index, column=col_index).value = value
             elif row[col_index].has_key('value'):
                 try:
                     value = eval(row[col_index]['value'])
                 except:
-                    value = 'TO BE IMPLEMENTED'
-                    # value = row[col_index]['default']
+                    value = row[col_index]['default']
+                    hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
                 if row[col_index].has_key('field'):
-                    if value!=None:
-                        value = 'TO BE IMPLEMENTED'
-                        #   value = getattr(value, row[col_index]['field'])
+                    if value!=None and isinstance(value, dict):
+                        value = value[row[col_index]['field']]
                     else:
                         value = '' if row[col_index]['default']==None else row[col_index]['default']
-                        hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
-                    ws.cell(row=row_index, column=col_index).value = value
-                    # all_formats[row[col_index]['format']])
+                    hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
             elif row[col_index].has_key('formula'):
                 # Same as value for the time being, may change in the future
                 value = row[col_index]['formula']
-                ws.cell(row=row_index, column=col_index).value = value
+            ws.cell(row=row_index, column=col_index).value = value
+            if row[col_index].has_key('merge'):
+                row_span = row[col_index]['merge']['row_span'] if row[col_index]['merge'].has_key('row_span') else 0
+                ws.merge_cells(start_row=row_index, start_column=row[col_index]['merge']['start'], end_row=row_index + row_span,end_column=row[col_index]['merge']['end'])
+                for merge_index in range(row[col_index]['merge']['start'], row[col_index]['merge']['end'] + 1):
+                    ws.cell(row=row_index, column=merge_index).style = SEQUOIA_STYLES['SWM'][row[col_index]['format']]
+            else:
+                ws.cell(row=row_index, column=col_index).style = SEQUOIA_STYLES['SWM'][row[col_index]['format']]
                 # ws.write(row_index, col_index, value, all_formats[row[col_index]['format']])
+    else:
+        ws.cell(row=row_index, column=1).value = ''
     return hide
 
 def export_map(container, data, workbook = None):
@@ -70,11 +83,32 @@ def export_map(container, data, workbook = None):
     sheet.title = container.short_name
     xlsx_rows_setup = ROLE_MAPS_TEMPLATE['SWM']
     row_index = 1
-    
     for row in xlsx_rows_setup:
-        hide = execute_row_command(sheet, row, row_index, None, data, None)
-            
+        hide = execute_row_command(sheet, row, row_index, container, data, datetime.date.today() )
+        print str(row_index) + ' - ' + str(hide)
+        if row_index==1:
+            sheet.row_dimensions[row_index].height = 33.75
+        elif row_index==2:
+            sheet.row_dimensions[row_index].height = 32.25
+        elif row_index>74:
+            sheet.row_dimensions[row_index].height = 19.5
+        else:
+            if hide:
+                sheet.row_dimensions[row_index].height = 0.0
+            else:
+                sheet.row_dimensions[row_index].height=27.0
         row_index = row_index + 1
+    for col in range(1,10):
+        sheet.cell(row=row_index, column=col).value = ''
+    sheet.column_dimensions['A'].width = 35.71
+    sheet.column_dimensions['B'].width = 10
+    sheet.column_dimensions['C'].width = 47.71
+    sheet.column_dimensions['D'].width = 12
+    sheet.column_dimensions['E'].width = 8.43
+    sheet.column_dimensions['F'].width = 5.29
+    sheet.column_dimensions['G'].width = 10
+    sheet.column_dimensions['H'].width = 8.43
+    sheet.column_dimensions['I'].width = 8.43
     return workbook
 
 def export(parameters):
