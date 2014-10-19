@@ -31,8 +31,8 @@ def get_name_from_identifier(identifier):
 
 def get_details(data, target, fees_type, index):
     if index<len(data[fees_type][target]):
-        data[fees_type][target][index]['rate'] /= 100.0
-        return data[fees_type][target][index]
+        print data[fees_type][target][index]
+        return {'bud': get_name_from_identifier(data[fees_type][target][index]['bud']), 'rate': data[fees_type][target][index]['rate'] / 100.0}
     else:
         return {'bud': None, 'rate': None}
 
@@ -50,14 +50,17 @@ def execute_row_command(ws, row, row_index, container, data_map, query_date):
                 try:
                     value = eval(row[col_index]['value'])
                 except:
+                    traceback.print_exc()
                     value = row[col_index]['default']
                     hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
                 if row[col_index].has_key('field'):
+                    print value
                     if value!=None and isinstance(value, dict):
                         value = value[row[col_index]['field']]
                     else:
                         value = '' if row[col_index]['default']==None else row[col_index]['default']
-                    hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
+                        print "->" + str(value)
+                        hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
             elif row[col_index].has_key('formula'):
                 # Same as value for the time being, may change in the future
                 value = row[col_index]['formula']
