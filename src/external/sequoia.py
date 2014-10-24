@@ -50,12 +50,12 @@ def execute_row_command(ws, row, row_index, container, data_map, query_date):
                 try:
                     value = eval(row[col_index]['value'])
                 except:
-                    traceback.print_exc()
-                    value = row[col_index]['default']
-                    hide = hide or (row[col_index]['on_default_hide'] if row[col_index].has_key('on_default_hide') else False)
+                    if row[col_index].has_key('default'):
+                        value = row[col_index]['default']
+                    else:
+                        value = ''
                 if row[col_index].has_key('field'):
-                    print value
-                    if value!=None and isinstance(value, dict):
+                    if value!=None and isinstance(value, dict) and value[row[col_index]['field']]!=None:
                         value = value[row[col_index]['field']]
                     else:
                         value = '' if row[col_index]['default']==None else row[col_index]['default']
@@ -68,8 +68,9 @@ def execute_row_command(ws, row, row_index, container, data_map, query_date):
             if row[col_index].has_key('merge'):
                 row_span = row[col_index]['merge']['row_span'] if row[col_index]['merge'].has_key('row_span') else 0
                 ws.merge_cells(start_row=row_index, start_column=row[col_index]['merge']['start'], end_row=row_index + row_span,end_column=row[col_index]['merge']['end'])
-                for merge_index in range(row[col_index]['merge']['start'], row[col_index]['merge']['end'] + 1):
-                    ws.cell(row=row_index, column=merge_index).style = SEQUOIA_STYLES['SWM'][row[col_index]['format']]
+                for merge_row_index in range(row_index, row_index + row_span + 1):
+                    for merge_col_index in range(row[col_index]['merge']['start'], row[col_index]['merge']['end'] + 1):
+                        ws.cell(row=merge_row_index, column=merge_col_index).style = SEQUOIA_STYLES['SWM'][row[col_index]['format']]
             else:
                 ws.cell(row=row_index, column=col_index).style = SEQUOIA_STYLES['SWM'][row[col_index]['format']]
                 # ws.write(row_index, col_index, value, all_formats[row[col_index]['format']])

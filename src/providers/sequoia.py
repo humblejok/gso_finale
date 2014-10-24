@@ -32,10 +32,7 @@ def load_swm_map_file(path_to_file):
     header = []
     for column_index in range(1, sheet.get_highest_column() + 1):
         value = sheet.cell(row = row_index, column=column_index).value
-        if value!=None:
-            header.append(value if value!='' else header[-1])
-        else:
-            break
+        header.append(value if value!='' and value!=None else header[-1])
     row_index = row_index + 1
     LOGGER.info("Using the following header: " + str(header))
     while row_index<=sheet.get_highest_row():
@@ -109,7 +106,6 @@ def load_swm_map_file(path_to_file):
                     bud = bud[0].identifier
                     sequoia_map[portfolio_id][fee][charge].append({'rate':sheet.cell(row = row_index, column=index + 1).value * 100.0, 'bud': bud})
                 else:
-
                     LOGGER.warn("\tBUD not found [" + str(sheet.cell(row = row_index, column=index).value) + "]")
         row_index = row_index + 1
     external_content.set_sequoia_map(sequoia_map)

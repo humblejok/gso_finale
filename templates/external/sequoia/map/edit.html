@@ -10,6 +10,7 @@
 		<script>
 			var all_types = {{all_types_json|safe}}
 			var workingData = {{custom_data_json|safe}};
+			var initialDisplay = true;
 
 			function onCallError(e) {
 				alert(e.status);
@@ -56,7 +57,10 @@
 						$("#" + valueFees.identifier + "-sum").val(currentSum);
 					});
 				});
-				saveData();
+				if (!initialDisplay) {
+					saveData();
+				}
+				initialDisplay = false;
 			}
 
 			function removeBUDEntry(payout, bud, fees) {
@@ -134,12 +138,13 @@
 				$("#externalTable").append(allNodesExternal);
 				$("#internalTable").append(allNodesInternal);
 						
-
+				var doneLoad = 0;
 				$.each(budSelects, function(index, value) {
 					$("#" + value).load('/static/templates/sequoia_bud_select_en.html', function() {
 						var info = value.split('-');
 						$("#" + value).val(workingData[info[1]][info[0]][info[3]].bud);
-						if (index==budSelects.length-1) {
+						doneLoad = doneLoad + 1;
+						if (doneLoad==budSelects.length) {
 							computeAndAssignSums();
 						}
 					});
