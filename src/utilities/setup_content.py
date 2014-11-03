@@ -38,6 +38,14 @@ def set_object_type_fields(values):
             with open(outfile,'w') as o:
                 o.write(rendition.encode('utf-8'))
 
+
+def get_container_type_details():
+    results = setup.container_type_lists.find().sort("_id", -1)
+    if results.count()>0:
+        return results[0]
+    else:
+        return {}
+
 def get_container_type_lists():
     results = setup.container_type_lists.find().sort("_id", -1)
     if results.count()>0:
@@ -51,6 +59,10 @@ def get_container_type_creations():
         return results[0]
     else:
         return {}
+
+def set_container_type_details(values):
+    values['_id'] = epoch_time(datetime.datetime.today())
+    setup.container_type_lists.insert(values)
 
 def set_container_type_lists(values):
     values['_id'] = epoch_time(datetime.datetime.today())

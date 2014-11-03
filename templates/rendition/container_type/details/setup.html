@@ -1,0 +1,27 @@
+{% extends "finale_base.html" %}
+{% block title %}Financial Lightweight Editor - Setup{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">Details page definition</h1>
+	  			<p class="lead">Define the information and layout of the details page.<br/>
+			</div>
+		</div>
+		<div class="row">
+			<select class="form-control no-enter" id="containerType" name="containerType" onchange="containerChanged()">
+				{% with value='' %}
+					{% include selection_template %}
+				{% endwith %}
+			</select>
+			<b
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<button data-target="#modal_create_object" class="btn btn-default col-lg-3" type="button" data-toggle="modal" data-placement="bottom" title="Create a new object">Create</button>
+		</div>
+{% endblock %}
