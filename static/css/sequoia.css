@@ -1,3 +1,16 @@
+.gridster ul {
+  list-style-type: none;
+}
+
+.gridster .gs-w {
+    background: #EEE;
+    cursor: pointer;
+}
+
+.gridster .player {
+    background: #EEE;
+}
+
 .swm-text {
   color: #4F6228;
 }

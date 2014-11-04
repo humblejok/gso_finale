@@ -2,8 +2,32 @@
 {% block title %}Financial Lightweight Editor - Setup{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
+				gridster = $(".gridster ul").gridster({
+					widget_margins: [10, 10],
+					widget_base_dimensions: [340, 340],
+					resize: {
+						enabled: true,
+						max_size: [4, 4],
+						min_size: [1, 1]
+					}
+				}).data('gridster');
 {% endblock %}
 {% block headeroptions %}
+<script>
+	var currentItem = 0;
+	var emptyWidget = "<li><div class='form-group'>&nbsp;</div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div></li>";
+								
+								
+	var gridster;
+	
+	function addWidget() {
+		gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),1,1]);
+		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {});
+		
+		currentItem = currentItem + 1;
+	}
+
+</script>
 {% endblock %}
 {% block content %}
 		<div class="row">
@@ -22,6 +46,14 @@
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">
-			<button data-target="#modal_create_object" class="btn btn-default col-lg-3" type="button" data-toggle="modal" data-placement="bottom" title="Create a new object">Create</button>
+			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick="addWidget()">Add</button>
+		</div>
+		<div class="row">
+			<form class="form-horizontal" role="form">
+				<div id="layoutGrid" class="gridster col-lg-12">
+					<ul id="layoutGridContent">
+					</ul>
+				</div>
+			</form>
 		</div>
 {% endblock %}
