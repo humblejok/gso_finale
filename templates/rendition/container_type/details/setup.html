@@ -2,6 +2,7 @@
 {% block title %}Financial Lightweight Editor - Setup{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
+				containerChanged();
 				gridster = $(".gridster ul").gridster({
 					widget_margins: [10, 10],
 					widget_base_dimensions: [340, 340],
@@ -15,16 +16,69 @@
 {% block headeroptions %}
 <script>
 	var currentItem = 0;
-	var emptyWidget = "<li><div class='form-group'>&nbsp;</div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div></li>";
+	var emptyWidget = "<li><div class='form-group'>&nbsp;</div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
 								
 								
 	var gridster;
+
+	var allFieldsInformation;
+	var allFields;
+	var singleFields;
+	var multipleFields;
+
+	function onCallError(e) {
+		alert(e.status);
+	}
+
+	function changeType(index) {
+
+	}
 	
 	function addWidget() {
 		gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),1,1]);
-		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {});
+		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {
+			$("#type_" + currentItem).attr('onclick','changeType(' + index + ')');
+		});
 		
 		currentItem = currentItem + 1;
+	}
+
+	function fieldsLoaded(e) {
+		allFieldsInformation = e.result;
+		allFields = [];
+		singleFields = [];
+		multipleFields = [];
+
+		$.each(e.result, function(index, value) {
+			allFields.push(index);
+		});
+		allFields.sort();
+		$.each(allFields, function(index, value) {
+			if (e.result[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+				singleFields.push(value);
+			} else {
+				if (e.result[value].type==='ForeignKey') {
+					singleFields.push(value);
+				} else {
+					multipleFields.push(value);
+				}
+			}
+		});
+	}
+
+	function containerChanged() {
+		initialLoad = true;
+		var fieldsForm = new FormData();
+		fieldsForm.append('container_type', $("#containerType").val());
+		$.ajax({
+			url: '/object_fields_get.html',
+			type: 'POST',
+			data: fieldsForm,
+			processData: false,
+			contentType: false,
+			success: fieldsLoaded,
+			error: onCallError
+		});
 	}
 
 </script>
