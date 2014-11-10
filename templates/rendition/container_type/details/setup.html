@@ -30,15 +30,72 @@
 		alert(e.status);
 	}
 
-	function changeType(index) {
+	function onForeignClick(index, fieldName) {
+		var target = "#fieldsList_" + index + " > ";
+		$(target + ".sub-" + fieldName).toggleClass("hidden");
+	}
 
+	function onFieldClick(index, fieldName) {
+		var target = "#fieldsList_" + index + " > ";
+		if (fieldName.indexOf(".")!==-1) {
+			var mainField = fieldName.substring(0, fieldName.indexOf("."));
+			var subField = fieldName.substring(fieldName.indexOf(".") + 1);
+			$(".main-" + mainField + ".multiple-master").removeClass("list-group-item-warning");
+
+			if ($(".main-" + subField + ".sub-" + mainField + ".list-group-item-info").length===1) {
+				
+			} else {
+				
+			}
+			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-success");
+			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-info");
+			if ($(".sub-" + mainField + ".list-group-item-success").length>0) {
+				$(".main-" + mainField + ".multiple-master").addClass("list-group-item-warning");
+			}
+		} else {
+			if ($(target + ".main-" + fieldName + ":not(.multiple-master)").hasClass("list-group-item-success")) {
+			} else {
+			}
+			$(target + ".main-" + fieldName + ":not(.multiple-slave)").toggleClass("list-group-item-success");
+		}
+
+	}
+
+	function changeType(index) {
+		var selectedType = $("#type_" + index).val();
+		$("#content_" + index).empty();
+		var htmlToAppend = "";
+		if (selectedType=="LAYOUT_OBJECT_TYPE_SINGLES") {
+			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 200px;'>";
+			$.each(singleFields, function(valueIndex, value) {
+				if (allFieldsInformation[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+					htmlToAppend += '<a class="list-group-item main-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '\')">' + value + '</a>';
+				} else {
+					htmlToAppend += '<a class="list-group-item multiple-master main-' + value + '" onclick="onForeignClick(' + index + ',\'' + value + '\')">' + value + '</a>';
+
+					var subCurrentList = [];
+					$.each(allFieldsInformation[value].fields, function(subIndex, subValue) {
+						subCurrentList.push(subIndex);
+					});
+					subCurrentList.sort();
+					$.each(subCurrentList, function (subIndex, subValue) {
+						htmlToAppend += '<a class="list-group-item list-group-item-info multiple-slave hidden main-' + subValue + ' sub-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '.' + subValue + '\')">' + subValue + '</a>';
+					});
+
+				}
+			});
+			htmlToAppend += "</div>";
+		}
+		$("#content_" + index).append(htmlToAppend);
 	}
 	
 	function addWidget() {
 		gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),1,1]);
+		var index = currentItem;
 		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {
-			$("#type_" + currentItem).attr('onclick','changeType(' + index + ')');
+			changeType(index);
 		});
+		$("#type_" + currentItem).attr('onchange','changeType(' + currentItem + ')');
 		
 		currentItem = currentItem + 1;
 	}
