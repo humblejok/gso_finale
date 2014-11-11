@@ -30,6 +30,10 @@
 		alert(e.status);
 	}
 
+	function saveLayout() {
+
+	}
+
 	function onForeignClick(index, fieldName) {
 		var target = "#fieldsList_" + index + " > ";
 		$(target + ".sub-" + fieldName).toggleClass("hidden");
@@ -102,6 +106,10 @@
 
 	function fieldsLoaded(e) {
 		allFieldsInformation = e.result;
+		for (var index=currentItem-1;index>=0;index--) {
+			gridster.remove_widget($('.gridster li').eq(index));
+		}
+		currentItem = 0;
 		allFields = [];
 		singleFields = [];
 		multipleFields = [];
@@ -158,6 +166,7 @@
 		<div class="row">&nbsp;</div>
 		<div class="row">
 			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick="addWidget()">Add</button>
+			<button class="btn btn-default col-lg-offset-6 col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick="saveLayout()">Save</button>
 		</div>
 		<div class="row">
 			<form class="form-horizontal" role="form">
