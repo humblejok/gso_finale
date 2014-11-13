@@ -17,8 +17,6 @@
 <script>
 	var currentItem = 0;
 	var emptyWidget = "<li><div class='form-group'>&nbsp;</div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
-								
-								
 	var gridster;
 
 	var allFieldsInformation;
@@ -26,12 +24,36 @@
 	var singleFields;
 	var multipleFields;
 
+	var blockData = {};
+
 	function onCallError(e) {
 		alert(e.status);
 	}
 
-	function saveLayout() {
+	function containerFieldsSaved(e) {
 
+	}
+
+	function saveLayout() {
+		var gridsterLayout = gridster.serialize();
+		var toSave = {"layout": gridsterLayout, "data": blockData};
+		var containerSetup = {}
+		containerSetup.type = $("#containerType").val();
+		containerSetup.information = toSave;
+		var updateForm = new FormData();
+		updateForm.append('container_setup', JSON.stringify(containerSetup));
+		updateForm.append('item',urlParams['item']);
+		updateForm.append('type',urlParams['type']);
+		updateForm.append('render_name','view');
+		$.ajax({
+			url: '/container_setup_save.html',
+			type: 'POST',
+			data: updateForm,
+			processData: false,
+			contentType: false,
+			success: containerFieldsSaved,
+			error: onCallError
+		});
 	}
 
 	function onForeignClick(index, fieldName) {
@@ -41,15 +63,20 @@
 
 	function onFieldClick(index, fieldName) {
 		var target = "#fieldsList_" + index + " > ";
+		var key = index.toString();
+		if (!blockData.hasOwnProperty(index)) {
+			blockData[key] = [];
+		}
 		if (fieldName.indexOf(".")!==-1) {
 			var mainField = fieldName.substring(0, fieldName.indexOf("."));
 			var subField = fieldName.substring(fieldName.indexOf(".") + 1);
+			var fullField = mainField + '.' + subField;
 			$(".main-" + mainField + ".multiple-master").removeClass("list-group-item-warning");
 
 			if ($(".main-" + subField + ".sub-" + mainField + ".list-group-item-info").length===1) {
-				
+				blockData[key].push(fullField);
 			} else {
-				
+				blockData[key].splice(blockData[key].indexOf(fullField), 1);
 			}
 			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-success");
 			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-info");
@@ -58,7 +85,9 @@
 			}
 		} else {
 			if ($(target + ".main-" + fieldName + ":not(.multiple-master)").hasClass("list-group-item-success")) {
+				blockData[key].splice(blockData[key].indexOf(fieldName), 1);
 			} else {
+				blockData[key].push(fieldName);
 			}
 			$(target + ".main-" + fieldName + ":not(.multiple-slave)").toggleClass("list-group-item-success");
 		}
@@ -166,7 +195,7 @@
 		<div class="row">&nbsp;</div>
 		<div class="row">
 			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick="addWidget()">Add</button>
-			<button class="btn btn-default col-lg-offset-6 col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick="saveLayout()">Save</button>
+			<button class="btn btn-default col-lg-offset-6 col-lg-3" type="button" data-placement="bottom" title="Save the current layout" onclick="saveLayout()">Save</button>
 		</div>
 		<div class="row">
 			<form class="form-horizontal" role="form">

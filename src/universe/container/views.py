@@ -54,16 +54,19 @@ def setup_save(request):
     effective_class = classes.my_class_import(effective_class_name)
     
     all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
-    all_data[container_setup["type"]] = container_setup["fields"]
+    all_data[container_setup["type"]] = container_setup['information' if item_view_type=='details' else 'fields']
     getattr(setup_content, 'set_' + item + '_' + item_view_type)(all_data)
-    data_as_dict = container_setup["fields"]
-    # TODO Clean the mess
-    if isinstance(container_setup["fields"], list):
-        data_as_dict = {}
-        for field in container_setup["fields"]:
-            if '.' not in field:
-                data_as_dict[field] = {'name': field}
-    context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
+    if item_view_type=='details':
+        context = Context({"information": container_setup['information'], "container" : container_setup["type"]})
+    else:
+        data_as_dict = container_setup["fields"]
+        # TODO Clean the mess
+        if isinstance(container_setup["fields"], list):
+            data_as_dict = {}
+            for field in container_setup["fields"]:
+                if '.' not in field:
+                    data_as_dict[field] = {'name': field}
+        context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
     template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
     rendition = template.render(context)
     # TODO Implement multi-langage
