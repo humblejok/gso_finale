@@ -15,6 +15,7 @@
 {% endblock %}
 {% block headeroptions %}
 <script>
+	var allItems = {{global|safe}};
 	var currentItem = 0;
 	var emptyWidget = "<li><div class='form-group'>&nbsp;</div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
 	var gridster;
@@ -34,8 +35,22 @@
 
 	}
 
+	function completeSaveData() {
+		for (var index=0;index<currentItem;index++) {
+			var key = index.toString();
+			if (!blockData.hasOwnProperty(key)) {
+				blockData[key] = {"title": $("#title_" + key).val(), "type": $("#type_" + key).val(), "data": []};
+			} else {
+				blockData[key].title = $("#title_" + key).val();
+				blockData[key].type = $("#type_" + key).val();
+			}
+		}
+		
+	}
+
 	function saveLayout() {
 		var gridsterLayout = gridster.serialize();
+		completeSaveData();
 		var toSave = {"layout": gridsterLayout, "data": blockData};
 		var containerSetup = {}
 		containerSetup.type = $("#containerType").val();
@@ -64,30 +79,28 @@
 	function onFieldClick(index, fieldName) {
 		var target = "#fieldsList_" + index + " > ";
 		var key = index.toString();
-		if (!blockData.hasOwnProperty(index)) {
-			blockData[key] = [];
+		if (!blockData.hasOwnProperty(key)) {
+			blockData[key] = {"title": $("#title_" + key).val(), "type": $("#type_" + key).val(), "data": []};
 		}
 		if (fieldName.indexOf(".")!==-1) {
 			var mainField = fieldName.substring(0, fieldName.indexOf("."));
 			var subField = fieldName.substring(fieldName.indexOf(".") + 1);
-			var fullField = mainField + '.' + subField;
-			$(".main-" + mainField + ".multiple-master").removeClass("list-group-item-warning");
-
-			if ($(".main-" + subField + ".sub-" + mainField + ".list-group-item-info").length===1) {
-				blockData[key].push(fullField);
+			$(target + ".main-" + mainField + ".multiple-master").removeClass("list-group-item-warning");
+			if ($(target + ".main-" + subField + ".sub-" + mainField + ".list-group-item-info").length===1) {
+				blockData[key].data.push(fieldName);
 			} else {
-				blockData[key].splice(blockData[key].indexOf(fullField), 1);
+				blockData[key].data.splice(blockData[key].data.indexOf(fieldName), 1);
 			}
-			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-success");
-			$(".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-info");
-			if ($(".sub-" + mainField + ".list-group-item-success").length>0) {
-				$(".main-" + mainField + ".multiple-master").addClass("list-group-item-warning");
+			$(target + ".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-success");
+			$(target + ".main-" + subField + ".sub-" + mainField).toggleClass("list-group-item-info");
+			if ($(target + ".sub-" + mainField + ".list-group-item-success").length>0) {
+				$(target + ".main-" + mainField + ".multiple-master").addClass("list-group-item-warning");
 			}
 		} else {
 			if ($(target + ".main-" + fieldName + ":not(.multiple-master)").hasClass("list-group-item-success")) {
-				blockData[key].splice(blockData[key].indexOf(fieldName), 1);
+				blockData[key].data.splice(blockData[key].data.indexOf(fieldName), 1);
 			} else {
-				blockData[key].push(fieldName);
+				blockData[key].data.push(fieldName);
 			}
 			$(target + ".main-" + fieldName + ":not(.multiple-slave)").toggleClass("list-group-item-success");
 		}
@@ -122,11 +135,26 @@
 		$("#content_" + index).append(htmlToAppend);
 	}
 	
-	function addWidget() {
-		gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),1,1]);
+	function buildWidgets(savedLayout) {
+		var currentInformation = allItems[$("#containerType").val()];
+		$.each(currentInformation.layout, function (index, savedLayout) {
+			addWidget(savedLayout, function() {
+				$("#title_" + index).val(currentInformation.data[index.toString()].title);
+				$("#type_" + index).val(currentInformation.data[index.toString()].type);
+				changeType(index);
+				$.each(currentInformation.data[index.toString()].data, function(fieldIndex, field) {
+					onFieldClick(index, field);
+				});
+			});
+		});
+	}
+
+	function addWidget(layout, callback) {
+		gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),layout.size_x, layout.size_y]);
 		var index = currentItem;
 		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {
 			changeType(index);
+			callback();
 		});
 		$("#type_" + currentItem).attr('onchange','changeType(' + currentItem + ')');
 		
@@ -158,6 +186,8 @@
 				}
 			}
 		});
+
+		buildWidgets();
 	}
 
 	function containerChanged() {
@@ -194,7 +224,7 @@
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">
-			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick="addWidget()">Add</button>
+			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick='addWidget({"row": 1, "size_x": 1, "col": 1, "size_y": 1})'>Add</button>
 			<button class="btn btn-default col-lg-offset-6 col-lg-3" type="button" data-placement="bottom" title="Save the current layout" onclick="saveLayout()">Save</button>
 		</div>
 		<div class="row">

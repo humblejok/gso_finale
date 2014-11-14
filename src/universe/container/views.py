@@ -67,6 +67,7 @@ def setup_save(request):
                 if '.' not in field:
                     data_as_dict[field] = {'name': field}
         context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
+    print context
     template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
     rendition = template.render(context)
     # TODO Implement multi-langage
