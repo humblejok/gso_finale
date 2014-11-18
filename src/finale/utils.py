@@ -5,6 +5,7 @@ import logging
 import datetime
 from django.contrib.auth.models import User
 from django.db.models.fields import FieldDoesNotExist
+from django.forms.models import model_to_dict
 
 LOGGER = logging.getLogger(__name__)
 
@@ -126,7 +127,9 @@ def get_internal_type(external_type):
     
     return 'FIELD_TYPE_TEXT'
 
-def dict_to_json_compliance(data):
+def dict_to_json_compliance(data, data_type=None):
+    if data_type!=None and not hasattr(data_type, '_meta'):
+        data_type = None
     if isinstance(data, datetime.date):
         new_data = data.strftime('%Y-%m-%d')
     elif isinstance(data, datetime.datetime):
@@ -134,9 +137,19 @@ def dict_to_json_compliance(data):
     elif isinstance(data, dict):
         new_data = {}
         for key in data.keys():
-            new_data[key] = dict_to_json_compliance(data[key])
-    elif isinstance(data, list):   
-        new_data = [dict_to_json_compliance(item) for item in data] 
+            if data_type==None:
+                new_data[key] = dict_to_json_compliance(data[key], data_type)
+            else:
+                if data_type._meta.get_field(key).get_internal_type()=='ForeignKey' and data[key]!=None:
+                    foreign_class = data_type._meta.get_field(key).rel.to
+                    new_data[key] = dict_to_json_compliance(model_to_dict(foreign_class.objects.get(id=data[key])))
+                elif data_type._meta.get_field(key).get_internal_type()=='ManyToManyField':
+                    foreign_class = data_type._meta.get_field(key).rel.to
+                    new_data[key] = [dict_to_json_compliance(model_to_dict(foreign_class.objects.get(id=item))) for item in data[key]]
+                else:
+                    new_data[key] = dict_to_json_compliance(data[key])
+    elif isinstance(data, list):
+        new_data = [dict_to_json_compliance(item, data_type) for item in data]
     else:
         return data
     return new_data

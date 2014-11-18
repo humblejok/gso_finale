@@ -3,11 +3,12 @@
 }
 
 .gridster .gs-w {
-    background: #FFF;
+    background: #EEE;
+    cursor: pointer;
 }
 
 .gridster .player {
-    background: #FFF;
+    background: #EEE;
 }
 
 .swm-text {

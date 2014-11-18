@@ -1,0 +1,89 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - {{container.name}}{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+				gridster = $(".gridster ul").gridster({
+					widget_margins: [10, 10],
+					widget_base_dimensions: [340, 340],
+					resize: {
+						enabled: false,
+					}
+				}).data('gridster').disable();
+				fillContent();
+{% endblock %}
+{% block headeroptions %}
+	<script>
+		var emptyWidget = "<li id='zone_%%index%%'><div class='row'>&nbsp;</div></li>";
+
+		var layoutInformation = {{layout|safe}};
+		var container = {{container_json|safe}};
+		var labels = {{labels|safe}};
+		var gridster;
+
+		function buildLayoutObjectSingles(selector, data) {
+			$.each(data, function(index, item) {
+				var fields = item.split(".");
+				var value = container;
+				$.each(fields, function(fieldIndex, field){
+					if (value) {
+						value = value[field];
+						if (!value) {
+							value = "N/A";
+							return false;
+						}
+					} else {
+						value = "N/A";
+						return false;
+					}
+				});
+				selector.append("<div class='row'><div class='col-lg-5 text-right'>" + (labels.hasOwnProperty(item)?labels[item]:item) + ":</div><div class='col-lg-7'>" + value + "</div></div>");
+			});
+		}
+
+		function addWidget(layout, index, callback) {
+			gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', index),layout.size_x, layout.size_y]);
+			if (layoutInformation.data[index].title!=="") {
+				$("#zone_" + index).append("<div class='row'><h4>" + layoutInformation.data[index].title + "</h4></div>");
+				if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_SINGLES") {
+					buildLayoutObjectSingles($("#zone_" + index), layoutInformation.data[index].data);
+				}
+			}
+		}
+
+		function fillContent() {
+			$.each(layoutInformation.layout, function (index, layout) {
+				addWidget(layout, index.toString(), function() {});
+			});
+		}
+
+	</script>
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ container.name }}
+					<div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							<li role="presentation" class="dropdown-header">Actions</li>
+							<li><a href="/container_delete.html?container_id={{container.id}}&container_type=CONT_PORTFOLIO">Delete</a></li>
+							<li role="presentation" class="dropdown-header">Sequoia</li>
+							<li><a href="/custom_view.html?container_id={{container.id}}&custom=sequoia&target=map">View MAP/BUD</a></li>
+							<li><a href="/custom_edit.html?container_id={{container.id}}&custom=sequoia&target=map">Edit MAP/BUD</a></li>
+						</ul>
+					</div>
+				</h1>
+	  			<p class="lead">{% if container.short_description %}{{ container.short_description }}{% else %}No description is available.{% endif %}<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<form class="form-horizontal" role="form">
+				<div id="layoutGrid" class="gridster col-lg-12">
+					<ul id="layoutGridContent">
+					</ul>
+				</div>
+			</form>
+		</div>
+{% endblock %}

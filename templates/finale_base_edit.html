@@ -1,0 +1,204 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>{% block title %}Financial Lightweight Editor{% endblock %}</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="/static/themes/redmond/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/css/gammasimos.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/css/sequoia-edit.css" rel="stylesheet" type="text/css"/>
+		<link href="/static/jquery.gridster.min.css" rel="stylesheet" type="text/css"/>
+		<script src="/static/jquery-2.1.0.min.js" type="text/javascript"></script>
+		<script src="/static/jquery-ui.js" type="text/javascript"></script>
+		<script src="/static/jquery.gridster.min.js" type="text/javascript"></script>
+		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+		<script src="/static/amcharts/amcharts.js" type="text/javascript"></script>
+		<script src="/static/amcharts/serial.js" type="text/javascript"></script>
+		<script src="/static/amcharts/themes/light.js" type="text/javascript"></script>
+		<script src="/static/date.js" type="text/javascript"></script>
+		<script src="/static/gammasimos.js"></script>
+		<script>
+			function taskFinished(e) {
+				if (e.result) {
+					$("#backgroundProgress").addClass("invisible");
+				} else {
+					taskFailed(e);
+				}
+			}
+
+			function taskFailed(e) {
+				$("#backgroundProgress").addClass("invisible");
+				alert("Task failed with message: " + e.message);
+			}
+
+			function importExternalData(providerName, dataType, grouped) {
+				var importForm = new FormData();
+				$("#backgroundProgress").removeClass("invisible");
+				importForm.append('provider', providerName);
+				importForm.append('data_type', dataType);
+				if (grouped) {
+					importForm.append('grouped','')
+				}
+				$.ajax({
+					url: '/external_import.html',
+					type: 'POST',
+					data: importForm,
+					processData: false,
+					contentType: false,
+					success: taskFinished,
+					error: taskFailed
+				});
+			}
+		</script>
+		<script>
+			$(document).ready(function () {
+		     	csrftoken = getCookie('csrftoken');
+				$(".no-enter").keydown( function(e) {
+					if (e.keyCode == 13) {
+						e.preventDefault();
+					}
+				});
+
+				$(".date-form-field").datepicker({ dateFormat: "yy-mm-dd" });
+
+				$(".with-autocomplete").each(function(index, value){
+					value = $(value);
+					value.autocomplete({
+						source: function(request, response) {
+							$.ajax({
+								url: value.attr("datasource") + "&term=" + request.term,
+								type: 'GET',
+								dataType: 'json',
+								processData: false,
+								contentType: false,
+								success: function(data) {
+									response(
+										$.map(data.result, function(item) {
+											console.log(item);
+											return {
+												id: item.id,
+												label: item.name,
+												value: item.name,
+											};
+										})
+									);
+								},
+								error: taskFailed
+							});
+						},
+						minLength: 2,
+					});
+				});
+
+		     	{% block readyoptions %}
+		     	{% endblock %}
+			});
+
+		</script>
+
+		{% block headeroptions %}
+		{% endblock %}
+	</head>
+	<body>
+		<nav class="navbar navbar-default navbar-static-top clearfix" role="navigation">
+			<div class="container-fluid">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#finale-nav-bar">
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+						<span class="icon-bar"></span>
+					</button>
+					<a class="navbar-brand" href="#">FinaLE</a>
+				</div>
+				<div class="collapse navbar-collapse" id="finale-nav-bar">
+					{% if request.user.is_authenticated %}
+					<ul class="nav navbar-nav">
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Universes <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a href="/universes.html">Explore</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Containers <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li role="presentation" class="dropdown-header">Portfolios</li>
+								<li><a href="/containers.html?item=CONT_PORTFOLIO">Explore</a></li>
+								<li role="presentation" class="dropdown-header">Securities</li>
+								<li><a href="/containers.html?item=CONT_SECURITY">Explore</a></li>
+								<li role="presentation" class="dropdown-header">Companies</li>
+								<li><a href="/containers.html?item=CONT_COMPANY">Explore</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Providers <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li role="presentation" class="dropdown-header">Bloomberg</li>
+								<li><a href="/financials_bloomberg_wizard.html">Bloomberg wizard</a></li>
+								<li><a href="#">Bloomberg full update</a></li>
+								<li role="presentation" class="divider"></li>
+								<li role="presentation" class="dropdown-header">Lyxor</li>
+								<li><a href="#">Lyxor file</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Tasks <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li><a href="#">None</a></li>
+								<li><a href="#">Check</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">External systems <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li role="presentation" class="dropdown-header">Swiss-Rev Guardian</li>
+								<li><a onclick="importExternalData('guardian','securities', false)">Import securities</a></li>
+								<li><a onclick="importExternalData('guardian','tracks', false)">Import tracks</a></li>
+								<li><a onclick="importExternalData('guardian','positions', true)">Import positions</a></li>
+								<li role="presentation" class="dropdown-header">DST Webfolio</li>
+								<li><a onclick="importExternalData('webfolio','securities', false)">Import securities</a></li>
+								<li role="presentation" class="dropdown-header">Sequoia</li>
+								<li><a href="/call_external.html?provider=sequoia&action=export&step=wizard">Export data wizard</a></li>
+								<li><a onclick="importExternalData('saxo','operations', false)">Import Saxo operations</a></li>
+							</ul>
+						</li>
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">Setup <b class="caret"></b></a>
+							<ul class="dropdown-menu">
+								<li role="presentation" class="dropdown-header">Presentation</li>
+								<li><a href="/setup.html?item=container_type&type=creations">Containers creations</a></li>
+								<li><a href="/setup.html?item=container_type&type=details">Containers details</a></li>
+								<li><a href="/setup.html?item=container_type&type=lists">Containers lists</a></li>
+								<li role="presentation" class="dropdown-header">Data</li>
+								<li><a href="/setup.html?item=container_type&type=fields">Containers fields</a></li>
+								<li><a href="/setup.html?item=object_type&type=fields">Object definitions</a></li>
+							</ul>
+						</li>
+					</ul>
+
+					<ul class="nav navbar-nav navbar-right">
+						<li>
+							<a href="" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+								<span class="glyphicon glyphicon-off"></span>
+							</a>
+						</li>
+					</ul>
+					{% endif %}
+				</div>
+			</div>
+		</nav>
+		<div class="container" style="padding: 0 15px;">
+			{% if request.user.is_authenticated %}
+				<div class="row">
+					<div id="backgroundProgress" class="progress progress-striped active invisible">
+						<div class="progress-bar progress-bar-danger"  role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">Task is running, please wait!</div>
+					</div>
+				</div>
+				{% block content %}
+				{% endblock%}
+			{% else %}
+				<center><a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a></center>
+			{% endif %}
+		</div>
+	</body>

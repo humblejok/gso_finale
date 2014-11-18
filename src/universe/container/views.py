@@ -7,7 +7,7 @@ import json
 import logging
 import os
 
-from universe.models import Attributes, TrackContainer
+from universe.models import Attributes, TrackContainer, FieldLabel
 from seq_common.utils import classes
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
@@ -22,6 +22,7 @@ from finale.utils import complete_fields_information, dict_to_json_compliance
 from django.forms.models import model_to_dict
 from json import dumps
 from bson import json_util
+import itertools
 
 
 LOGGER = logging.getLogger(__name__)
@@ -67,13 +68,12 @@ def setup_save(request):
                 if '.' not in field:
                     data_as_dict[field] = {'name': field}
         context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
-    print context
-    template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
-    rendition = template.render(context)
-    # TODO Implement multi-langage
-    outfile = os.path.join(STATICS_PATH, container_setup["type"] + '_' + item_render_name + '_' + item_view_type + '_en.html')
-    with open(outfile,'w') as o:
-        o.write(rendition.encode('utf-8'))
+        template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
+        rendition = template.render(context)
+        # TODO Implement multi-langage
+        outfile = os.path.join(STATICS_PATH, container_setup["type"] + '_' + item_render_name + '_' + item_view_type + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
     return HttpResponse('{"result": true, "status_message": "Saved"}',"json")
 
 
@@ -161,8 +161,13 @@ def get(request):
     
     container = effective_class.objects.get(id=container_id)
     tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
-    context = {'container': container, 'tracks': tracks}
-    return render(request,'container/' + container.type.identifier + '.html', context)
+    filtering = lambda d, k: d[k]['data']
+    fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
+    # TODO: Handle other langage and factorize with other views
+    labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
+    context = {'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'tracks': tracks, 'container_type': container_type, 'layout': dumps(setup_content.get_container_type_details()[container_type]), 'labels': dumps(labels)}
+    
+    return render(request,'rendition/container_type/details/view.html', context)
 
 
 def filters(request):

@@ -27,6 +27,7 @@ LOGGER = logging.getLogger(__name__)
 
 def setup():
     setup_attributes()
+    setup_labels()
     populate_bloomberg_fields(os.path.join(RESOURCES_MAIN_PATH,'fields.csv'))
     populate_model_from_xlsx('universe.models.BloombergDataContainerMapping', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.BloombergTrackContainerMapping', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
@@ -34,6 +35,10 @@ def setup():
     populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     generate_attributes()
+
+def setup_labels():
+    FieldLabel.objects.all().delete()
+    populate_labels_from_xlsx('universe.models.FieldLabel', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
 
 def setup_attributes():
     populate_attributes_from_xlsx('universe.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
@@ -89,6 +94,32 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
     while row_index<=sheet.get_highest_row():
         if model.objects.filter(identifier=sheet.cell(row = row_index, column=1).value).exists():
             instance = model.objects.get(identifier=sheet.cell(row = row_index, column=1).value)
+        else:
+            instance = model()
+        for i in range(0,len(header)):
+            value = sheet.cell(row = row_index, column=i+1).value
+            setattr(instance, header[i], value)
+        instance.save()
+        row_index += 1
+        
+def populate_labels_from_xlsx(model_name, xlsx_file):
+    model = classes.my_class_import(model_name)
+    workbook = load_workbook(xlsx_file)
+    sheet = workbook.get_sheet_by_name(name=model.__name__)
+    row_index = 1
+    # Reading header
+    header = []
+    for column_index in range(1, sheet.get_highest_column() + 1):
+        value = sheet.cell(row = row_index, column=column_index).value
+        if value!=None:
+            header.append(value if value!='' else header[-1])
+        else:
+            break
+    LOGGER.info('Using header:' + str(header))
+    row_index += 1
+    while row_index<=sheet.get_highest_row():
+        if model.objects.filter(identifier=sheet.cell(row = row_index, column=1).value).exists():
+            instance = model.objects.get(identifier=sheet.cell(row = row_index, column=1).value, langage=sheet.cell(row = row_index, column=2))
         else:
             instance = model()
         for i in range(0,len(header)):
@@ -603,9 +634,19 @@ class CoreModel(models.Model):
     
     class Meta:
         ordering = ['id']
+
+class FieldLabel(CoreModel):
+    identifier = models.CharField(max_length=512)
+    langage = models.CharField(max_length=3)
+    field_label = models.CharField(max_length=1024)
+    
+    def get_fields(self):
+        return ['identifier','langage','field_label']
+    
+    def get_identifier(self):
+        return 'identifier'
     
 class Attributes(CoreModel):
-    
     identifier = models.CharField(max_length=128)
     name = models.CharField(max_length=128)
     short_name = models.CharField(max_length=32)
