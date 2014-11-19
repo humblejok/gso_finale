@@ -73,7 +73,8 @@ def complete_fields_information(model_class, information):
             if information[field]['target_class']=='universe.models.Attributes':
                 information[field]['template'] = 'statics/' + information[field]['link']['type'] + '_en.html'
             else:
-                information[field]['template'] = 'statics/' + information[field]['fields'][information[field]['filter']]['link']['type'] + '_en.html'
+                if information[field]['type']!='ForeignKey':
+                    information[field]['template'] = 'statics/' + information[field]['fields'][information[field]['filter']]['link']['type'] + '_en.html'
                 information[field]['datasource'] = '/container_filter.html?container_class=' + information[field]['target_class']
                 
     return information

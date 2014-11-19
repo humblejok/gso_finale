@@ -165,7 +165,7 @@ def get(request):
     fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
     # TODO: Handle other langage and factorize with other views
     labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
-    context = {'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'tracks': tracks, 'container_type': container_type, 'layout': dumps(setup_content.get_container_type_details()[container_type]), 'labels': dumps(labels)}
+    context = {'complete_fields': complete_fields_information(effective_class,  {}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'tracks': tracks, 'container_type': container_type, 'layout': dumps(setup_content.get_container_type_details()[container_type]), 'labels': dumps(labels)}
     
     return render(request,'rendition/container_type/details/view.html', context)
 
