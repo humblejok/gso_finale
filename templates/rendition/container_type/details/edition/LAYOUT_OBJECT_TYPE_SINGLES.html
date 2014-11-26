@@ -14,26 +14,26 @@
 							{% if current_field.options %}
 							{% for option in current_field.options %}
 							<div class="form-group">
-								<label for="{{current_field.field}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
-								<select id="{{current_field.field}}-{{current_field.filter}}" name="{{current_field.field}}-{{current_field.filter}}" class="form-control">
+								<label for="{{entry}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
+								<select id="{{entry}}-{{current_field.filter}}" name="{{entry}}-{{current_field.filter}}" class="form-control">
 									{% with value=container|get_value:entry active_list=option %}
 										{% include current_field.template %}
 									{% endwith %}
 								</select>
-								<input name="{{current_field.field}}" id="{{current_field.field}}" type="text" class="form-control with-autocomplete" placeholder="Enter a {{current_field.field}}" value="" datasource="{{current_field.datasource}}"/>
+								<input name="{{entry}}" id="{{entry}}" type="text" class="form-control with-autocomplete" placeholder="Enter a {{entry}}" value="" datasource="{{current_field.datasource}}"/>
 							</div>
 							{% endfor %}
 							{% else %}
 							<div class="form-group">
-								<label for="{{current_field.field}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
+								<label for="{{entry}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
 								{% if current_field.template %}
-									<select id="{{current_field.field}}" name="{{current_field.field}}" class="form-control">
+									<select id="{{entry}}" name="{{entry}}" class="form-control">
 									{% with value=container|get_value:entry active_list=option %}
 										{% include current_field.template %}
 									{% endwith %}
 									</select>
 								{% else %}
-								<input name="{{current_field.field}}" type="text" class="form-control{% if current_field.type == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{current_field.field}}" placeholder="Enter a {{current_field.field}}" value="{{container|get_value:entry}}"/>
+								<input name="{{entry}}" type="text" class="form-control{% if current_field.type == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{entry}}" placeholder="Enter a {{entry}}" value="{{container|get_value:entry}}"/>
 								{% endif %}
 							</div>
 							{% endif %}
@@ -42,6 +42,7 @@
 						</div>
 					</form>
 					<div class="modal-footer">
+						<button type="button" class="btn btn-warning" role="button" data-toggle="tooltip" data-placement="bottom" title="Save the modifications" onclick="updateContainer({{index}})" data-dismiss="modal">Save</button>
 						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Close the popup" onclick="" data-dismiss="modal">Close</button>
 					</div>
 				</div>
