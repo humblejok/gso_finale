@@ -16,9 +16,9 @@
 	<script>
 		var emptyWidget = "<li id='zone_%%index%%'><div class='row'>&nbsp;</div></li>";
 
-		var layoutInformation = {{layout|safe}};
+		var layoutInformation = {{layout|get_as_json_string|safe}};
 		var container = {{container_json|safe}};
-		var labels = {{labels|safe}};
+		var labels = {{labels|get_as_json_string|safe}};
 		var gridster;
 
 		function buildLayoutObjectSingles(selector, data) {
@@ -40,9 +40,10 @@
 				selector.append("<div class='row'><div class='col-lg-5 text-left'><strong>" + (labels.hasOwnProperty(item)?labels[item]:item) + ":</strong></div><div class='col-lg-7 text-left'>" + value + "</div></div>");
 			});
 		}
+
 		function addWidget(layout, index, callback) {
 			gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', index),layout.size_x, layout.size_y]);
-			$("#zone_" + index).append("<div class='row'><div class='col-lg-10'><h4>" + layoutInformation.data[index].title + "</h4></div><button type='button' class='btn btn-default col-lg-1 text-center' aria-label='Edit information'><span class='glyphicon glyphicon-pencil' aria-hidden='true'></span></button></div>");
+			$("#zone_" + index).append("<div class='row'><div class='col-lg-10'><h4>" + layoutInformation.data[index].title + "</h4></div><button type='button' class='btn btn-default col-lg-1 text-center' aria-label='Edit information' data-toggle='modal' data-target='#modal_define_" + index + "'><span class='glyphicon glyphicon-pencil' aria-hidden='true'></span></button></div>");
 			if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_SINGLES") {
 				buildLayoutObjectSingles($("#zone_" + index), layoutInformation.data[index].data);
 			}
@@ -83,4 +84,9 @@
 				</div>
 			</form>
 		</div>
+	{% for index in layout|get_dict_key:"data" %}
+		{% with template_name=layout|get_dict_key:"data"|get_dict_key:index|get_dict_key:"type" %}
+			{% include 'rendition/container_type/details/edition/'|add:template_name|add:".html" with index=index complete_fields=complete_fields data=layout|get_dict_key:"data"|get_dict_key:index labels=labels container=container %}
+		{% endwith %}
+	{% endfor %}
 {% endblock %}

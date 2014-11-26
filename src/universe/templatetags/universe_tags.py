@@ -4,6 +4,8 @@ Created on 10 mars 2014
 @author: humble_jok
 '''
 from django import template
+from json import dumps
+from universe.models import Attributes
 
 register = template.Library()
 
@@ -29,3 +31,16 @@ def get_dict_key(d, key):
         return d[unicode(key)]
     else:
         return None
+
+@register.filter()
+def get_as_json_string(data):
+    return dumps(data)
+
+@register.filter()
+def get_value(data, field_chain):
+    all_fields = field_chain.split('.')
+    if data!=None:
+        data = getattr(data, all_fields[0])
+    if isinstance(data, Attributes):
+        return data.identifier
+    return data if data!=None else ''
