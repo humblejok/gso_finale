@@ -76,6 +76,17 @@
 		$(target + ".sub-" + fieldName).toggleClass("hidden");
 	}
 
+	function onMultipleFieldClick(index, fieldName) {
+		var target = "#fieldsList_" + index + " > ";
+		var key = index.toString();
+		if (!blockData.hasOwnProperty(key)) {
+			blockData[key] = {"title": $("#title_" + key).val(), "type": $("#type_" + key).val(), "data": []};
+		}
+		blockData[key].data = [fieldName];
+		$(target + ".list-group-item-success").removeClass("list-group-item-success");
+		$(target + ".main-" + fieldName).toggleClass("list-group-item-success");
+	}
+
 	function onFieldClick(index, fieldName) {
 		var target = "#fieldsList_" + index + " > ";
 		var key = index.toString();
@@ -130,6 +141,13 @@
 
 				}
 			});
+			htmlToAppend += "</div>";
+		} else if (selectedType=="LAYOUT_OBJECT_TYPE_LIST") {
+			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 200px;'>";
+			$.each(multipleFields, function(valueIndex, value) {
+				htmlToAppend += '<a class="list-group-item main-' + value + '" onclick="onMultipleFieldClick(' + index + ',\'' + value + '\')">' + value + '</a>';
+			});
+			
 			htmlToAppend += "</div>";
 		}
 		$("#content_" + index).append(htmlToAppend);
