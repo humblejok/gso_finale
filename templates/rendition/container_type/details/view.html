@@ -48,7 +48,12 @@
 				multipleTable += "<th>" + index + "</th>";
 			});
 			multipleTable += "</tr>";
-			$.each(complete_fields[data[0]].fields, function(index, value) {
+			$.each(container[data[0]], function(index, value) {
+				multipleTable += "<tr>";
+				$.each(complete_fields[data[0]].fields, function(field, fieldInfo) {
+					multipleTable += "<td>" + value[field] + "</td>";
+				});
+				multipleTable += "</tr>";
 			});
 			multipleTable += "</table>";
 			selector.append(multipleTable);

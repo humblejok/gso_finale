@@ -191,7 +191,6 @@ def filters(request):
             query_filter = query_filter | Q(**query_dict)
     results = effective_class.objects.filter(query_filter).distinct()
     results = dumps([dict_to_json_compliance(model_to_dict(item)) for item in results], default=json_util.default)
-    print results
     return HttpResponse('{"result": ' + results + ', "status_message": "Deleted"}',"json")
 
 def search(request):
