@@ -9,7 +9,7 @@ import os
 
 from universe.models import Attributes, TrackContainer, FieldLabel
 from seq_common.utils import classes
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, render_to_response
 from django.contrib.auth.models import User
 from utilities import setup_content
 from django.template.context import Context
@@ -167,6 +167,26 @@ def get(request):
     labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
     context = {'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'tracks': tracks, 'container_type': container_type, 'layout': setup_content.get_container_type_details()[container_type], 'labels': labels}
     return render(request,'rendition/container_type/details/view.html', context)
+
+def render_many_to_many(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id'][0] if isinstance(request.POST['container_id'], list) else request.POST['container_id']
+    container_type = request.POST['container_type'][0] if isinstance(request.POST['container_type'], list) else request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    container_field = request.POST['container_field'][0] if isinstance(request.POST['container_field'], list) else request.POST['container_field']
+    rendition_witdh = request.POST['rendition_width'][0] if isinstance(request.POST['rendition_width'], list) else request.POST['rendition_width']
+    widget_index = request.POST['widget_index'][0] if isinstance(request.POST['widget_index'], list) else request.POST['widget_index']
+    widget_title = request.POST['widget_title'][0] if isinstance(request.POST['widget_title'], list) else request.POST['widget_title']
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+
+    foreign_class = effective_class._meta.get_field(container_field).rel.to
+
+    container = effective_class.objects.get(id=container_id)
+    context = {'title': widget_title, 'index':widget_index, 'data': getattr(container,container_field), 'fields': foreign_class.get_displayed_fields(rendition_witdh), 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=foreign_class.get_displayed_fields(rendition_witdh), langage='en')}}
+    return render(request, 'container/view/many_to_many_field.html', context)
 
 def filters(request):
     user = User.objects.get(id=request.user.id)

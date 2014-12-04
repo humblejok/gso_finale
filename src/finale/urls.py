@@ -69,6 +69,8 @@ urlpatterns = patterns('',
     url(r'^container_search.html', 'universe.container.views.search', name='container_search'),
     url(r'^container_base_edit.html', 'universe.container.views.base_edit', name='container_base_edit'),
     url(r'^container_filter.html', 'universe.container.views.filters', name='container_filter'),
+    url(r'^container_render_many_to_many.html', 'universe.container.views.render_many_to_many', name='container_render_many_to_many'),
+    
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

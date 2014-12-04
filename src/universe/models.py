@@ -765,6 +765,13 @@ class Alias(CoreModel):
         return "alias_type"
     
     @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['alias_type.name','alias_value','alias_additional']
+        elif rendition_width=='small':
+            return ['alias_type.name','alias_value']
+        
+    @staticmethod
     def retrieve_or_create(parent, source, key, value):
         translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
         if translation.exists():

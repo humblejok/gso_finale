@@ -37,6 +37,13 @@ def get_as_json_string(data):
     return dumps(data)
 
 @register.filter()
+def get_field_value(data, field_chain):
+    all_fields = field_chain.split('.')
+    for field in all_fields:
+        data = getattr(data, field)
+    return data if data!=None else ''
+
+@register.filter()
 def get_value(data, field_chain):
     all_fields = field_chain.split('.')
     if data!=None:
