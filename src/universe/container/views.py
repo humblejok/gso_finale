@@ -168,6 +168,25 @@ def get(request):
     context = {'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'tracks': tracks, 'container_type': container_type, 'layout': setup_content.get_container_type_details()[container_type], 'labels': labels}
     return render(request,'rendition/container_type/details/view.html', context)
 
+def render_singles_list(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id'][0] if isinstance(request.POST['container_id'], list) else request.POST['container_id']
+    container_type = request.POST['container_type'][0] if isinstance(request.POST['container_type'], list) else request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    container_fields = eval(request.POST['container_fields'])
+    widget_index = request.POST['widget_index'][0] if isinstance(request.POST['widget_index'], list) else request.POST['widget_index']
+    widget_title = request.POST['widget_title'][0] if isinstance(request.POST['widget_title'], list) else request.POST['widget_title']
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+
+
+
+    container = effective_class.objects.get(id=container_id)
+    context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': container_fields, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
+    return render(request, 'container/view/simple_fields_list.html', context)
+
 def render_many_to_many(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)

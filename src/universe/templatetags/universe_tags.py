@@ -40,8 +40,10 @@ def get_as_json_string(data):
 def get_field_value(data, field_chain):
     all_fields = field_chain.split('.')
     for field in all_fields:
+        if data==None:
+            break
         data = getattr(data, field)
-    return data if data!=None else ''
+    return data if data!=None else 'N/A'
 
 @register.filter()
 def get_value(data, field_chain):
