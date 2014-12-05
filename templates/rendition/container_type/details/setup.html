@@ -122,6 +122,7 @@
 		var selectedType = $("#type_" + index).val();
 		$("#content_" + index).empty();
 		var htmlToAppend = "";
+		var callLater = function() {};
 		if (selectedType=="LAYOUT_OBJECT_TYPE_SINGLES") {
 			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 200px;'>";
 			$.each(singleFields, function(valueIndex, value) {
@@ -149,8 +150,18 @@
 			});
 			
 			htmlToAppend += "</div>";
+		} else if (selectedType=="LAYOUT_HISTORY_CHART" || selectedType=="LAYOUT_DISTRIBUTION_CHART" || selectedType=="LAYOUT_HISTORICAL_DISTRIBUTION_CHART") {
+			htmlToAppend += "<div class='form-group'><div class='col-lg-offset-2'><div class='checkbox'><label><input type='checkbox' checked> Use default source and frequency</label></div></div></div>";
+			htmlToAppend += "<div class='form-group'><label for='datasource_%%index%%' class='control-label col-lg-2'>Data source</label><div class='col-lg-9'><select id='datasource_%%index%%' name='datasource_%%index%%' class='form-control'></select></div></div>";
+			htmlToAppend += "<div class='form-group'><label for='frequency_%%index%%' class='control-label col-lg-2'>Frequency</label><div class='col-lg-9'><select id='frequency_%%index%%' name='frequency_%%index%%' class='form-control'></select></div></div>";
+			htmlToAppend = htmlToAppend.replaceAll('%%index%%', currentItem);
+			
+			callLater = function() {
+				$("#frequency_" + index).load("/static/templates/frequency_select_en.html", function() {});
+			};
 		}
 		$("#content_" + index).append(htmlToAppend);
+		callLater();
 	}
 	
 	function buildWidgets(savedLayout) {
