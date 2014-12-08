@@ -1,0 +1,1 @@
+{% if not active_list or "DATASOURCE_DEFAULT" in active_list %}<option value='DATASOURCE_DEFAULT' {% if value == 'DATASOURCE_DEFAULT' %}selected{% endif %}>Assigned data provider</option>{% endif %}{% if not active_list or "DATASOURCE_FINALE" in active_list %}<option value='DATASOURCE_FINALE' {% if value == 'DATASOURCE_FINALE' %}selected{% endif %}>FinaLE</option>{% endif %}

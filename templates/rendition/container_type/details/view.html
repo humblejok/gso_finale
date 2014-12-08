@@ -22,43 +22,6 @@
 		var complete_fields = {{complete_fields|get_as_json_string|safe}}
 		var gridster;
 
-		function buildLayoutObjectSingles(selector, data) {
-			$.each(data, function(index, item) {
-				var fields = item.split(".");
-				var value = container;
-				$.each(fields, function(fieldIndex, field){
-					if (value) {
-						value = value[field];
-						if (!value) {
-							value = "N/A";
-							return false;
-						}
-					} else {
-						value = "N/A";
-						return false;
-					}
-				});
-				selector.append("<div class='row'><div class='col-lg-5 text-left'><strong>" + (labels.hasOwnProperty(item)?labels[item]:item) + ":</strong></div><div class='col-lg-7 text-left'>" + value + "</div></div>");
-			});
-		}
-
-		function buildLayoutObjectMultiple(selector, data) {
-			var multipleTable = "<table class='table col-lg-11'><tr>";
-			$.each(complete_fields[data[0]].fields, function(index, value) {
-				multipleTable += "<th>" + index + "</th>";
-			});
-			multipleTable += "</tr>";
-			$.each(container[data[0]], function(index, value) {
-				multipleTable += "<tr>";
-				$.each(complete_fields[data[0]].fields, function(field, fieldInfo) {
-					multipleTable += "<td>" + value[field] + "</td>";
-				});
-				multipleTable += "</tr>";
-			});
-			multipleTable += "</table>";
-			selector.append(multipleTable);
-		}
-
 		function addWidget(layout, index, callback) {
 			gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', index),layout.size_x, layout.size_y]);
 			if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_SINGLES") {
@@ -67,16 +30,6 @@
 			} else {
 				var rendition_url = '/container_render_many_to_many.html';
 				$("#zone_" + index).load(rendition_url, {'widget_index': index, 'widget_title': layoutInformation.data[index].title, 'container_id': {{container.id}}, 'container_type': '{{container.type.identifier}}', 'container_field': layoutInformation.data[index].data[0], 'rendition_width': (layout.size_x>1?'large':'small')});
-			}
-		}
-
-		function addWidget_old(layout, index, callback) {
-			gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', index),layout.size_x, layout.size_y]);
-			$("#zone_" + index).append("<div class='row'><div class='col-lg-10'><h4>" + layoutInformation.data[index].title + "</h4></div><button type='button' class='btn btn-default col-lg-1 text-center' aria-label='Edit information' data-toggle='modal' data-target='#modal_define_" + index + "'><span class='glyphicon glyphicon-pencil' aria-hidden='true'></span></button></div>");
-			if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_SINGLES") {
-				buildLayoutObjectSingles($("#zone_" + index), layoutInformation.data[index].data);
-			} else if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_LIST") {
-				buildLayoutObjectMultiple($("#zone_" + index), layoutInformation.data[index].data);
 			}
 		}
 
