@@ -72,14 +72,15 @@ def complete_fields_information(model_class, information):
         if '.' in field:
             fields_chain = field.split('.')
             field_effective = fields_chain[0]
-        information[field].update(all_fields[field_effective])
-        if information[field]['type'] in ['ForeignKey', 'ManyToManyField']:
-            if information[field]['target_class']=='universe.models.Attributes':
-                information[field]['template'] = 'statics/' + information[field]['link']['type'] + '_en.html'
-            else:
-                if information[field]['type']!='ForeignKey':
-                    information[field]['template'] = 'statics/' + information[field]['fields'][information[field]['filter']]['link']['type'] + '_en.html'
-                information[field]['datasource'] = '/container_filter.html?container_class=' + information[field]['target_class']
+        if all_fields.has_key(field_effective):
+            information[field].update(all_fields[field_effective])
+            if information[field]['type'] in ['ForeignKey', 'ManyToManyField']:
+                if information[field]['target_class']=='universe.models.Attributes':
+                    information[field]['template'] = 'statics/' + information[field]['link']['type'] + '_en.html'
+                else:
+                    if information[field]['type']!='ForeignKey':
+                        information[field]['template'] = 'statics/' + information[field]['fields'][information[field]['filter']]['link']['type'] + '_en.html'
+                    information[field]['datasource'] = '/container_filter.html?container_class=' + information[field]['target_class']
     return information
 
 def get_static_fields(clazz, trail = []):

@@ -27,9 +27,12 @@
 			if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_SINGLES") {
 				var rendition_url = '/container_render_singles_list.html';
 				$("#zone_" + index).load(rendition_url, {'widget_index': index, 'widget_title': layoutInformation.data[index].title, 'container_id': {{container.id}}, 'container_type': '{{container.type.identifier}}', 'container_fields': JSON.stringify(layoutInformation.data[index].data)});
-			} else {
+			} else if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_LIST") {
 				var rendition_url = '/container_render_many_to_many.html';
 				$("#zone_" + index).load(rendition_url, {'widget_index': index, 'widget_title': layoutInformation.data[index].title, 'container_id': {{container.id}}, 'container_type': '{{container.type.identifier}}', 'container_field': layoutInformation.data[index].data[0], 'rendition_width': (layout.size_x>1?'large':'small')});
+			} else if (layoutInformation.data[index].type=="LAYOUT_HISTORY_CHART") {
+				var rendition_url = '/container_render_history_chart.html';
+				$("#zone_" + index).load(rendition_url, {'widget_index': index, 'widget_title': layoutInformation.data[index].title, 'container_id': {{container.id}}, 'container_type': '{{container.type.identifier}}', 'container_field': layoutInformation.data[index].data[0]});
 			}
 		}
 

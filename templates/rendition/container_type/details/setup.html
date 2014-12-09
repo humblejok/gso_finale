@@ -112,6 +112,7 @@
 		if (!blockData.hasOwnProperty(key)) {
 			blockData[key] = {"title": $("#title_" + key).val(), "type": $("#type_" + key).val(), "data": []};
 		}
+
 		if (fieldName.indexOf(".")!==-1) {
 			var mainField = fieldName.substring(0, fieldName.indexOf("."));
 			var subField = fieldName.substring(fieldName.indexOf(".") + 1);
@@ -191,6 +192,7 @@
 		var currentInformation = allItems[$("#containerType").val()];
 		remainingLoads -= 1;
 		callbacks = [];
+		blockData = {};
 		$.each(currentInformation.layout, function (index, savedLayout) {
 			addWidget(savedLayout, function() {
 				$("#title_" + index).val(currentInformation.data[index.toString()].title);
@@ -198,9 +200,13 @@
 				changeType(index);
 			});
 			callbacks.push(function() {
-				if (currentInformation.data[index.toString()].type=='LAYOUT_OBJECT_TYPE_LIST' || currentInformation.data[index.toString()].type=='LAYOUT_OBJECT_TYPE_SINGLES') {
+				if (currentInformation.data[index.toString()].type=='LAYOUT_OBJECT_TYPE_SINGLES') {
 					$.each(currentInformation.data[index.toString()].data, function(fieldIndex, field) {
 						onFieldClick(index, field);
+					});
+				} else if(currentInformation.data[index.toString()].type=='LAYOUT_OBJECT_TYPE_LIST') {
+					$.each(currentInformation.data[index.toString()].data, function(fieldIndex, field) {
+						onMultipleFieldClick(index, field);
 					});
 				} else if (currentInformation.data[index.toString()].type=='LAYOUT_HISTORY_CHART' || currentInformation.data[index.toString()].type=='LAYOUT_DISTRIBUTION_CHART' || currentInformation.data[index.toString()].type=='LAYOUT_HISTORICAL_DISTRIBUTION_CHART') {
 					$("#track_default_" + index).prop('checked', currentInformation.data[index.toString()].data.track_default)
