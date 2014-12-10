@@ -24,7 +24,7 @@ from universe.models import Universe, TrackContainer, SecurityContainer, \
 from utilities.external_content import import_external_data, \
     import_external_grouped_data, import_external_tracks
 from utilities.track_content import get_track_content_display
-from utilities.track_token import get_main_track
+from utilities.track_token import get_main_track_content
 from utilities import setup_content, external_content
 from bson.json_util import dumps
 import json
@@ -590,7 +590,7 @@ def universe_details(request):
     context = {'universe': source, 'tracks': {}}
  
     for member in source.members.all():
-        content = get_main_track(member, True, True)
+        content = get_main_track_content(member, True, True)
         if content!=None:
             context['tracks']['track_' + str(member.id)] = content
         else:

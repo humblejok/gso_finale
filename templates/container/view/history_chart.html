@@ -1,0 +1,40 @@
+<script>
+			function trackLoaded_{{index}}(e) {
+				chart = AmCharts.makeChart(
+					"track_content_{{index}}",
+					{
+						"type": "serial",
+						"theme": "none",
+						"pathToImages": "./static/amcharts/images/",
+						"dataDateFormat": "YYYY-MM-DD",
+						"balloonDateFormat": "YYYY-MM-DD",
+						"balloon":[{"balloonText":"[[date]]: [[value]]"}],
+						"valueAxes": [ { "axisAlpha": 0, "position": "left" } ],
+						"graphs": [ { "id":"history","bullet": "round", "bulletSize":3, "lineThickness":2, "valueField": "value" } ],
+						"categoryField": "date",
+						"categoryAxis": { "parseDates": true, "dashLength": 1, "minorGridEnabled": true },
+						"dataProvider": e
+					}
+					);
+			}
+
+
+			function showTrack_{{index}}() {
+				{% if track_id != 'None' %}
+				var trackForm = new FormData();
+				trackForm.append("track_id", {{track_id}});
+				$.ajax({
+					url: "/track_get.html",
+					type: "POST",
+					data: trackForm,
+					processData: false,
+					contentType: false,
+					success: trackLoaded_{{index}}
+				});
+				{% endif %}
+			}
+
+</script>
+<div class="row"><div class="col-lg-10"><h4>{{title}}</h4></div></div>
+<div id="track_content_{{index}}" class="col-lg-12" style="height: 400px;">
+</div>

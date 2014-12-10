@@ -23,6 +23,7 @@ from django.forms.models import model_to_dict
 from json import dumps
 from bson import json_util
 import itertools
+from utilities.track_token import get_track
 
 
 LOGGER = logging.getLogger(__name__)
@@ -160,12 +161,11 @@ def get(request):
     effective_class = classes.my_class_import(effective_class_name)
     
     container = effective_class.objects.get(id=container_id)
-    tracks = TrackContainer.objects.filter(effective_container_id=container_id).order_by('source','type','quality','frequency','id')
     filtering = lambda d, k: d[k]['data']
     fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
     # TODO: Handle other langage and factorize with other views
     labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
-    context = {'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'tracks': tracks, 'container_type': container_type, 'layout': setup_content.get_container_type_details()[container_type], 'labels': labels}
+    context = {'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'layout': setup_content.get_container_type_details()[container_type], 'labels': labels}
     return render(request,'rendition/container_type/details/view.html', context)
 
 def render_history_chart(request):
@@ -176,12 +176,14 @@ def render_history_chart(request):
     container_class = container_type + '_CLASS'
     widget_index = request.POST['widget_index'][0] if isinstance(request.POST['widget_index'], list) else request.POST['widget_index']
     widget_title = request.POST['widget_title'][0] if isinstance(request.POST['widget_title'], list) else request.POST['widget_title']
+    track_info = request.POST['track_info'][0] if isinstance(request.POST['track_info'], list) else request.POST['track_info']
+    track_info = json.loads(track_info)
     # TODO: Handle error
     effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
     effective_class = classes.my_class_import(effective_class_name)
     container = effective_class.objects.get(id=container_id)
-    
-    context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': container_fields, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
+    track = get_track(container, track_info)    
+    context = {'title': widget_title, 'index':widget_index, 'container': container, 'track_id': track.id if track!=None else None}
     return render(request, 'container/view/history_chart.html', context)
 
 def render_singles_list(request):

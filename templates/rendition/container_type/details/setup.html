@@ -17,7 +17,7 @@
 <script>
 	var allItems = {{global|safe}};
 	var currentItem = 0;
-	var emptyWidget = "<li><div class='form-group'>&nbsp;</div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
+	var emptyWidget = "<li id='gridjet_%%index%%'><div class='form-group'><button class='col-lg-offset-10 col-lg-1' onclick='dismiss(%%index%%)' type='button'><span class='glyphicon glyphicon-remove' aria-hidden='true'></span></button></div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
 	var gridster;
 
 	var allFieldsInformation;
@@ -36,6 +36,10 @@
 
 	function containerFieldsSaved(e) {
 
+	}
+
+	function dismiss(index) {
+		gridster.remove_widget($("#gridjet_" + index));
 	}
 
 	function checkLoads() {
@@ -144,7 +148,7 @@
 		var htmlToAppend = "";
 		var callLater = function() {};
 		if (selectedType=="LAYOUT_OBJECT_TYPE_SINGLES") {
-			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 200px;'>";
+			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 195px;'>";
 			$.each(singleFields, function(valueIndex, value) {
 				if (allFieldsInformation[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
 					htmlToAppend += '<a class="list-group-item main-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '\')">' + value + '</a>';
@@ -164,7 +168,7 @@
 			});
 			htmlToAppend += "</div>";
 		} else if (selectedType=="LAYOUT_OBJECT_TYPE_LIST") {
-			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 200px;'>";
+			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 195px;'>";
 			$.each(multipleFields, function(valueIndex, value) {
 				htmlToAppend += '<a class="list-group-item main-' + value + '" onclick="onMultipleFieldClick(' + index + ',\'' + value + '\')">' + value + '</a>';
 			});
