@@ -17,7 +17,7 @@
 <script>
 	var allItems = {{global|safe}};
 	var currentItem = 0;
-	var emptyWidget = "<li id='gridjet_%%index%%'><div class='form-group'><button class='col-lg-offset-10 col-lg-1' onclick='dismiss(%%index%%)' type='button'><span class='glyphicon glyphicon-remove' aria-hidden='true'></span></button></div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
+	var emptyWidget = "<li id='gridjet_%%index%%'><div class='form-group'><button id='dismiss_%%index%%' class='col-lg-offset-10 col-lg-1' onclick='dismiss(%%index%%)' type='button'><span class='glyphicon glyphicon-remove' aria-hidden='true'></span></button></div><div class='form-group'><label for='title_%%index%%' class='control-label col-lg-2'>Title</label><div class='col-lg-9'><input name='title_%%index%%' id='title_%%index%%' type='text' class='form-control' placeholder='Input block title here'/></div></div><div class='form-group'><label for='type_%%index%%' class='control-label col-lg-2'>Type</label><div class='col-lg-9'><select id='type_%%index%%' name='type_%%index%%' class='form-control'></select></div></div><div class='form-group' id='content_%%index%%'></div></li>";
 	var gridster;
 
 	var allFieldsInformation;
@@ -38,8 +38,23 @@
 
 	}
 
-	function dismiss(index) {
-		gridster.remove_widget($("#gridjet_" + index));
+	function dismiss(toRemove) {
+		for(var index=0;index<currentItem;index++) {
+			if (index==toRemove) {
+				gridster.remove_widget($("#gridjet_" + index));
+			} else if (index>toRemove) {
+				$("#gridjet_" + index).find('[id]').each(function(index, node) {
+					if ($(node).hasAttr('id')) {
+						$(node).attr('id', $(node).attr('id').replace(index.toString(), (index-1).toString()));
+					}
+					if ($(node).hasAttr('name')) {
+						$(node).attr('name', $(node).attr('name').replace(index.toString(), (index-1).toString()));
+					}
+				});
+				$("#gridjet_" + index).attr('id', "gridjet_" + (index-1));
+			}
+		}
+		currentItem -= 1;
 	}
 
 	function checkLoads() {

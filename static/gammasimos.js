@@ -44,7 +44,7 @@ $.ajaxSetup({
 
 $.fn.hasAttr = function(attributeName) {
     var attribute = $(this).attr(attributeName);
-    if (typeof attribute !== typeof undefined && attr !== false) {
+    if (typeof attribute !== typeof undefined && attribute !== false) {
         return true;
     } else {
         return false;
