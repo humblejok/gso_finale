@@ -56,7 +56,9 @@
 						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
 						<ul class="dropdown-menu" role="menu">
 							<li role="presentation" class="dropdown-header">Actions</li>
-							<li><a href="/container_delete.html?container_id={{container.id}}&container_type=CONT_PORTFOLIO">Delete</a></li>
+							<li><a href="/container_delete.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Delete</a></li>
+							<li role="presentation" class="dropdown-header">Guardian</li>
+							<li><a href="/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=transactions">Import transactions</a></li>
 							<li role="presentation" class="dropdown-header">Sequoia</li>
 							<li><a href="/custom_view.html?container_id={{container.id}}&custom=sequoia&target=map">View MAP/BUD</a></li>
 							<li><a href="/custom_edit.html?container_id={{container.id}}&custom=sequoia&target=map">Edit MAP/BUD</a></li>

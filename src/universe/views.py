@@ -22,7 +22,8 @@ from universe.models import Universe, TrackContainer, SecurityContainer, \
     Container, RelatedCompany, PortfolioContainer, FinancialContainer, \
     PersonContainer
 from utilities.external_content import import_external_data, \
-    import_external_grouped_data, import_external_tracks
+    import_external_grouped_data, import_external_tracks,\
+    import_external_data_sequence
 from utilities.track_content import get_track_content_display
 from utilities.track_token import get_main_track_content
 from utilities import setup_content, external_content
@@ -347,6 +348,8 @@ def external_import(request):
     data_type = request.POST['data_type']
     if data_type=='tracks':
         import_external_tracks(provider)
+    elif data_type=='transactions':
+        import_external_data_sequence(provider, data_type)
     elif request.POST.has_key('grouped'):
         import_external_grouped_data(provider, data_type)
     else:

@@ -9,7 +9,7 @@ import logging
 from universe.models import SecurityContainer
 from finale import threaded
 from datetime import datetime as dt
-from utilities.track_token import get_main_track, get_closest_value
+from utilities.track_token import get_main_track_content, get_closest_value
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def get_security_price(isin_code,bloomberg_code, value_date):
         LOGGER.warn("Security cannot be found:" + str(isin_code) + "/" + str(bloomberg_code))
         return 1.0
     else:
-        value = get_closest_value(get_main_track(securities[0]), dt.combine(value_date, dt.min.time()))
+        value = get_closest_value(get_main_track_content(securities[0]), dt.combine(value_date, dt.min.time()))
         if value==None:
             return 1.0
         else:

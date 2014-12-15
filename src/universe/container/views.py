@@ -150,6 +150,23 @@ def delete(request):
     effective_class.objects.get(id=container_id).delete()
     return HttpResponse('{"result": true, "status_message": "Deleted"}',"json")
 
+def external_import(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    external_provider = request.GET['external']
+    data_type = request.GET['target']
+    container_id = request.GET['container_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    
+    external = classes.my_import('providers.' + external_provider)
+    getattr(external, 'import_' + data_type)(container)
+    return HttpResponse('{"result": true, "status_message": "Executed"}',"json")
+
 def get(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)

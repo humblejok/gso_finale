@@ -1020,6 +1020,13 @@ class AccountContainer(FinancialContainer):
     def get_querying_class():
         return CompanyContainer
     
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['account_type.name', 'currency.short_name', 'bank.name']
+        elif rendition_width=='small':
+            return ['alias_type.name', 'currency.short_name']
+    
 class RelatedCompany(CoreModel):
     company = models.ForeignKey(CompanyContainer, null=True)
     role = models.ForeignKey(Attributes, limit_choices_to={'type':'security_company_role'}, related_name='security_company_role_rel', null=True)

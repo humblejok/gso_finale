@@ -25,6 +25,7 @@ import logging
 import threading
 import uuid
 import datetime
+import traceback
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ QUERIES = { 'guardian': {'securities':
                              'BLOOMBERG': 'cod_bloomberg', 
                              'ISIN': 'cod_isin', 
                              'EXTERNAL': 'cod_tit'},
+                          'transactions': {'query': "select * from tra order by cod_rap, data_ins", 'group_by': 'cod_rap'},
                           'positions':
                             {'query':"select t1.cod_rap, r.des_rap, r.cod_sta, r.cod_lin, r.cod_gru, r.cod_ges, r.cod_pro, r.cod_ctp, r.cod_soc, t1.cod_tit, tit.cod_isin, tit.cod_bloomberg, tit.des_tit,\n\
                                       t1.cod_div_tit, tit.cod_tiptit, te.cod_emi, te.des_emi, tit.cod_isin, tit.cod_bloomberg, tit.cod_esterno, t1.qta, t1.prezzo_car, t1.prezzo, t1.rateo, t1.ctv_tot_dn,t1.ctv_imp,\n\
@@ -191,7 +193,20 @@ def import_external_grouped_data(data_source, data_type):
         LOGGER.info("Inserting " + data_type + " with _id: " + str(key))
         database[data_type].remove({'_id': key})
         database[data_type].insert({'_id': key, 'values': all_values[key]})   
-    
+
+def import_external_data_sequence(data_source, data_type):
+    LOGGER.info('Loading working data')
+    query = QUERIES[data_source][data_type]['query']
+    group_by = QUERIES[data_source][data_type]['group_by']
+    LOGGER.info('Importing ' + str(data_type) + ' from ' + str(data_source))
+    LOGGER.info('Using query:' + str(query))
+    results = dbutils.query_to_dicts(query, data_source)
+    database = getattr(client, data_source)
+    database[data_type].drop()
+    for result in results:
+        new_entry = convert_to_mongo(result)
+        key = result[group_by]
+        database[data_type][key].insert(new_entry)        
     
 def import_external_data(data_source, data_type):
     LOGGER.info('Loading working data')
@@ -232,9 +247,6 @@ def import_external_data(data_source, data_type):
     database = getattr(client, data_source)
     database[data_type].drop()
     
-    name_field = QUERIES[data_source][data_type]['name']
-    short_name_field = QUERIES[data_source][data_type]['short_name']
-    
     all_tickers = []
     
     for result in results:
@@ -264,6 +276,8 @@ def import_external_data(data_source, data_type):
                     LOGGER.error("The following entry already exists:")
             # CONVERTING TO FINALE
             if group_id==QUERIES[data_source][data_type]['EXTERNAL'] and data_type=='securities':
+                name_field = QUERIES[data_source][data_type]['name']
+                short_name_field = QUERIES[data_source][data_type]['short_name']
                 bloomberg_ticker = result[QUERIES[data_source][data_type]['BLOOMBERG']]
                 isin_code = result[QUERIES[data_source][data_type]['ISIN']]
                 currency = result[QUERIES[data_source][data_type]['currency']]
@@ -319,33 +333,41 @@ def import_external_data(data_source, data_type):
                 if isin_code!=None and isin_code!='':
                     security.update_alias(isin_alias, isin_code)
                 universe.members.add(security)
-    universe.save()
-    
-    all_containers = {}
-    for member in universe.members.all():
-        if not all_containers.has_key(member.type.identifier):
-            all_containers[member.type.identifier] = []
-        try:
-            all_containers[member.type.identifier].append(member.aliases.get(alias_type__name='BLOOMBERG').alias_value)
-        except:
+    if data_type=='securities':
+        universe.save()
+        
+        all_containers = {}
+        for member in universe.members.all():
+            if not all_containers.has_key(member.type.identifier):
+                all_containers[member.type.identifier] = []
             try:
-                all_containers[member.type.identifier].append(member.aliases.get(alias_type__name='ISIN').alias_value)
+                all_containers[member.type.identifier].append(member.aliases.get(alias_type__name='BLOOMBERG').alias_value)
             except:
-                LOGGER.info("There is no Bloomberg nor ISIN code available for this security ["  + member.name + "]")
+                try:
+                    all_containers[member.type.identifier].append(member.aliases.get(alias_type__name='ISIN').alias_value)
+                except:
+                    LOGGER.info("There is no Bloomberg nor ISIN code available for this security ["  + member.name + "]")
             
-    for key in all_containers.keys():
-        fields = BloombergTrackContainerMapping.objects.filter(Q(container__identifier='CONT_SECURITY') | Q(container__identifier=key), Q(active=True)).values_list('short_name__code', flat=True)
-        all_containers[key] = [to_bloomberg_code(ticker,True) for ticker in all_containers[key]]
-        history_key = uuid.uuid4().get_hex()
-        bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, all_containers[key], fields, True))
-        bb_thread.start()
-        bb_thread.join()
+        for key in all_containers.keys():
+            fields = BloombergTrackContainerMapping.objects.filter(Q(container__identifier='CONT_SECURITY') | Q(container__identifier=key), Q(active=True)).values_list('short_name__code', flat=True)
+            all_containers[key] = [to_bloomberg_code(ticker,True) for ticker in all_containers[key]]
+            history_key = uuid.uuid4().get_hex()
+            bb_thread = threading.Thread(None, bloomberg_history_query, history_key, (history_key, all_containers[key], fields, True))
+            bb_thread.start()
+            bb_thread.join()
 
 def get_positions(data_source, working_date):
     database = getattr(client, data_source)
     key = epoch_time(dt.combine(working_date,dt.min.time()))
     LOGGER.info("Getting positions with _id: " + str(key))
     return database['positions'].find_one({'_id': key})
+
+def get_transactions(data_source,key):
+    try:
+        return client[data_source]['transactions'][key].find()
+    except:
+        return []
+    
 
 def get_operations(data_source, start_date=None, end_date=None):
     if start_date!=None:
