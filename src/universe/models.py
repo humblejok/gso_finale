@@ -1,3 +1,10 @@
+import csv
+from datetime import datetime as dt
+import datetime
+import logging
+import os
+import traceback
+
 from django.contrib.auth.models import User
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
@@ -5,23 +12,18 @@ from django.db import models
 from django.db.models import Q
 from django.db.models.fields import FieldDoesNotExist, DateTimeField
 from django.template import loader
+from django.template.context import Context
 from openpyxl.reader.excel import load_workbook
 from seq_common.utils import classes, dates
+import xlrd
 from xlrd.xldate import xldate_as_tuple
-from datetime import datetime as dt
-from finale.settings import RESOURCES_MAIN_PATH, STATICS_PATH,\
+
+from finale.settings import RESOURCES_MAIN_PATH, STATICS_PATH, \
     STATICS_GLOBAL_PATH
+import universe
 from utilities import computing
 from utilities.track_content import set_track_content, get_track_content
 
-import datetime
-import csv
-import logging
-import os
-import xlrd
-import traceback
-from django.template.context import Context
-import universe
 
 LOGGER = logging.getLogger(__name__)
 
