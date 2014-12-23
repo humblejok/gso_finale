@@ -44,6 +44,7 @@ QUERIES = { 'guardian': {'securities':
                              'ISIN': 'cod_isin', 
                              'EXTERNAL': 'cod_tit'},
                           'transactions': {'query': "select * from tra order by cod_rap, data_ins", 'group_by': 'cod_rap'},
+                          'portfolios': {'query': "select * from rap order by cod_rap", 'group_by': ['cod_rap']},
                           'positions':
                             {'query':"select t1.cod_rap, r.des_rap, r.cod_sta, r.cod_lin, r.cod_gru, r.cod_ges, r.cod_pro, r.cod_ctp, r.cod_soc, t1.cod_tit, tit.cod_isin, tit.cod_bloomberg, tit.des_tit,\n\
                                       t1.cod_div_tit, tit.cod_tiptit, te.cod_emi, te.des_emi, tit.cod_isin, tit.cod_bloomberg, tit.cod_esterno, t1.qta, t1.prezzo_car, t1.prezzo, t1.rateo, t1.ctv_tot_dn,t1.ctv_imp,\n\
@@ -362,7 +363,13 @@ def get_positions(data_source, working_date):
     LOGGER.info("Getting positions with _id: " + str(key))
     return database['positions'].find_one({'_id': key})
 
-def get_transactions(data_source,key):
+def get_portfolios(data_source):
+    try:
+        return client[data_source]['portfolios'].find()
+    except:
+        return []
+
+def get_transactions(data_source, key):
     try:
         return client[data_source]['transactions'][key].find()
     except:

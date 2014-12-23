@@ -1027,7 +1027,7 @@ class AccountContainer(FinancialContainer):
         if rendition_width=='large':
             return ['account_type.name', 'currency.short_name', 'bank.name']
         elif rendition_width=='small':
-            return ['alias_type.name', 'currency.short_name']
+            return ['account_type.name', 'currency.short_name']
     
 class RelatedCompany(CoreModel):
     company = models.ForeignKey(CompanyContainer, null=True)

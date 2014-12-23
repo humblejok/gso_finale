@@ -11,6 +11,8 @@ import numpy
 from finale.settings import RESOURCES_MAIN_PATH
 import os
 import logging
+from seq_common.utils import dates
+import datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +26,45 @@ def get_tracks_computer():
             computers['track_computer'] = NativeTracksComputer()
     return computers['track_computer']
 
+def get_previous_date(current_date, frequency):
+    # Adjust with frequency reference
+    if frequency.identifier=='FREQ_DAILY':
+        return dates.AddDay(current_date, -1)
+    if frequency.identifier=='FREQ_WEEKLY':
+        return dates.AddDay(current_date, -7)
+    if frequency.identifier=='FREQ_MONTHLY':
+        return dates.AddDay(dates.GetStartOfMonth(current_date), -1)
+    if frequency.identifier=='FREQ_QUARTERLY':
+        return dates.GetEndOfMonth(dates.AddQuarter(current_date, -1))
+    if frequency.identifier=='FREQ_SEMESTERLY':
+        return dates.GetEndOfMonth(dates.AddQuarter(current_date, -2))
+    if frequency.identifier=='FREQ_ANNUALLY':
+        return dates.GetEndOfMonth(dates.AddYear(current_date, -1))
+    if frequency.identifier=='FREQ_EVERY_2_YEARS':
+        return dates.GetEndOfMonth(dates.AddYear(current_date, -2))
+    if frequency.identifier=='FREQ_EVERY_3_YEARS':
+        return dates.GetEndOfMonth(dates.AddYear(current_date, -3))
+    return current_date
+
+def get_next_date(current_date, frequency):
+    # Adjust with frequency reference
+    if frequency.identifier=='FREQ_DAILY':
+        return dates.AddDay(current_date, 1)
+    if frequency.identifier=='FREQ_WEEKLY':
+        return dates.AddDay(current_date, 7)
+    if frequency.identifier=='FREQ_MONTHLY':
+        return dates.GetEndOfMonth(dates.AddDay(dates.GetEndOfMonth(current_date), 1))
+    if frequency.identifier=='FREQ_QUARTERLY':
+        return dates.GetEndOfMonth(dates.AddQuarter(current_date, 1))
+    if frequency.identifier=='FREQ_SEMESTERLY':
+        return dates.GetEndOfMonth(dates.AddQuarter(current_date, 2))
+    if frequency.identifier=='FREQ_ANNUALLY':
+        return dates.GetEndOfMonth(dates.AddYear(current_date, 1))
+    if frequency.identifier=='FREQ_EVERY_2_YEARS':
+        return dates.GetEndOfMonth(dates.AddYear(current_date, 2))
+    if frequency.identifier=='FREQ_EVERY_3_YEARS':
+        return dates.GetEndOfMonth(dates.AddYear(current_date, 3))
+    return current_date
 
 class CLTracksComputer():
     platform = None
@@ -69,3 +110,18 @@ class NativeTracksComputer():
             else:
                 results.append(None)
         return results
+    
+    def compute_market_values(self, start_date, frequency, operations):
+        results = []
+        today = datetime.date.today()
+        while start_date<=today:
+            value = {}
+            if len(results)==0:
+                value['NUM_TYPE_PF_BMV'] = 0.0
+            else:
+                value['NUM_TYPE_PF_BMV'] = results[-1]['NUM_TYPE_PF_EMV']
+            #'NUM_TYPE_PF_EMV':0.0}
+        
+        
+        
+        

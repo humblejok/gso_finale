@@ -1,5 +1,32 @@
 from universe.models import FinancialOperation, Attributes, AccountContainer
 
+def create_security_movement(container, source, target, details, label):
+    current_account_type = Attributes.objects.get(identifier='ACC_CURRENT', active=True)
+    security_account_type = Attributes.objects.get(identifier='ACC_SECURITY', active=True)
+    
+    operation = FinancialOperation()
+    operation.name = label if label!=None else generate_security_movement_label(target, details)
+    operation.short_name = generate_security_movement_short_label(target, details)
+    operation.status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True) if not details.has_key('status') else details['status']
+    operation.operation_type = generate_security_movement_operation_type(details)
+    operation.creation_date = details['operation_date']
+    operation.operator = None
+    operation.validator = None
+    operation.source = get_account(container, details, current_account_type) if source!=None else None
+    operation.target = None
+    operation.spot = generate_cash_movement_spot(source, target, details)
+    operation.repository = get_account(container, details, security_account_type) if target!=None else None
+    operation.quantity = details['quantity']
+    operation.amount = None # TODO set up
+    operation.price = details['price']
+    operation.operation_date = details['trade_date']
+    operation.operation_pnl = 0.0
+    operation.value_date = details['value_date']
+    operation.termination_date = details['value_date']
+    operation.associated_operation = None
+    operation.save()
+    return operation
+
 def create_cash_movement(container, source, target, details, label):
     current_account_type = Attributes.objects.get(identifier='ACC_CURRENT', active=True)
     
