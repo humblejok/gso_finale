@@ -12,7 +12,6 @@ from finale.settings import RESOURCES_MAIN_PATH
 import os
 import logging
 from seq_common.utils import dates
-import datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -110,18 +109,5 @@ class NativeTracksComputer():
             else:
                 results.append(None)
         return results
-    
-    def compute_market_values(self, start_date, frequency, operations):
-        results = []
-        today = datetime.date.today()
-        while start_date<=today:
-            value = {}
-            if len(results)==0:
-                value['NUM_TYPE_PF_BMV'] = 0.0
-            else:
-                value['NUM_TYPE_PF_BMV'] = results[-1]['NUM_TYPE_PF_EMV']
-            #'NUM_TYPE_PF_EMV':0.0}
-        
-        
-        
-        
+            
+            

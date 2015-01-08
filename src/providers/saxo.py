@@ -12,7 +12,7 @@ from datetime import datetime as dt
 from utilities.xls_writer import simple_xlsx_dump
 from universe.models import SecurityContainer
 from finale import threaded
-from utilities.track_token import get_closest_value, get_main_track
+from utilities.track_token import get_closest_value, get_main_track_content
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def get_exchange_rate_price(source_currency, destination_currency, value_date):
         threaded.bloomberg_data_query('NO_NEED', [source_currency + destination_currency + ' Curncy'], True)
     currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
     if currency.exists():
-        value = get_closest_value(get_main_track(currency[0]), dt.combine(value_date, dt.min.time()))
+        value = get_closest_value(get_main_track_content(currency[0]), dt.combine(value_date, dt.min.time()))
         if value==None:
             return 1.0
         else:

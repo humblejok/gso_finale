@@ -34,4 +34,3 @@ def set_security_information(security, field, value, provider = None):
         else:
             data[provider][field] = value
         securities.save(data)
-        

@@ -204,10 +204,14 @@ def import_external_data_sequence(data_source, data_type):
     results = dbutils.query_to_dicts(query, data_source)
     database = getattr(client, data_source)
     database[data_type].drop()
+    all_data = {}
     for result in results:
-        new_entry = convert_to_mongo(result)
         key = result[group_by]
-        database[data_type][key].insert(new_entry)        
+        new_entry = convert_to_mongo(result)
+        if not all_data.has_key(key):
+            all_data[key] = {'_id': key, 'data': []}
+        all_data[key]['data'].append(new_entry)
+    [database[data_type].save(e) for e in all_data.values()]        
     
 def import_external_data(data_source, data_type):
     LOGGER.info('Loading working data')
@@ -371,7 +375,8 @@ def get_portfolios(data_source):
 
 def get_transactions(data_source, key):
     try:
-        return client[data_source]['transactions'][key].find()
+        database = getattr(client, data_source)
+        return database['transactions'].find_one({'_id': key})['data']
     except:
         return []
     
