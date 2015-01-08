@@ -170,20 +170,47 @@ def generate_cash_movement_operation_type(source, target, details):
 def compute_accounts():
     all_operations = FinancialOperation.objects.all().order_by('value_date')
     accounts_history = {}
-    previous_date = None
+    previous_date = {}
     for operation in all_operations:
-        portfolio = PortfolioContainer.objects.filter(accounts__id=operation.source.id)
+        target_account_used = False
+        source_account_used = True
+        try:
+            portfolio = PortfolioContainer.objects.filter(accounts__id=operation.source.id)
+        except:
+            source_account_used = False
+            portfolio = PortfolioContainer.objects.filter(accounts__id=operation.target.id)
         if portfolio.exists():
             portfolio = portfolio[0]
-            
+            key_date = epoch_time(operation.value_date)
+            if operation.target!=None and operation.operation_type not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL', 'OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP']:
+                accounts_history[operation.target.id] = {}
+                target_account_used = True
+                
+            if source_account_used:
+                if not accounts_history.has_key(operation.source.id):
+                    accounts_history[operation.source.id] = {}
+                if previous_date.has_key(operation.source.id):
+                    accounts_history[operation.source.id][key_date] = accounts_history[operation.source.id][previous_date[operation.source.id]]
+                else:
+                    accounts_history[operation.source.id][key_date] = 0.0
+                accounts_history[operation.source.id][key_date] += (operation.amount * (-1.0 if target_account_used else 1.0))
+                
+            if target_account_used:
+                if previous_date.has_key(operation.target.id):
+                    accounts_history[operation.target.id][key_date] = accounts_history[operation.target.id][previous_date[operation.target.id]]
+                else:
+                    accounts_history[operation.target.id][key_date] = 0.0
+                accounts_history[operation.target.id][key_date] += operation.amount
         else:
             LOGGER.error("No portfolio associated to account")
             continue
+    print accounts_history
+        
 def compute_positions():
     all_operations = FinancialOperation.objects.filter(operation_type__identifier__in=['OPE_TYPE_BUY','OPE_TYPE_SELL']).order_by('value_date')
     portfolios = {}
     securities = {}
-    previous_date = None
+    previous_date = {}
     for operation in all_operations:
         portfolio = PortfolioContainer.objects.filter(accounts__id=operation.repository.id)
         key_date = epoch_time(operation.value_date)
@@ -204,9 +231,9 @@ def compute_positions():
             securities[operation.target.id][key_date][portfolio.id] = 0.0
         securities[operation.target.id][key_date][portfolio.id] = securities[operation.target.id][key_date][portfolio.id] + (operation.quantity * (1.0 if operation.operation_type.identifier=='OPE_TYPE_BUY' else -1.0))
         securities[operation.target.id][key_date]['total'] = securities[operation.target.id][key_date]['total'] + (operation.quantity * (1.0 if operation.operation_type.identifier=='OPE_TYPE_BUY' else -1.0))
-        if previous_date!=None:
-            portfolios[portfolio.id][key_date] = portfolios[portfolio.id][previous_date]
+        if previous_date.has_key(portfolio.id):
+            portfolios[portfolio.id][key_date] = portfolios[portfolio.id][previous_date[portfolio.id]]
         if not portfolios[portfolio.id][key_date].has_key(operation.target.id):
             portfolios[portfolio.id][key_date][operation.target.id] = 0.0
         portfolios[portfolio.id][key_date][operation.target.id] = portfolios[portfolio.id][key_date][operation.target.id] + (operation.quantity * (1.0 if operation.operation_type.identifier=='OPE_TYPE_BUY' else -1.0))
-        previous_date = key_date
+        previous_date[portfolio.id] = key_date
