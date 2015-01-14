@@ -73,7 +73,9 @@ urlpatterns = patterns('',
     url(r'^container_render_singles_list.html', 'universe.container.views.render_singles_list', name='container_render_singles_list'),
     url(r'^container_render_history_chart.html', 'universe.container.views.render_history_chart', name='container_render_history_chart'),
     url(r'^container_external_import.html', 'universe.container.views.external_import', name='external_import'),
-    
+    url(r'^container_valuations_compute.html', 'universe.container.views.valuations_compute', name='valuations_compute'),
+    url(r'^container_valuations.html', 'universe.container.views.valuations', name='valuations'),
+    url(r'^container_positions.html', 'universe.container.views.positions', name='positions'),
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

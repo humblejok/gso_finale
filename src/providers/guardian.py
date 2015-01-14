@@ -42,7 +42,6 @@ def import_transactions(container):
     
     if container.aliases.filter(alias_type=guardian_alias).exists():
         all_transactions = get_transactions('guardian', container.aliases.get(alias_type=guardian_alias).alias_value)
-        print len(all_transactions)
         for transaction in all_transactions:
             if transaction['cod_ope']=='CONTRIBUTION':
                 source = None

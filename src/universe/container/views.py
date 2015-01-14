@@ -7,7 +7,8 @@ import json
 import logging
 import os
 
-from universe.models import Attributes, TrackContainer, FieldLabel
+from universe.models import Attributes, TrackContainer, FieldLabel,\
+    PortfolioContainer
 from seq_common.utils import classes
 from django.shortcuts import render, redirect, render_to_response
 from django.contrib.auth.models import User
@@ -24,6 +25,11 @@ from json import dumps
 from bson import json_util
 import itertools
 from utilities.track_token import get_track
+from utilities.compute.valuations import NativeValuationsComputer
+from utilities.valuation_content import get_portfolio_valuations,\
+    get_valuation_content_display, get_positions_portfolio, get_closest_value,\
+    get_closest_date
+import datetime
 
 
 LOGGER = logging.getLogger(__name__)
@@ -265,6 +271,21 @@ def filters(request):
     results = dumps([dict_to_json_compliance(model_to_dict(item)) for item in results], default=json_util.default)
     return HttpResponse('{"result": ' + results + ', "status_message": "Deleted"}',"json")
 
+def valuations_compute(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    computer = NativeValuationsComputer()
+    computer.compute_daily_valuation(container)
+    return HttpResponse('{"result": "Finished", "status_message": "Computed"}',"json")
+
 def search(request):
     context = {}
     try:
@@ -289,3 +310,50 @@ def search(request):
     except:
         context['message'] = 'Error while querying for:' + searching
     return render(request, 'rendition/securities_list.html', context)
+
+def positions(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    
+    working_date = request.GET['working_date']
+    
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    filtering = lambda d, k: d[k]['data']
+    fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
+    # TODO: Handle other langage and factorize with other views
+    labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
+    positions = get_valuation_content_display(get_positions_portfolio(container)['data'])
+    positions_date = sorted(positions.keys(), reverse=True)
+    currencies = list(set([account.currency.short_name for account in container.accounts.all()]))
+    working_date = get_closest_date(positions, datetime.datetime.strptime(working_date, '%Y-%m-%d'), False)
+    context = {'currencies': currencies, 'positions': positions, 'positions_date': positions_date , 'working_date': working_date, 'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'labels': labels}
+    return render(request,'rendition/container_type/details/positions.html', context)
+
+def valuations(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    filtering = lambda d, k: d[k]['data']
+    fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
+    # TODO: Handle other langage and factorize with other views
+    labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
+    valuations = get_valuation_content_display(get_portfolio_valuations(container)['data'])
+    valuations_date = sorted(valuations.keys(), reverse=True)
+    currencies = list(set([account.currency.short_name for account in container.accounts.all()]))
+    context = {'currencies': currencies, 'valuations': valuations, 'valuations_date': valuations_date , 'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'labels': labels}
+    return render(request,'rendition/container_type/details/valuations.html', context)

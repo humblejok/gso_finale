@@ -8,7 +8,6 @@ from finale.settings import MONGO_URL
 
 client = MongoClient(MONGO_URL)
 
-mapping = client.mapping
 securities = client.securities['containers']
 
 def get_security_information(security):

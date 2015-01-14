@@ -13,6 +13,7 @@ import os
 import logging
 from seq_common.utils import dates
 
+
 LOGGER = logging.getLogger(__name__)
 
 computers = {}
@@ -85,7 +86,7 @@ class CLTracksComputer():
         self.program = cl.Program(self.context, self.program).build()
         self.queue = cl.CommandQueue(self.context)
         self.data_type = numpy.float64 if settings.OPENCL_DOUBLE_PRECISION_ENABLE else numpy.float32
-        LOGGER.info("Computation will be executed by [" + str(self.platform) + "," + str(self.device) + "]")
+        LOGGER.info("TRACKS Computation will be executed by [" + str(self.platform) + "," + str(self.device) + "]")
     
     def compute_performances(self, ordered_track_values):
         values = numpy.asarray(ordered_track_values, self.data_type)
@@ -99,7 +100,7 @@ class CLTracksComputer():
 class NativeTracksComputer():
     
     def __init__(self):
-        LOGGER.info("Computation will be executed using the CPU")
+        LOGGER.info("TRACKS Computation will be executed using the CPU")
         
     def compute_performances(self, ordered_track_values):
         results = [0.0]
@@ -109,5 +110,3 @@ class NativeTracksComputer():
             else:
                 results.append(None)
         return results
-            
-            

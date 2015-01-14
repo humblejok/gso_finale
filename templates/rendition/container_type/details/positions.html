@@ -1,0 +1,60 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - {{container.name}} - Operations{% endblock %}
+{% block readyoptions %}
+				fillContent();
+{% endblock %}
+{% block headeroptions %}
+	<script>
+		var container = {{container_json|safe}};
+		var labels = {{labels|get_as_json_string|safe}};
+		var complete_fields = {{complete_fields|get_as_json_string|safe}};
+		var positions = {{positions|get_as_json_string|safe}};
+
+		function fillContent() {
+			$("#positions").empty();
+			var newContent = "<table class='table'>";
+			$.each(positions[$("#positionsDate").val()], function(index, value) {
+				newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'] + "</td></tr>"
+			});
+			newContent += "</table>";
+			$("#positions").append(newContent);
+		}
+	</script>
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ container.name }}
+					<div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							<li role="presentation" class="dropdown-header">Actions</li>
+							<li><a href="/container_delete.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Delete</a></li>
+							<li><a href="/container_valuations_compute.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Compute valuations</a></li>
+							<li><a href="/container_valuations.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Show valuations</a></li>
+							<li role="presentation" class="dropdown-header">Guardian</li>
+							<li><a href="/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=portfolio">Import portfolio information</a></li>
+							<li><a href="/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=transactions">Import transactions</a></li>
+							<li role="presentation" class="dropdown-header">Sequoia</li>
+							<li><a href="/custom_view.html?container_id={{container.id}}&custom=sequoia&target=map">View MAP/BUD</a></li>
+							<li><a href="/custom_edit.html?container_id={{container.id}}&custom=sequoia&target=map">Edit MAP/BUD</a></li>
+						</ul>
+					</div>
+				</h1>
+	  			<p class="lead">{% if container.short_description %}{{ container.short_description }}{% else %}No description is available.{% endif %}<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<select class="form-control no-enter" id="positionsDate" name="positionsDate" onchange="fillContent()">
+				{% for date in positions_date %}
+					<option {% if working_date == date %}selected="selected"{% endif %}>{{date}}</option>
+				{% endfor %}
+			</select>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div id="positions" class="row">
+
+		</div>
+{% endblock %}

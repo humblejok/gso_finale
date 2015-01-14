@@ -1038,6 +1038,13 @@ class RelatedCompany(CoreModel):
 
     def get_fields(self):
         return ['company','role']
+
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['company.name','role.name','company.status.name']
+        elif rendition_width=='small':
+            return ['company.name','role.name']
     
     @staticmethod
     def get_filtering_field():
