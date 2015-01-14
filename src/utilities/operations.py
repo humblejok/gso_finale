@@ -1,9 +1,11 @@
 from universe.models import FinancialOperation, Attributes, AccountContainer,\
-    PortfolioContainer
+    PortfolioContainer, SecurityContainer
 from seq_common.utils.dates import epoch_time
 import logging
 from utilities.valuation_content import set_accounts_history,\
     set_positions_portfolios, set_positions_securities
+import copy
+from utilities.track_token import get_main_track_content, get_closest_value
 LOGGER = logging.getLogger(__name__)
 
 def create_security_movement(container, source, target, details, label):
@@ -223,6 +225,9 @@ def compute_positions(container=None):
         all_operations = FinancialOperation.objects.filter(operation_type__identifier__in=['OPE_TYPE_BUY','OPE_TYPE_SELL','OPE_TYPE_BUY_FOP','OPE_TYPE_SELL_FOP']).order_by('value_date')
     else:
         all_operations = FinancialOperation.objects.filter(repository__in=container.accounts.all(), operation_type__identifier__in=['OPE_TYPE_BUY','OPE_TYPE_SELL','OPE_TYPE_BUY_FOP','OPE_TYPE_SELL_FOP']).order_by('value_date')
+        
+    tracks = {}    
+    
     portfolios = {}
     securities = {}
     previous_date = {}
@@ -235,11 +240,14 @@ def compute_positions(container=None):
             continue
         key_date = str(epoch_time(operation.value_date))
         security_id = str(operation.target.id)
+        
         portfolio_id = str(portfolio.id)
         if not securities.has_key(security_id):
             securities[security_id] = {}
         if not portfolios.has_key(portfolio_id):
             portfolios[portfolio_id] = {}
+        if previous_date.has_key(security_id):
+            securities[security_id][key_date] = copy.deepcopy(securities[security_id][previous_date[security_id]])
         if not securities[security_id].has_key(key_date):
             securities[security_id][key_date] = {'total': 0.0, 'name': operation.target.short_name}
         if not portfolios[portfolio_id].has_key(key_date):
@@ -249,10 +257,21 @@ def compute_positions(container=None):
         securities[security_id][key_date][portfolio_id] = securities[security_id][key_date][portfolio_id] + (operation.quantity * (1.0 if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else -1.0))
         securities[security_id][key_date]['total'] = securities[security_id][key_date]['total'] + (operation.quantity * (1.0 if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else -1.0))
         if previous_date.has_key(portfolio_id):
-            portfolios[portfolio_id][key_date] = { key: portfolios[portfolio_id][previous_date[portfolio_id]][key] for key in portfolios[portfolio_id][previous_date[portfolio_id]]}
+            portfolios[portfolio_id][key_date] = copy.deepcopy(portfolios[portfolio_id][previous_date[portfolio_id]])
         if not portfolios[portfolio_id][key_date].has_key(security_id):
-            portfolios[portfolio_id][key_date][security_id] = {'total': 0.0, 'name': operation.target.short_name}
+            portfolios[portfolio_id][key_date][security_id] = {'total': 0.0, 'name': operation.target.short_name, 'price': 0.0, 'price_date': None}
         portfolios[portfolio_id][key_date][security_id]['total'] = portfolios[portfolio_id][key_date][security_id]['total'] + (operation.quantity * (1.0 if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else -1.0))
+        for inner_security in portfolios[portfolio_id][key_date].keys():
+            if not tracks.has_key(inner_security):
+                track = get_main_track_content(SecurityContainer.objects.get(id=inner_security))
+                tracks[inner_security] = track
+            value = get_closest_value(tracks[inner_security], operation.value_date)
+            if value==None:
+                LOGGER.error("No NAV available for " + operation.target.name + " as of " + key_date)
+                break
+            portfolios[portfolio_id][key_date][inner_security]['price'] = value['value']
+            portfolios[portfolio_id][key_date][inner_security]['price_date'] = value['date'].strftime('%Y-%m-%d')
         previous_date[portfolio_id] = key_date
+        previous_date[security_id] = key_date
     set_positions_portfolios(portfolios)
     set_positions_securities(securities)
