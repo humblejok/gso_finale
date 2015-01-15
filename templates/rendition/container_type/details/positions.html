@@ -15,8 +15,22 @@
 			$("#positions").empty();
 			var newContent = "<table class='table'>";
 			$.each(positions[$("#positionsDate").val()], function(index, value) {
-				newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'] + "</td><td>" + value['price'] + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']) + "</td></tr>"
+				if (index!='increase' && index!='decrease') {
+					newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td></tr>";
+				}
 			});
+			if (positions[$("#positionsDate").val()].increase && Object.keys(positions[$("#positionsDate").val()].increase).length>0) {
+				newContent += "<tr><td colspan=5>&nbsp;</td></tr>";
+				$.each(positions[$("#positionsDate").val()].increase, function(index, value) {
+					newContent += "<tr><td>" + index + " investment increase</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>" + value.toFixed(2) + "</td></tr>";
+				});
+			}
+			if (positions[$("#positionsDate").val()].decrease && Object.keys(positions[$("#positionsDate").val()].decrease).length>0) {
+				newContent += "<tr><td colspan=5>&nbsp;</td></tr>";
+				$.each(positions[$("#positionsDate").val()].decrease, function(index, value) {
+					newContent += "<tr><td>" + index + " investment decrease</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>(" + value.toFixed(2) + ")</td></tr>";
+				});
+			}
 			newContent += "</table>";
 			$("#positions").append(newContent);
 		}

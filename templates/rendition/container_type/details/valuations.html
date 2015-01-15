@@ -3,13 +3,6 @@
 {% block title %}Financial Lightweight Editor - {{container.name}} - Valuations{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
-				gridster = $(".gridster ul").gridster({
-					widget_margins: [10, 10],
-					widget_base_dimensions: [340, 340],
-					resize: {
-						enabled: false,
-					}
-				}).data('gridster').disable();
 {% endblock %}
 {% block headeroptions %}
 	<script>
@@ -46,20 +39,36 @@
 		<div class="row">
 			<table class='table col-lg-12'>
 				<tr>
-					<th>Date</th>
+					<th rowspan=2>Date</th>
+					<th colspan={{currencies|length}}><center>Investments</center></th>
+					<th rowspan=2>Actions</th>
+					<th colspan={{currencies|length}}><center>Cash</center></th>
+					<th rowspan=2>Actions</th>
+				</tr>
+				<tr>
 				{% for currency in currencies %}
 					<th>{{currency}}</th>
 				{% endfor %}
-					<th>Actions</th>
+				{% for currency in currencies %}
+					<th>{{currency}}</th>
+				{% endfor %}
 				</tr>
 				{% for key_date in valuations_date %}
 					<tr>
 					<td>{{key_date}}</td>
 					{% for currency in currencies %}
-						<td>{{valuations|get_dict_key:key_date|get_dict_key:'invested'|get_dict_key:currency}}</td>
+						<td>{{valuations|get_dict_key:key_date|get_dict_key:'invested'|get_dict_key:currency|floatformat:2}}</td>
 					{% endfor %}
 					<td>
 						<a href="/container_positions.html?container_id={{container.id}}&container_type={{container.type.identifier}}&working_date={{key_date}}" class="btn btn-default" role="button" data-placement="bottom" title="View all positions of {{container.name}} as of {{key_date}}">
+							<span class="glyphicon glyphicon-list"></span>
+						</a>
+					</td>
+					{% for currency in currencies %}
+						<td>{{valuations|get_dict_key:key_date|get_dict_key:'cash'|get_dict_key:currency|floatformat:2}}</td>
+					{% endfor %}
+					<td>
+						<a href="/container_accounts.html?container_id={{container.id}}&container_type={{container.type.identifier}}&working_date={{key_date}}" class="btn btn-default" role="button" data-placement="bottom" title="View all accounts of {{container.name}} as of {{key_date}}">
 							<span class="glyphicon glyphicon-list"></span>
 						</a>
 					</td>

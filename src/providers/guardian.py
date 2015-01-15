@@ -33,11 +33,9 @@ def import_portfolio(container):
 def import_transactions(container):
     for account in container.accounts.all():
         FinancialOperation.objects.filter(Q(source=account) | Q(target=account) | Q(repository=account)).delete()
-        container.accounts.remove(account)
-        account.delete()
-        container.save()
 
-    operation_status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True)
+    executed_status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True)
+    cancelled_status = Attributes.objects.get(identifier='OPE_STATUS_CANCELLED', active=True)
     guardian_alias = Attributes.objects.get(type='alias_type', short_name='GUARDIAN')
     
     if container.aliases.filter(alias_type=guardian_alias).exists():
@@ -46,32 +44,110 @@ def import_transactions(container):
             if transaction['cod_ope']=='CONTRIBUTION':
                 source = None
                 target = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tot_dn'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
-                details = {'impact_pnl': False, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': operation_status, 'cashier': transaction['cash']=='S'}
+                details = {'impact_pnl': False, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'],
+                           'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': cancelled_status if transaction['annullato']=='A' else executed_status,
+                           'cashier': transaction['cash']=='S',
+                           'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }
+                           }
                 operations.create_cash_movement(container, source, target, details, transaction['des_mov'])
             elif transaction['cod_ope']=='WITHDRAWAL':
                 source = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tot_dn'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
                 target = None
-                details = {'impact_pnl': False, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': operation_status, 'cashier': transaction['cash']=='S'}
+                details = {'cancelled': transaction['annullato']=='A', 'impact_pnl': False, 'operation_date': transaction['data_ins'],
+                           'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'],
+                           'status': cancelled_status if transaction['annullato']=='A' else executed_status, 'cashier': transaction['cash']=='S',
+                          'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }}
                 operations.create_cash_movement(container, source, target, details, transaction['des_mov'])
             elif transaction['cod_ope']=='DEBIT':
                 source = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tot_dn'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
                 target = None
-                details = {'impact_pnl': True, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': operation_status, 'cashier': transaction['cash']=='S'}
+                details = {'impact_pnl': True, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'],
+                           'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': cancelled_status if transaction['annullato']=='A' else executed_status,
+                           'cashier': transaction['cash']=='S',
+                           'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }
+                           }
                 operations.create_cash_movement(container, source, target, details, transaction['des_mov'])            
             elif transaction['cod_ope']=='CREDIT':
                 source = None
                 target = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tot_dn'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
-                details = {'impact_pnl': True, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': operation_status, 'cashier': transaction['cash']=='S'}
+                details = {'cancelled': transaction['annullato']=='A', 'impact_pnl': True, 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'],
+                           'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': cancelled_status if transaction['annullato']=='A' else executed_status,
+                           'cashier': transaction['cash']=='S',
+                           'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }
+                           }
                 operations.create_cash_movement(container, source, target, details, transaction['des_mov'])
             elif transaction['cod_ope']=='BSPOT':
                 source = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tit_dr'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
                 target = {'currency': transaction['cod_div_tit'], 'initial_amount': transaction['ctv_tit_dn'], 'amount': transaction['ctv_tot_dn'], 'account_id': transaction['cod_dep_liq2']}
-                details = {'operation': 'BUY', 'spot_rate': transaction['cambiod'] if transaction.has_key('cambiod') and transaction['cambiod']!=None else (1.0/transaction['cambiom']), 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': operation_status, 'cashier': transaction['cash']=='S'}
+                details = {'operation': 'BUY', 'spot_rate': transaction['cambiod'] if transaction.has_key('cambiod') and transaction['cambiod']!=None else (1.0/transaction['cambiom']),
+                           'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'],
+                           'value_date': transaction['data_val'], 'status': cancelled_status if transaction['annullato']=='A' else executed_status,
+                           'cashier': transaction['cash']=='S',
+                           'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }
+                           }
                 operations.create_spot_movement(container, source, target, details, transaction['des_mov'])
             elif transaction['cod_ope']=='SSPOT':
                 source = {'currency': transaction['cod_div_tit'], 'initial_amount': transaction['ctv_tit_dn'], 'amount': transaction['ctv_tot_dn'], 'account_id': transaction['cod_dep_liq2']}
                 target = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tit_dr'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
-                details = {'operation': 'SELL', 'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else (1.0/transaction['cambiod']), 'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dr'], 'value_date': transaction['data_val'], 'status': operation_status, 'cashier': transaction['cash']=='S'}
+                details = {'operation': 'SELL', 'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else (1.0/transaction['cambiod']),
+                           'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dn'], 'value_date': transaction['data_val'],
+                           'status': cancelled_status if transaction['annullato']=='A' else executed_status, 'cashier': transaction['cash']=='S',
+                          'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }
+                           }
                 operations.create_spot_movement(container, source, target, details, transaction['des_mov'])
             elif transaction['cod_ope']=='B' or transaction['cod_ope']=='BUYFOP':
                 security = SecurityContainer.objects.filter(aliases__alias_type=guardian_alias, aliases__alias_value=transaction['cod_tit'])
@@ -80,7 +156,17 @@ def import_transactions(container):
                     target = {'security': security[0], 'quantity': transaction['qta'], 'price': transaction['prezzo']}
                     details = {'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'value_date': transaction['data_val'],
                                'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else ((1.0/transaction['cambiod']) if transaction.has_key('cambiod') and transaction['cambiod']!=None else 1.0),
-                               'operation': 'BUY', 'impact_pnl': transaction['cod_ope']=='B', 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq']
+                               'operation': 'BUY', 'impact_pnl': transaction['cod_ope']=='B', 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq'],
+                               'target_expenses': {
+                                   'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                                   ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                                   'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                                   },
+                               'source_expenses': {
+                                   'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                                   ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                                   'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                    }
                                }
                     operations.create_security_movement(container, source, target, details, transaction['des_mov'])
                 else:
@@ -92,14 +178,20 @@ def import_transactions(container):
                     target = {'security': security[0], 'quantity': -1.0 * transaction['qta'], 'price': transaction['prezzo']}
                     details = {'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'value_date': transaction['data_val'],
                                'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else ((1.0/transaction['cambiod']) if transaction.has_key('cambiod') and transaction['cambiod']!=None else 1.0),
-                               'operation': 'SELL', 'impact_pnl': transaction['cod_ope']=='S', 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq']
+                               'operation': 'SELL', 'impact_pnl': transaction['cod_ope']=='S', 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq'],
+                               'target_expenses': {
+                                   'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                                   ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                                   'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                                   },
+                               'source_expenses': {
+                                   'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                                   ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                                   'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                    }
                                }
                     operations.create_security_movement(container, source, target, details, transaction['des_mov'])
                 else:
                     LOGGER.warn('Security with Guardian alias [' + transaction['cod_tit'] + '] could not be found.')
-            elif transaction['cod_ope']=='BUYFOP':
-                None
-            elif transaction['cod_ope']=='SELLFOP':
-                None
         compute_accounts()
         compute_positions()
