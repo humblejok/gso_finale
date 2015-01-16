@@ -3,9 +3,12 @@ Created on May 26, 2014
 
 @author: sdejonckheere
 '''
-from universe.models import TrackContainer, Attributes, CompanyContainer
+from universe.models import TrackContainer, Attributes, CompanyContainer,\
+    SecurityContainer
 from utilities.track_content import get_track_content_display, get_track_content
 import logging
+from finale import threaded
+from datetime import datetime as dt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,3 +76,25 @@ def get_closest_value(track_content, value_date):
             return previous
         previous = token
     return previous
+
+def get_exchange_rate(source_currency, destination_currency):
+    currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
+    if not currency.exists():
+        threaded.bloomberg_data_query('NO_NEED', [source_currency + destination_currency + ' Curncy'], True)
+    currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
+    if currency.exists():
+        return get_main_track_content(currency[0])
+    else:
+        return None
+
+def get_exchange_rate_price(source_currency, destination_currency, value_date):
+    currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
+    if not currency.exists():
+        threaded.bloomberg_data_query('NO_NEED', [source_currency + destination_currency + ' Curncy'], True)
+    currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
+    if currency.exists():
+        value = get_closest_value(get_main_track_content(currency[0]), dt.combine(value_date, dt.min.time()))
+        if value==None:
+            return 1.0
+        else:
+            return value['value']

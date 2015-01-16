@@ -49,12 +49,12 @@ def import_transactions(container):
                            'cashier': transaction['cash']=='S',
                            'target_expenses': {
                                'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                },
                            'source_expenses': {
                                'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                 }
                            }
@@ -67,12 +67,12 @@ def import_transactions(container):
                            'status': cancelled_status if transaction['annullato']=='A' else executed_status, 'cashier': transaction['cash']=='S',
                           'target_expenses': {
                                'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                },
                            'source_expenses': {
                                'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                 }}
                 operations.create_cash_movement(container, source, target, details, transaction['des_mov'])
@@ -84,12 +84,12 @@ def import_transactions(container):
                            'cashier': transaction['cash']=='S',
                            'target_expenses': {
                                'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                },
                            'source_expenses': {
                                'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                 }
                            }
@@ -102,12 +102,12 @@ def import_transactions(container):
                            'cashier': transaction['cash']=='S',
                            'target_expenses': {
                                'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                },
                            'source_expenses': {
                                'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                 }
                            }
@@ -121,12 +121,12 @@ def import_transactions(container):
                            'cashier': transaction['cash']=='S',
                            'target_expenses': {
                                'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                },
                            'source_expenses': {
                                'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                 }
                            }
@@ -139,12 +139,12 @@ def import_transactions(container):
                            'status': cancelled_status if transaction['annullato']=='A' else executed_status, 'cashier': transaction['cash']=='S',
                           'target_expenses': {
                                'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                               ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                },
                            'source_expenses': {
                                'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                               ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                 }
                            }
@@ -159,16 +159,38 @@ def import_transactions(container):
                                'operation': 'BUY', 'impact_pnl': transaction['cod_ope']=='B', 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq'],
                                'target_expenses': {
                                    'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                                   ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                                   'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                    'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                    },
                                'source_expenses': {
                                    'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                                   ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                                   'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                    'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                     }
                                }
                     operations.create_security_movement(container, source, target, details, transaction['des_mov'])
+                else:
+                    LOGGER.warn('Security with Guardian alias [' + transaction['cod_tit'] + '] could not be found.')
+            elif transaction['cod_ope']=='DIVIDEND':
+                security = SecurityContainer.objects.filter(aliases__alias_type=guardian_alias, aliases__alias_value=transaction['cod_tit'])
+                if security.exists():
+                    source = None
+                    target = {'security': security[0], 'quantity': transaction['qta'], 'price': transaction['prezzo']}
+                    details = {'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'value_date': transaction['data_val'],
+                               'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else ((1.0/transaction['cambiod']) if transaction.has_key('cambiod') and transaction['cambiod']!=None else 1.0),
+                               'impact_pnl': True, 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq'],
+                               'target_expenses': {
+                                   'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                                   'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                                   'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                                   },
+                               'source_expenses': {
+                                   'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                                   'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                                   'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                    }
+                               }
+                    operations.create_security_dividend(container, source, target, details, transaction['des_mov'])
                 else:
                     LOGGER.warn('Security with Guardian alias [' + transaction['cod_tit'] + '] could not be found.')
             elif transaction['cod_ope']=='S' or transaction['cod_ope']=='SELLFOP':
@@ -181,12 +203,12 @@ def import_transactions(container):
                                'operation': 'SELL', 'impact_pnl': transaction['cod_ope']=='S', 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq'],
                                'target_expenses': {
                                    'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
-                                   ''tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                                   'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
                                    'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
                                    },
                                'source_expenses': {
                                    'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
-                                   ''tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                                   'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
                                    'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
                                     }
                                }

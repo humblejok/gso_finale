@@ -39,38 +39,46 @@
 		<div class="row">
 			<table class='table col-lg-12'>
 				<tr>
-					<th rowspan=2>Date</th>
+					<th rowspan=2><center>Date</center></th>
 					<th colspan={{currencies|length}}><center>Investments</center></th>
-					<th rowspan=2>Actions</th>
+					<th rowspan=2><center>Total ({{container.currency.short_name}})</center></th>
+					<th rowspan=2><center>Actions</center></th>
 					<th colspan={{currencies|length}}><center>Cash</center></th>
-					<th rowspan=2>Actions</th>
+					<th rowspan=2><center>Total ({{container.currency.short_name}})</center></th>
+					<th rowspan=2><center>Actions</center></th>
 				</tr>
 				<tr>
 				{% for currency in currencies %}
-					<th>{{currency}}</th>
+					<th><center>{{currency}}</center></th>
 				{% endfor %}
 				{% for currency in currencies %}
-					<th>{{currency}}</th>
+					<th><center>{{currency}}</center></th>
 				{% endfor %}
 				</tr>
 				{% for key_date in valuations_date %}
 					<tr>
 					<td>{{key_date}}</td>
 					{% for currency in currencies %}
-						<td>{{valuations|get_dict_key:key_date|get_dict_key:'invested'|get_dict_key:currency|floatformat:2}}</td>
+						<td><center>{{valuations|get_dict_key:key_date|get_dict_key:'invested'|get_dict_key:currency|floatformat:2}}</center</td>
 					{% endfor %}
+					<td><center>{{valuations|get_dict_key:key_date|get_dict_key:'invested'|get_dict_key:'portfolio'|floatformat:2}}</center</td>
 					<td>
-						<a href="/container_positions.html?container_id={{container.id}}&container_type={{container.type.identifier}}&working_date={{key_date}}" class="btn btn-default" role="button" data-placement="bottom" title="View all positions of {{container.name}} as of {{key_date}}">
-							<span class="glyphicon glyphicon-list"></span>
-						</a>
+						<center>
+							<a href="/container_positions.html?container_id={{container.id}}&container_type={{container.type.identifier}}&working_date={{key_date}}" class="btn btn-default" role="button" data-placement="bottom" title="View all positions of {{container.name}} as of {{key_date}}">
+								<span class="glyphicon glyphicon-list"></span>
+							</a>
+						</center>
 					</td>
 					{% for currency in currencies %}
-						<td>{{valuations|get_dict_key:key_date|get_dict_key:'cash'|get_dict_key:currency|floatformat:2}}</td>
+						<td><center>{{valuations|get_dict_key:key_date|get_dict_key:'cash'|get_dict_key:currency|get_dict_key:'account'|floatformat:2}} {% if container.currency.short_name != currency %}({{valuations|get_dict_key:key_date|get_dict_key:'spot_pf'|get_dict_key:currency|floatformat:6}}){% endif %}</center></td>
 					{% endfor %}
+					<td><center>{{valuations|get_dict_key:key_date|get_dict_key:'cash_pf'|floatformat:2}}</center></td>
 					<td>
-						<a href="/container_accounts.html?container_id={{container.id}}&container_type={{container.type.identifier}}&working_date={{key_date}}" class="btn btn-default" role="button" data-placement="bottom" title="View all accounts of {{container.name}} as of {{key_date}}">
-							<span class="glyphicon glyphicon-list"></span>
-						</a>
+						<center>
+							<a href="/container_accounts.html?container_id={{container.id}}&container_type={{container.type.identifier}}&working_date={{key_date}}" class="btn btn-default" role="button" data-placement="bottom" title="View all accounts of {{container.name}} as of {{key_date}}">
+								<span class="glyphicon glyphicon-list"></span>
+							</a>
+						</center>
 					</td>
 					</tr>
 				{% endfor %}

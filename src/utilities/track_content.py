@@ -40,3 +40,4 @@ def set_track_content(track, values, clean):
             track.save()
     else:
         LOGGER.warn('Cannot store empty tracks into MongoDB')
+        

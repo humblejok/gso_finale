@@ -14,9 +14,10 @@
 		function fillContent() {
 			$("#positions").empty();
 			var newContent = "<table class='table'>";
+			newContent += "<tr><th>Security</th><th>Quantity</th><th>Price</th><th>Price date</th><th>Amount (Security)</th><th>Amount (Portfolio)</th></tr>";
 			$.each(positions[$("#positionsDate").val()], function(index, value) {
 				if (index!='increase' && index!='decrease') {
-					newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td></tr>";
+					newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td><td>" + (value['price_pf'] * value['total']).toFixed(2) + "</td></tr>";
 				}
 			});
 			if (positions[$("#positionsDate").val()].increase && Object.keys(positions[$("#positionsDate").val()].increase).length>0) {

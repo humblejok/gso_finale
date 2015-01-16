@@ -4,7 +4,6 @@ Created on Jan 9, 2015
 @author: sdejonckheere
 '''
 from universe.models import SecurityContainer
-from utilities.track_token import get_main_track_content, get_closest_value
 import datetime
 from utilities.valuation_content import get_positions_portfolio,\
     set_portfolios_valuation, get_account_history
@@ -32,22 +31,31 @@ class NativeValuationsComputer():
         while start_date<today:
             work_date = dt.combine(start_date, dt.min.time())
             key_date = str(epoch_time(work_date))
-            valuation[key_date] = {'total': {}, 'cash': {}, 'invested': {}, 'pnl': {}, 'fx_pnl': {}, 'movement':{}, 'performance': 0.0}
+            valuation[key_date] = {'total': {}, 'cash': {}, 'cash_pf': 0.0, 'invested': {}, 'pnl': {}, 'fx_pnl': {}, 'movement':{}, 'performance': 0.0}
             for account in container.accounts.filter(~Q(account_type__identifier='ACC_SECURITY')):
                 history = get_account_history(account)['data']
                 if history!=None:
                     value = valuation_content.get_closest_value(history, work_date, True)
                     if value!=None:
                         if not valuation[key_date]['cash'].has_key(account.currency.short_name):
-                            valuation[key_date]['cash'][account.currency.short_name] = 0.0
-                        valuation[key_date]['cash'][account.currency.short_name] += value['assets']
+                            valuation[key_date]['cash'][account.currency.short_name] = {'portfolio': 0.0, 'account': 0.0}
+                        valuation[key_date]['cash'][account.currency.short_name]['account'] += value['assets']
+                        valuation[key_date]['cash'][account.currency.short_name]['portfolio'] += value['assets_pf']
+                        valuation[key_date]['cash_pf'] += value['assets_pf']
+                        if not valuation[key_date].has_key('spot_pf'):
+                            valuation[key_date]['spot_pf'] = {}
+                        valuation[key_date]['spot_pf'][account.currency.short_name] = value['spot_pf']
             if all_positions.has_key(key_date):
                 for position in all_positions[key_date]:
                     if position not in ['increase', 'decrease']:
                         security = SecurityContainer.objects.get(id=position)
                         amount = all_positions[key_date][position]['total'] * all_positions[key_date][position]['price']
+                        amount_portfolio = all_positions[key_date][position]['total'] * all_positions[key_date][position]['price_pf']
                         if not valuation[key_date]['invested'].has_key(security.currency.short_name):
                             valuation[key_date]['invested'][security.currency.short_name] = 0.0
+                        if not valuation[key_date]['invested'].has_key('portfolio'):
+                            valuation[key_date]['invested']['portfolio'] = 0.0
                         valuation[key_date]['invested'][security.currency.short_name] += amount
+                        valuation[key_date]['invested']['portfolio'] += amount_portfolio 
             start_date = dates.AddDay(start_date, 1)
         set_portfolios_valuation({str(container.id): valuation})
