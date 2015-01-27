@@ -12,24 +12,25 @@
 		var positions = {{positions|get_as_json_string|safe}};
 
 		function fillContent() {
+			console.log($("#positionsDate").val());
 			$("#positions").empty();
 			var newContent = "<table class='table'>";
 			newContent += "<tr><th>Security</th><th>Quantity</th><th>Price</th><th>Price date</th><th>Amount (Security)</th><th>Amount (Portfolio)</th></tr>";
 			$.each(positions[$("#positionsDate").val()], function(index, value) {
-				if (index!='increase' && index!='decrease') {
+				if (index!='increase' && index!='decrease' && index!='increase_fop' && index!='decrease_fop') {
 					newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td><td>" + (value['price_pf'] * value['total']).toFixed(2) + "</td></tr>";
 				}
 			});
 			if (positions[$("#positionsDate").val()].increase && Object.keys(positions[$("#positionsDate").val()].increase).length>0) {
 				newContent += "<tr><td colspan=5>&nbsp;</td></tr>";
 				$.each(positions[$("#positionsDate").val()].increase, function(index, value) {
-					newContent += "<tr><td>" + index + " investment increase</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>" + value.toFixed(2) + "</td></tr>";
+					newContent += "<tr><td>" + index.toUpperCase() + " investment increase</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>" + value.toFixed(2) + "</td></tr>";
 				});
 			}
 			if (positions[$("#positionsDate").val()].decrease && Object.keys(positions[$("#positionsDate").val()].decrease).length>0) {
 				newContent += "<tr><td colspan=5>&nbsp;</td></tr>";
 				$.each(positions[$("#positionsDate").val()].decrease, function(index, value) {
-					newContent += "<tr><td>" + index + " investment decrease</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>(" + value.toFixed(2) + ")</td></tr>";
+					newContent += "<tr><td>" + index.toUpperCase() + " investment decrease</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>(" + value.toFixed(2) + ")</td></tr>";
 				});
 			}
 			newContent += "</table>";
@@ -44,16 +45,9 @@
 					<div class="btn-group">
 						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
 						<ul class="dropdown-menu" role="menu">
-							<li role="presentation" class="dropdown-header">Actions</li>
-							<li><a href="/container_delete.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Delete</a></li>
-							<li><a href="/container_valuations_compute.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Compute valuations</a></li>
-							<li><a href="/container_valuations.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Show valuations</a></li>
-							<li role="presentation" class="dropdown-header">Guardian</li>
-							<li><a href="/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=portfolio">Import portfolio information</a></li>
-							<li><a href="/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=transactions">Import transactions</a></li>
-							<li role="presentation" class="dropdown-header">Sequoia</li>
-							<li><a href="/custom_view.html?container_id={{container.id}}&custom=sequoia&target=map">View MAP/BUD</a></li>
-							<li><a href="/custom_edit.html?container_id={{container.id}}&custom=sequoia&target=map">Edit MAP/BUD</a></li>
+							{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+								{% include template_name %}
+							{% endwith %}
 						</ul>
 					</div>
 				</h1>

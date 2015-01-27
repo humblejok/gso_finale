@@ -20,7 +20,7 @@ from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
     Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer, \
     Container, RelatedCompany, PortfolioContainer, FinancialContainer, \
-    PersonContainer
+    PersonContainer, MenuEntries
 from utilities.external_content import import_external_data, \
     import_external_grouped_data, import_external_tracks,\
     import_external_data_sequence
@@ -38,6 +38,18 @@ from openpyxl.writer.excel import save_virtual_workbook
 
 
 LOGGER = logging.getLogger(__name__)
+
+def menu_setup_render(request):
+    container_type = request.POST['container_type']
+    language = request.POST['language']
+    menu_target = request.POST['menu_target']
+    selected = None
+    if request.POST.has_key('selected'):
+        selected = request.POST['selected']
+    entries = MenuEntries.objects.filter(menu_target__identifier=menu_target, language=language, container_type__identifier=container_type)
+    context = {'entries': entries, 'selected': selected}
+    return render(request, 'rendition/menu_setup_select_renderer.html', context)
+     
 
 def call_external(request):
     context = {}

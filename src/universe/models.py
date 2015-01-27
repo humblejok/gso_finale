@@ -31,12 +31,17 @@ def setup():
     setup_attributes()
     setup_labels()
     populate_bloomberg_fields(os.path.join(RESOURCES_MAIN_PATH,'fields.csv'))
+    populate_model_from_xlsx('universe.models.MenuEntries', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.BloombergDataContainerMapping', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.BloombergTrackContainerMapping', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.CompanyContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.AccountContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('universe.models.PersonContainer', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     generate_attributes()
+
+def setup_menus():
+    MenuEntries.objects.all().delete()
+    populate_model_from_xlsx('universe.models.MenuEntries', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
 
 def setup_labels():
     FieldLabel.objects.all().delete()
@@ -595,7 +600,7 @@ class CoreModel(models.Model):
                         self.many_fields[field_info.short_name].append(foreign_element)
                 elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
                     try:
-                        dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')
+                        dt = datetime.datetime.strptime(string_value,'%m/%d/%Y' if source!='web' else '%y-%m-%d')
                         if self._meta.get_field(field_info.short_name).get_internal_type()=='DateField':
                             dt = datetime.date(dt.year, dt.month, dt.day)
                     except:
@@ -610,10 +615,18 @@ class CoreModel(models.Model):
                     filtering_by_short = dict(linked_to)
                     filtering_by_short['short_name'] = string_value
                     by_short = foreign.objects.filter(**filtering_by_short)
+                    if foreign==universe.models.Attributes:
+                        filtering_by_identifier = dict(linked_to)
+                        filtering_by_identifier['identifier'] = string_value
+                        by_identifier = foreign.objects.filter(**filtering_by_identifier)
+                    else:
+                        by_identifier = None
                     if by_name.exists():
                         setattr(self, field_info.short_name, by_name[0])
                     elif by_short.exists():
                         setattr(self, field_info.short_name, by_short[0])
+                    elif by_identifier!=None and by_identifier.exists():
+                        setattr(self, field_info.short_name, by_identifier[0])
                     else:
                         dict_entry = Dictionary.objects.filter(name=linked_to['type'], auto_create=True)
                         if dict_entry.exists():
@@ -664,6 +677,24 @@ class Attributes(CoreModel):
     class Meta:
         ordering = ['name']
         
+
+class MenuEntries(CoreModel):
+    name = models.CharField(max_length=128)
+    short_name = models.CharField(max_length=32)
+    menu_target = models.ForeignKey(Attributes, limit_choices_to={'type':'container_menu_target'}, related_name='container_menu_target_rel', null=True)
+    menu_type = models.CharField(max_length=128)
+    container_type = models.ForeignKey(Attributes, limit_choices_to={'type':'container_type'}, related_name='container_type_menu_rel', null=True)
+    language = models.CharField(max_length=3)
+    data_target = models.CharField(max_length=128)
+    action_type = models.CharField(max_length=128, null=True, blank=True)
+    action_label = models.CharField(max_length=128)
+    
+    def get_fields(self):
+        return ['menu_target','menu_type','container_type','language','data_target','action_type','action_label']
+
+    class Meta:
+        ordering = ['menu_target']
+    
 class BloombergField(CoreModel):
     identifier = models.CharField(max_length=128)
     code = models.CharField(max_length=128)

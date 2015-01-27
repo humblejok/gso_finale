@@ -15,6 +15,7 @@ LOGGER = logging.getLogger(__name__)
 def get_track(security, track_info):
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
+    daily_frequency = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
     track_type = Attributes.objects.get(identifier=track_info['track_type'], active=True)
     finale_company = CompanyContainer.objects.get(name='FinaLE Engine')
     if track_info['track_default']:
@@ -23,7 +24,10 @@ def get_track(security, track_info):
             provider = provider[0].company
         else:
             provider = finale_company
-        frequency_id = security.frequency.id
+        if security.frequency!=None:
+            frequency_id = security.frequency.id
+        else:
+            frequency_id = daily_frequency.id
         frequency_reference = security.frequency_reference
     else:
         provider = finale_company

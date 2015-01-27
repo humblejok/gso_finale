@@ -33,36 +33,38 @@
 						
 						<th>frequency.name</th>
 						
-						<th>status.name</th>
-						
 						<th>inception_date</th>
 						
 						<th>closed_date</th>
 						
+						<th>status.name</th>
+						
 						<th></th>
 					</tr>
-					{% for item in containers %}
+					{% for container in containers %}
 					<tr>
 						
-						<td>{{item.name}}</td>
+						<td>{{container.name}}</td>
 						
-						<td>{{item.currency.short_name}}</td>
+						<td>{{container.currency.short_name}}</td>
 						
-						<td>{{item.frequency.name}}</td>
+						<td>{{container.frequency.name}}</td>
 						
-						<td>{{item.status.name}}</td>
+						<td>{{container.inception_date}}</td>
 						
-						<td>{{item.inception_date}}</td>
+						<td>{{container.closed_date}}</td>
 						
-						<td>{{item.closed_date}}</td>
+						<td>{{container.status.name}}</td>
 						
 						<td>
 							<div class="btn-group">
 								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
 								<ul class="dropdown-menu" role="menu">
-									<li role="presentation" class="dropdown-header">Actions</li>
-									<li><a href="/container_get.html?container_id={{item.id}}&container_type={{container_type}}">Open</a></li>
-									<li><a href="/container_delete.html?container_id={{item.id}}&container_type={{container_type}}">Delete</a></li>
+									
+										{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+											{% include template_name %}
+										{% endwith %}
+									
 								</ul>
 							</div>
 						</td>

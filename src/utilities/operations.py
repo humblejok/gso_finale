@@ -14,6 +14,83 @@ from django.db.models import Q
 
 LOGGER = logging.getLogger(__name__)
 
+# TODO Externalize
+PRICE_DIVISOR = { 'CONT_BON': 100.0 }
+
+
+def create_forward_operation(container, source, target, details, label):
+    current_account_type = Attributes.objects.get(identifier='ACC_CURRENT', active=True)
+    forward_account_type = Attributes.objects.get(identifier='ACC_FORWARD', active=True)
+    
+    open_operation = FinancialOperation()
+    open_operation.name = label if label!=None else generate_forward_open_label(source, target, details)
+    open_operation.short_name = generate_forward_open_short_label(source, target, details)
+    open_operation.status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True) if not details.has_key('status') else details['status']
+    open_operation.operation_type = generate_spot_movement_operation_type(source, target, details)
+    open_operation.creation_date = details['operation_date']
+    open_operation.operator = None
+    open_operation.validator = None
+    open_operation.source = get_account(container, source, forward_account_type)
+    open_operation.target = get_account(container, target, forward_account_type)
+    open_operation.spot = details['spot_rate']
+    open_operation.repository = None
+    open_operation.quantity = None
+    open_operation.amount = get_cash_movement_amount(source, target, details)
+    open_operation.price = None
+    open_operation.operation_date = details['trade_date']
+    open_operation.operation_pnl = 0.0
+    open_operation.value_date = details['trade_date']
+    open_operation.termination_date = details['trade_date']
+    open_operation.associated_operation = None
+    open_operation.save()
+    create_expenses(open_operation, open_operation.source, details['source_expenses'])
+    create_expenses(open_operation, open_operation.target, details['target_expenses'])
+    
+    close_operation = FinancialOperation()
+    close_operation.name = label if label!=None else generate_forward_close_label(source, target, details)
+    close_operation.short_name = generate_forward_close_short_label(source, target, details)
+    close_operation.status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True) if not details.has_key('status') else details['status']
+    close_operation.operation_type = generate_spot_movement_operation_type(target, source, details)
+    close_operation.creation_date = details['operation_date']
+    close_operation.operator = None
+    close_operation.validator = None
+    close_operation.source = get_account(container, target, forward_account_type)
+    close_operation.target = get_account(container, source, forward_account_type)
+    close_operation.spot = details['spot_rate']
+    close_operation.repository = None
+    close_operation.quantity = None
+    close_operation.amount = -get_cash_movement_amount(target, source, details) * details['spot_rate']
+    close_operation.price = None
+    close_operation.operation_date = details['value_date']
+    close_operation.operation_pnl = 0.0
+    close_operation.value_date = details['value_date']
+    close_operation.termination_date = details['value_date']
+    close_operation.associated_operation = None
+    close_operation.save()
+    
+    spot_operation = FinancialOperation()
+    spot_operation.name = label if label!=None else generate_forward_open_label(source, target, details)
+    spot_operation.short_name = generate_forward_open_short_label(source, target, details)
+    spot_operation.status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True) if not details.has_key('status') else details['status']
+    spot_operation.operation_type = generate_spot_movement_operation_type(source, target, details)
+    spot_operation.creation_date = details['operation_date']
+    spot_operation.operator = None
+    spot_operation.validator = None
+    spot_operation.source = get_account(container, source, current_account_type)
+    open_operation.target = get_account(container, target, current_account_type)
+    spot_operation.spot = details['spot_rate']
+    spot_operation.repository = None
+    spot_operation.quantity = None
+    spot_operation.amount = get_cash_movement_amount(source, target, details)
+    spot_operation.price = None
+    spot_operation.operation_date = details['trade_date']
+    spot_operation.operation_pnl = 0.0
+    spot_operation.value_date = details['value_date']
+    spot_operation.termination_date = details['value_date']
+    spot_operation.associated_operation = None
+    spot_operation.save()
+    
+    
 def create_security_movement(container, source, target, details, label):
     current_account_type = Attributes.objects.get(identifier='ACC_CURRENT', active=True)
     security_account_type = Attributes.objects.get(identifier='ACC_SECURITY', active=True)
@@ -26,12 +103,26 @@ def create_security_movement(container, source, target, details, label):
     operation.creation_date = details['operation_date']
     operation.operator = None
     operation.validator = None
-    operation.source = get_account(container, details, current_account_type)
+    operation.source = get_account(container, details, current_account_type) if details['impact_pnl'] else None
     operation.target = target['security']
     operation.spot = details['spot_rate']
     operation.repository = get_account(container, details, security_account_type)
     operation.quantity = target['quantity']
-    operation.amount = target['quantity'] * target['price'] * details['spot_rate']
+    used_price = target['price']
+    if not details['impact_pnl'] and (used_price==None or used_price!=0.0):
+        track = get_main_track_content(target['security'])
+        value = get_closest_value(track, dt.strptime(details['trade_date'], '%Y-%m-%d'))
+        if value==None:
+            LOGGER.warn(target['security'].name + " - Transaction does not have a correct price but no valid price could be found.")
+            used_price = 0.0
+        else:
+            LOGGER.warn(target['security'].name + " - Transaction does not have a correct price but a valid price could be found.")
+            used_price = value['value']
+    if PRICE_DIVISOR.has_key(target['security'].type.identifier):
+        divisor = PRICE_DIVISOR[target['security'].type.identifier]
+    else:
+        divisor = 1.0
+    operation.amount = (target['quantity'] * used_price * details['spot_rate']) / divisor
     operation.price = target['price']
     operation.operation_date = details['trade_date']
     operation.operation_pnl = 0.0
@@ -39,19 +130,20 @@ def create_security_movement(container, source, target, details, label):
     operation.termination_date = details['value_date']
     operation.associated_operation = None
     operation.save()
-    create_expenses(operation, operation.source, details['source_expenses'])
-    create_expenses(operation, operation.source, details['target_expenses'])
+    if not details['impact_pnl']:
+        create_expenses(operation, operation.source, details['source_expenses'])
+        create_expenses(operation, operation.source, details['target_expenses'])
     return operation
 
-def create_security_dividend(container, source, target, details, label):
+def create_security_credit(container, source, target, details, label, is_dividend=True):
     current_account_type = Attributes.objects.get(identifier='ACC_CURRENT', active=True)
-    dividend = Attributes.objects.get(identifier='OPE_TYPE_DIVIDEND', active=True)
+    operation_type = Attributes.objects.get(identifier='OPE_TYPE_DIVIDEND' if is_dividend else 'OPE_TYPE_COUPON', active=True)
     
     operation = FinancialOperation()
     operation.name = 'Dividends on security ' + target['security'].name + ' of ' + str(target['price']) + ' per share'
     operation.short_name = 'Dividends on security ' + target['security'].name
     operation.status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True) if not details.has_key('status') else details['status']
-    operation.operation_type = dividend
+    operation.operation_type = operation_type
     operation.creation_date = details['operation_date']
     operation.operator = None
     operation.validator = None
@@ -175,7 +267,7 @@ def generate_cash_movement_spot(source, target, details):
         return abs(details['amount'])/abs(details['initial_amount'])
 
 def get_account(container, description, account_type):
-    if description.has_key('account_id') and description['account_id']!=None and not account_type.identifier=='ACC_SECURITY':
+    if description.has_key('account_id') and description['account_id']!=None and account_type.identifier not in ['ACC_SECURITY','ACC_FORWARD']:
         accounts = container.accounts.filter(name=description['account_id'])
     else:
         accounts = container.accounts.filter(currency__short_name=description['currency'], account_type=account_type)
@@ -193,6 +285,18 @@ def get_account(container, description, account_type):
         container.accounts.add(account)
         container.save()
         return account
+
+def generate_forward_open_label(source, target, details):
+    return 'Forward opening ' + details['operation'] + ' of ' + source['currency'] + ' to ' + target['currency']
+
+def generate_forward_open_short_label(source, target, details):
+    return 'Open fwd ' + details['operation'] + ' ' + source['currency'] + ' -> ' + target['currency']
+
+def generate_forward_close_label(source, target, details):
+    return 'Forward closing ' + details['operation'] + ' of ' + source['currency'] + ' to ' + target['currency']
+
+def generate_forward_close_short_label(source, target, details):
+    return 'Close fwd' + details['operation'] + ' ' + source['currency'] + ' -> ' + target['currency']
 
 def generate_security_movement_label(target, details):
     return details['operation'] + ' ' + details['quantity'] + ' ' + target['security'].name
@@ -240,14 +344,57 @@ def generate_cash_movement_operation_type(source, target, details):
         else:
             return Attributes.objects.get(identifier='OPE_TYPE_WITHDRAWAL', active=True)
 
+def compute_account_details(portfolio, operation, spots, accounts_history, current_account_key,
+                            previous_date, key_date, is_source, target_used):
+    if not accounts_history.has_key(current_account_key):
+        accounts_history[current_account_key] = {}
+    if previous_date.has_key(current_account_key):
+        accounts_history[current_account_key][key_date] = copy.deepcopy(accounts_history[current_account_key][previous_date[current_account_key]])
+        if key_date!=previous_date[current_account_key]:
+            accounts_history[current_account_key][key_date]['fx_pnl'] = 0.0
+            accounts_history[current_account_key][key_date]['mvt_pnl'] = 0.0
+            accounts_history[current_account_key][key_date]['mvt_no_pnl'] = 0.0
+            accounts_history[current_account_key][key_date]['mvt_pnl_pf'] = 0.0
+            accounts_history[current_account_key][key_date]['mvt_no_pnl_pf'] = 0.0
+    else:
+        accounts_history[current_account_key][key_date] = {'assets': 0.0, 'assets_pf': 0.0,'mvt_pnl': 0.0, 'mvt_no_pnl': 0.0, 'mvt_pnl_pf': 0.0, 'mvt_no_pnl_pf': 0.0}
+    spot_pf = 1.0
+    if is_source:
+        wrk_currency = operation.source.currency.short_name
+    else:
+        wrk_currency = operation.target.currency.short_name
+    if wrk_currency!=portfolio.currency.short_name and not spots.has_key(wrk_currency):
+        spot_track = get_exchange_rate(wrk_currency, portfolio.currency.short_name)
+        if not spots.has_key(wrk_currency):
+            spots[wrk_currency] = {}
+        spots[wrk_currency][portfolio.currency.short_name] = spot_track
+    if wrk_currency!=portfolio.currency.short_name and spots.has_key(wrk_currency) and spots[wrk_currency].has_key(portfolio.currency.short_name):
+        value = get_closest_value(spots[wrk_currency][portfolio.currency.short_name], operation.value_date)
+        if value!=None:
+            spot_pf = value['value']
+    if is_source:
+        multiplier = -1.0 if target_used or operation.operation_type.identifier in ['OPE_TYPE_BUY'] else 1.0
+    else:
+        multiplier = operation.spot if operation.spot!=None else 1.0
+    computed_amount = operation.amount * multiplier
+    accounts_history[current_account_key][key_date]['assets'] += computed_amount
+    accounts_history[current_account_key][key_date]['assets_pf'] += computed_amount * spot_pf
+    accounts_history[current_account_key][key_date]['spot_pf'] = spot_pf
+    if operation.operation_type.identifier not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL']:
+        accounts_history[current_account_key][key_date]['mvt_pnl' if operation.operation_type.identifier=='OPE_TYPE_FEES' else 'mvt_no_pnl'] += computed_amount
+        accounts_history[current_account_key][key_date]['mvt_pnl_pf' if operation.operation_type.identifier=='OPE_TYPE_FEES' else 'mvt_no_pnl_pf'] += computed_amount * spot_pf
+    previous_date[current_account_key] = key_date
+    previous_date[current_account_key] = key_date
+
 def compute_accounts(container=None):
     LOGGER.info("Start computing accounts positions")
     spots = {}
-    
     if container==None:
         all_operations = FinancialOperation.objects.filter(~Q(operation_type__identifier__in=['OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP']), Q(status__identifier__in=['OPE_STATUS_EXECUTED','OPE_STATUS_CONFIRMED'])).order_by('value_date')
     else:
-        all_operations = FinancialOperation.objects.filter(Q(repository__in=container.accounts.all()), ~Q(operation_type__identifier__in=['OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP']), Q(status__identifier__in=['OPE_STATUS_EXECUTED','OPE_STATUS_CONFIRMED'])).order_by('value_date')
+        accounts = container.accounts.all()
+        accounts_ids = [account.id for account in accounts]
+        all_operations = FinancialOperation.objects.filter(~Q(operation_type__identifier__in=['OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP']), Q(repository__id__in=accounts_ids) | Q(source__id__in=accounts_ids) | Q(target__id__in=accounts_ids), Q(status__identifier__in=['OPE_STATUS_EXECUTED','OPE_STATUS_CONFIRMED'])).order_by('value_date')
     accounts_history = {}
     previous_date = {}
     for operation in all_operations:
@@ -263,64 +410,17 @@ def compute_accounts(container=None):
             portfolio = portfolio[0]
            
             key_date = str(epoch_time(operation.value_date))
-            if operation.target!=None and operation.operation_type.identifier not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL', 'OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP', 'OPE_TYPE_DIVIDEND']:
+            if operation.target!=None and operation.operation_type.identifier not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL', 'OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP', 'OPE_TYPE_DIVIDEND', 'OPE_TYPE_COUPON']:
                 target_key = str(operation.target.id)
                 if not accounts_history.has_key(target_key):
                     accounts_history[target_key] = {}
                 target_account_used = True
                 
             if source_account_used:
-                if not accounts_history.has_key(source_key):
-                    accounts_history[source_key] = {}
-                if previous_date.has_key(source_key):
-                    accounts_history[source_key][key_date] = copy.deepcopy(accounts_history[source_key][previous_date[source_key]])
-                    accounts_history[source_key][key_date]['mvt_pnl'] = 0.0
-                    accounts_history[source_key][key_date]['mvt_no_pnl'] = 0.0
-                    accounts_history[source_key][key_date]['fx_pnl'] = 0.0
-                else:
-                    accounts_history[source_key][key_date] = {'assets': 0.0, 'assets_pf': 0.0, 'mvt_pnl': 0.0, 'mvt_no_pnl': 0.0, 'fx_pnl': 0.0}
-                spot_pf = 1.0
-                wrk_currency = operation.source.currency.short_name
-                if wrk_currency!=portfolio.currency.short_name and not spots.has_key(wrk_currency):
-                    spot_track = get_exchange_rate(wrk_currency, portfolio.currency.short_name)
-                    if not spots.has_key(wrk_currency):
-                        spots[wrk_currency] = {}
-                    spots[wrk_currency][portfolio.currency.short_name] = spot_track
-                if wrk_currency!=portfolio.currency.short_name and spots.has_key(wrk_currency) and spots[wrk_currency].has_key(portfolio.currency.short_name):
-                    value = get_closest_value(spots[wrk_currency][portfolio.currency.short_name], operation.value_date)
-                    if value!=None:
-                        spot_pf = value['value']
-                    
-                computed_amount = operation.amount * (-1.0 if target_account_used or operation.operation_type.identifier in ['OPE_TYPE_BUY'] else 1.0)
-                accounts_history[source_key][key_date]['assets'] += computed_amount
-                accounts_history[source_key][key_date]['assets_pf'] += computed_amount * spot_pf
-                accounts_history[source_key][key_date]['mvt_pnl' if operation.operation_type.identifier in ['OPE_TYPE_FEES', 'OPE_TYPE_TAX', 'OPE_TYPE_COMMISSION', 'OPE_TYPE_DIVIDEND'] else 'mvt_no_pnl'] += computed_amount
-                previous_date[source_key] = key_date
+                compute_account_details(portfolio, operation, spots, accounts_history, source_key, previous_date, key_date, True, target_account_used)
                 
             if target_account_used:
-                if previous_date.has_key(target_key):
-                    accounts_history[target_key][key_date] = copy.deepcopy(accounts_history[target_key][previous_date[target_key]])
-                    accounts_history[target_key][key_date]['mvt_pnl'] = 0.0
-                    accounts_history[target_key][key_date]['mvt_no_pnl'] = 0.0
-                else:
-                    accounts_history[target_key][key_date] = {'assets': 0.0, 'assets_pf': 0.0,'mvt_pnl': 0.0, 'mvt_no_pnl': 0.0}
-                spot_pf = 1.0
-                wrk_currency = operation.target.currency.short_name
-                if wrk_currency!=portfolio.currency.short_name and not spots.has_key(wrk_currency):
-                    spot_track = get_exchange_rate(wrk_currency, portfolio.currency.short_name)
-                    if not spots.has_key(wrk_currency):
-                        spots[wrk_currency] = {}
-                    spots[wrk_currency][portfolio.currency.short_name] = spot_track
-                if wrk_currency!=portfolio.currency.short_name and spots.has_key(wrk_currency) and spots[wrk_currency].has_key(portfolio.currency.short_name):
-                    value = get_closest_value(spots[wrk_currency][portfolio.currency.short_name], operation.value_date)
-                    if value!=None:
-                        spot_pf = value['value']
-                computed_amount = operation.amount * (operation.spot if operation.spot!=None else 1.0)
-                accounts_history[target_key][key_date]['assets'] += computed_amount
-                accounts_history[target_key][key_date]['assets_pf'] += computed_amount * spot_pf
-                accounts_history[target_key][key_date]['spot_pf'] = spot_pf
-                accounts_history[target_key][key_date]['mvt_pnl' if operation.operation_type.identifier=='OPE_TYPE_FEES' else 'mvt_no_pnl'] += computed_amount
-                previous_date[target_key] = key_date
+                compute_account_details(portfolio, operation, spots, accounts_history, target_key, previous_date, key_date, False, target_account_used)
         else:
             LOGGER.error("No portfolio associated to account")
             continue
@@ -358,18 +458,49 @@ def compute_accounts(container=None):
                         spot_pf = value['value']
                 accounts_history[account_id][key_date] = copy.deepcopy(accounts_history[account_id][account_date])
                 accounts_history[account_id][key_date]['assets_pf'] = accounts_history[account_id][key_date]['assets'] * spot_pf
+                accounts_history[account_id][key_date]['mvt_no_pnl_pf'] = 0.0
+                accounts_history[account_id][key_date]['mvt_pnl_pf'] = 0.0
+                accounts_history[account_id][key_date]['mvt_no_pnl'] = 0.0
+                accounts_history[account_id][key_date]['mvt_pnl'] = 0.0
                 accounts_history[account_id][key_date]['spot_pf'] = spot_pf
             start_date = dates.AddDay(start_date, 1)
     LOGGER.info("Accounts positions computed")
     set_accounts_history(accounts_history)
     LOGGER.info("Accounts positions stored")
         
+        
+def compute_underlying_security(portfolios, tracks, spots, portfolio, operation, inner_security, key_date, work_date=None):
+    portfolio_id = str(portfolio.id)
+    inner_container = SecurityContainer.objects.get(id=inner_security)
+    if not tracks.has_key(inner_security):
+        track = get_main_track_content(inner_container)
+        tracks[inner_security] = track
+    value = get_closest_value(tracks[inner_security], operation.value_date if work_date==None else work_date)
+    if value==None:
+        LOGGER.error("No NAV available for " + operation.target.name + " as of " + key_date)
+        return None
+    portfolios[portfolio_id][key_date][inner_security]['price'] = value['value']
+    spot_pf = 1.0
+    if inner_container.currency.short_name!=portfolio.currency.short_name and not spots.has_key(inner_container.currency.short_name):
+        spot_track = get_exchange_rate(inner_container.currency.short_name, portfolio.currency.short_name)
+        if not spots.has_key(inner_container.currency.short_name):
+            spots[inner_container.currency.short_name] = {}
+        spots[inner_container.currency.short_name][portfolio.currency.short_name] = spot_track
+    if inner_container.currency.short_name!=portfolio.currency.short_name and spots.has_key(inner_container.currency.short_name) and spots[inner_container.currency.short_name].has_key(portfolio.currency.short_name):
+        value = get_closest_value(spots[inner_container.currency.short_name][portfolio.currency.short_name], operation.value_date if work_date==None else work_date)
+        if value!=None:
+            spot_pf = value['value']
+    portfolios[portfolio_id][key_date][inner_security]['price_pf'] = portfolios[portfolio_id][key_date][inner_security]['price'] * spot_pf
+    portfolios[portfolio_id][key_date][inner_security]['price_date'] = value['date'].strftime('%Y-%m-%d')
+
 def compute_positions(container=None):
     LOGGER.info("Start computing securities positions")
     if container==None:
         all_operations = FinancialOperation.objects.filter(operation_type__identifier__in=['OPE_TYPE_BUY','OPE_TYPE_SELL','OPE_TYPE_BUY_FOP','OPE_TYPE_SELL_FOP']).order_by('value_date')
     else:
-        all_operations = FinancialOperation.objects.filter(repository__in=container.accounts.all(), operation_type__identifier__in=['OPE_TYPE_BUY','OPE_TYPE_SELL','OPE_TYPE_BUY_FOP','OPE_TYPE_SELL_FOP']).order_by('value_date')
+        accounts = container.accounts.all()
+        accounts_ids = [account.id for account in accounts]
+        all_operations = FinancialOperation.objects.filter(Q(repository__id__in=accounts_ids) | Q(source__id__in=accounts_ids) | Q(target__id__in=accounts_ids), operation_type__identifier__in=['OPE_TYPE_BUY','OPE_TYPE_SELL','OPE_TYPE_BUY_FOP','OPE_TYPE_SELL_FOP']).order_by('value_date')
         
     tracks = {}
     spots = {}
@@ -404,47 +535,55 @@ def compute_positions(container=None):
         securities[security_id][key_date]['total'] = securities[security_id][key_date]['total'] + (operation.quantity * (1.0 if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else -1.0))
         if previous_date.has_key(portfolio_id):
             portfolios[portfolio_id][key_date] = copy.deepcopy(portfolios[portfolio_id][previous_date[portfolio_id]])
-            if previous_date!=key_date:
+            if previous_date[portfolio_id]!=key_date:
                 if portfolios[portfolio_id][key_date].has_key('increase'):
                     del portfolios[portfolio_id][key_date]['increase']
                 if portfolios[portfolio_id][key_date].has_key('decrease'):
                     del portfolios[portfolio_id][key_date]['decrease']
+                if portfolios[portfolio_id][key_date].has_key('increase_fop'):
+                    del portfolios[portfolio_id][key_date]['increase_fop']
+                if portfolios[portfolio_id][key_date].has_key('decrease_fop'):
+                    del portfolios[portfolio_id][key_date]['decrease_fop']
         if not portfolios[portfolio_id][key_date].has_key(security_id):
-            portfolios[portfolio_id][key_date][security_id] = {'total': 0.0, 'name': operation.target.short_name, 'price': 0.0, 'price_pf': 0.0, 'price_date': None}
+            portfolios[portfolio_id][key_date][security_id] = {'total': 0.0, 'name': operation.target.short_name, 'price': 0.0, 'price_pf': 0.0, 'price_date': None, 'buy_price': 0.0}
         if not portfolios[portfolio_id][key_date].has_key('increase'):
-            portfolios[portfolio_id][key_date]['increase'] = {}
+            portfolios[portfolio_id][key_date]['increase'] = {'portfolio': 0.0}
         if not portfolios[portfolio_id][key_date].has_key('decrease'):
-            portfolios[portfolio_id][key_date]['decrease'] = {}
+            portfolios[portfolio_id][key_date]['decrease'] = {'portfolio': 0.0}
+        if not portfolios[portfolio_id][key_date].has_key('increase_fop'):
+            portfolios[portfolio_id][key_date]['increase_fop'] = {'portfolio': 0.0}
+        if not portfolios[portfolio_id][key_date].has_key('decrease_fop'):
+            portfolios[portfolio_id][key_date]['decrease_fop'] = {'portfolio': 0.0}
         computed_amount = operation.quantity * (1.0 if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else -1.0)
+        if computed_amount>=0.0:
+            portfolios[portfolio_id][key_date][security_id]['buy_price'] = computed_amount * operation.price + portfolios[portfolio_id][key_date][security_id]['buy_price'] * portfolios[portfolio_id][key_date][security_id]['total']
+            portfolios[portfolio_id][key_date][security_id]['buy_price'] = portfolios[portfolio_id][key_date][security_id]['buy_price']/(portfolios[portfolio_id][key_date][security_id]['total'] + computed_amount)
+            
         portfolios[portfolio_id][key_date][security_id]['total'] += computed_amount
         
         portfolio_movement = portfolios[portfolio_id][key_date]['increase' if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else 'decrease']
+        portfolio_movement_fop = portfolios[portfolio_id][key_date]['increase_fop' if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else 'decrease_fop']
         if not portfolio_movement.has_key(operation.target.currency.short_name):
             portfolio_movement[operation.target.currency.short_name] = 0.0
+        if not portfolio_movement_fop.has_key(operation.target.currency.short_name):
+            portfolio_movement_fop[operation.target.currency.short_name] = 0.0
+        spot_pf = 1.0
+        if operation.target.currency.short_name!=portfolio.currency.short_name and not spots.has_key(operation.target.currency.short_name):
+            spot_track = get_exchange_rate(operation.target.currency.short_name, portfolio.currency.short_name)
+            if not spots.has_key(operation.target.currency.short_name):
+                spots[operation.target.currency.short_name] = {}
+            spots[operation.target.currency.short_name][portfolio.currency.short_name] = spot_track
+        if operation.target.currency.short_name!=portfolio.currency.short_name and spots.has_key(operation.target.currency.short_name) and spots[operation.target.currency.short_name].has_key(portfolio.currency.short_name):
+            value = get_closest_value(spots[operation.target.currency.short_name][portfolio.currency.short_name], operation.value_date)
+            if value!=None:
+                spot_pf = value['value']
         portfolio_movement[operation.target.currency.short_name] += operation.amount
+        portfolio_movement['portfolio'] += operation.amount * spot_pf
+        portfolio_movement_fop[operation.target.currency.short_name] += operation.amount if operation.operation_type.identifier in ['OPE_TYPE_SELL_FOP', 'OPE_TYPE_BUY_FOP'] else 0.0
+        portfolio_movement_fop['portfolio'] += (operation.amount if operation.operation_type.identifier in ['OPE_TYPE_SELL_FOP', 'OPE_TYPE_BUY_FOP'] else 0.0) * spot_pf
         for inner_security in portfolios[portfolio_id][key_date].keys():
-            if inner_security not in ['increase', 'decrease']:
-                inner_container = SecurityContainer.objects.get(id=inner_security)
-                if not tracks.has_key(inner_security):
-                    track = get_main_track_content(inner_container)
-                    tracks[inner_security] = track
-                value = get_closest_value(tracks[inner_security], operation.value_date)
-                if value==None:
-                    LOGGER.error("No NAV available for " + operation.target.name + " as of " + key_date)
-                    break
-                portfolios[portfolio_id][key_date][inner_security]['price'] = value['value']
-                spot_pf = 1.0
-                if inner_container.currency.short_name!=portfolio.currency.short_name and not spots.has_key(inner_container.currency.short_name):
-                    spot_track = get_exchange_rate(inner_container.currency.short_name, portfolio.currency.short_name)
-                    if not spots.has_key(inner_container.currency.short_name):
-                        spots[inner_container.currency.short_name] = {}
-                    spots[inner_container.currency.short_name][portfolio.currency.short_name] = spot_track
-                if inner_container.currency.short_name!=portfolio.currency.short_name and spots.has_key(inner_container.currency.short_name) and spots[inner_container.currency.short_name].has_key(portfolio.currency.short_name):
-                    value = get_closest_value(spots[inner_container.currency.short_name][portfolio.currency.short_name], operation.value_date)
-                    if value!=None:
-                        spot_pf = value['value']
-                portfolios[portfolio_id][key_date][inner_security]['price_pf'] = portfolios[portfolio_id][key_date][inner_security]['price'] * spot_pf
-                portfolios[portfolio_id][key_date][inner_security]['price_date'] = value['date'].strftime('%Y-%m-%d')
+            if inner_security not in ['increase', 'decrease', 'increase_fop', 'decrease_fop']:
+                compute_underlying_security(portfolios, tracks, spots, portfolio, operation, inner_security, key_date)
         previous_date[portfolio_id] = key_date
         previous_date[security_id] = key_date
     LOGGER.info("Completing securities positions")
@@ -469,32 +608,17 @@ def compute_positions(container=None):
                     del portfolios[portfolio_id][key_date]['increase']
                 if portfolios[portfolio_id][key_date].has_key('decrease'):
                     del portfolios[portfolio_id][key_date]['decrease']
+                if portfolios[portfolio_id][key_date].has_key('increase_fop'):
+                    del portfolios[portfolio_id][key_date]['increase_fop']
+                if portfolios[portfolio_id][key_date].has_key('decrease_fop'):
+                    del portfolios[portfolio_id][key_date]['decrease_fop']
                 for inner_security in portfolios[portfolio_id][key_date].keys():
-                    inner_container = SecurityContainer.objects.get(id=inner_security)
-                    if not tracks.has_key(inner_security):
-                        track = get_main_track_content(inner_container)
-                        tracks[inner_security] = track
-                    value = get_closest_value(tracks[inner_security], work_date)
-                    if value==None:
-                        LOGGER.error("No NAV available for " +portfolios[portfolio_id][key_date][inner_security]['name'] + " as of " + key_date)
-                        break
-                    portfolios[portfolio_id][key_date][inner_security]['price'] = value['value']
-                    
-                    spot_pf = 1.0
-                    if inner_container.currency.short_name!=portfolio.currency.short_name and not spots.has_key(inner_container.currency.short_name):
-                        spot_track = get_exchange_rate(inner_container.currency.short_name, portfolio.currency.short_name)
-                        if not spots.has_key(inner_container.currency.short_name):
-                            spots[inner_container.currency.short_name] = {}
-                        spots[inner_container.currency.short_name][portfolio.currency.short_name] = spot_track
-                    if inner_container.currency.short_name!=portfolio.currency.short_name and spots.has_key(inner_container.currency.short_name) and spots[inner_container.currency.short_name].has_key(portfolio.currency.short_name):
-                        value = get_closest_value(spots[inner_container.currency.short_name][portfolio.currency.short_name], work_date)
-                        if value!=None:
-                            spot_pf = value['value']
-                    portfolios[portfolio_id][key_date][inner_security]['price_pf'] = portfolios[portfolio_id][key_date][inner_security]['price'] * spot_pf
-                    portfolios[portfolio_id][key_date][inner_security]['price_date'] = value['date'].strftime('%Y-%m-%d')
+                    if portfolios[portfolio_id][key_date][inner_security]['total']!=0.0:
+                        compute_underlying_security(portfolios, tracks, spots, portfolio, operation, inner_security, key_date, work_date)
+                    else:
+                        del portfolios[portfolio_id][key_date][inner_security]
             start_date = dates.AddDay(start_date, 1)
             
-        portfolios[portfolio_id]
     LOGGER.info("Securities positions computed")
     set_positions_portfolios(portfolios)
     LOGGER.info("Securities positions (portfolio view) stored")

@@ -30,7 +30,7 @@ urlpatterns = patterns('',
 
     # Setup views
     url(r'^setup.html', 'universe.views.setup', name='setup'),
-    
+    url(r'^menu_setup_render.html', 'universe.views.menu_setup_render', name='menu_setup_render'),
     # Custom view
     url(r'^custom_edit.html', 'universe.views.custom_edit', name='custom_edit'),
     url(r'^custom_view.html', 'universe.views.custom_view', name='custom_view'),
@@ -74,8 +74,12 @@ urlpatterns = patterns('',
     url(r'^container_render_history_chart.html', 'universe.container.views.render_history_chart', name='container_render_history_chart'),
     url(r'^container_external_import.html', 'universe.container.views.external_import', name='external_import'),
     url(r'^container_valuations_compute.html', 'universe.container.views.valuations_compute', name='valuations_compute'),
-    url(r'^container_valuations.html', 'universe.container.views.valuations', name='valuations'),
+    url(r'^container_valuation.html', 'universe.container.views.valuation', name='valuation', kwargs={'view_extension':'html'}),
+    url(r'^container_valuations.html', 'universe.container.views.valuations', name='valuations', kwargs={'view_extension':'html'}),
+    url(r'^container_valuations.csv', 'universe.container.views.valuations', name='valuations', kwargs={'view_extension':'csv'}),
     url(r'^container_positions.html', 'universe.container.views.positions', name='positions'),
+    url(r'^container_partial_save.html', 'universe.container.views.partial_save', name='partial_save'),
+    
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

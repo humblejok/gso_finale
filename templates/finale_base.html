@@ -32,6 +32,20 @@
 				alert("Task failed with message: " + e.message);
 			}
 
+			function proceedPageAjax(link, data, callType) {
+				$("#backgroundProgress").removeClass("invisible");
+				$.ajax({
+					url: link,
+					type: callType,
+					data: JSON.stringify(data),
+					processData: false,
+					contentType: false,
+					success: taskFinished,
+					error: taskFailed
+				});
+				return false;
+			}
+
 			function importExternalData(providerName, dataType, grouped) {
 				var importForm = new FormData();
 				$("#backgroundProgress").removeClass("invisible");
@@ -172,6 +186,7 @@
 								<li><a href="/setup.html?item=container_type&type=creations">Containers creations</a></li>
 								<li><a href="/setup.html?item=container_type&type=details">Containers details</a></li>
 								<li><a href="/setup.html?item=container_type&type=lists">Containers lists</a></li>
+								<li><a href="/setup.html?item=container_type&type=menus">Containers menus</a></li>
 								<li role="presentation" class="dropdown-header">Data</li>
 								<li><a href="/setup.html?item=container_type&type=fields">Containers fields</a></li>
 								<li><a href="/setup.html?item=object_type&type=fields">Object definitions</a></li>

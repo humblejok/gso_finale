@@ -57,3 +57,9 @@ String.prototype.replaceAll = function(search, replace) {
     }
     return this.split(search).join(replace);
 }
+
+function getPropertyFromString(object, propertyField) {
+    var fields = propertyField.split(".");
+    while(fields.length && (object = object[fields.shift()]));
+    return object;
+}

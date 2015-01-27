@@ -31,18 +31,20 @@
 						{% endfor %}
 						<th></th>
 					</tr>
-					{% templatetag openblock %} for item in containers {% templatetag closeblock %}
+					{% templatetag openblock %} for container in containers {% templatetag closeblock %}
 					<tr>
 						{% for field in fields %}
-						<td>{% templatetag openvariable %}item.{{field}}{% templatetag closevariable %}</td>
+						<td>{% templatetag openvariable %}container.{{field}}{% templatetag closevariable %}</td>
 						{% endfor %}
 						<td>
 							<div class="btn-group">
 								<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
 								<ul class="dropdown-menu" role="menu">
-									<li role="presentation" class="dropdown-header">Actions</li>
-									<li><a href="/container_get.html?container_id={% templatetag openvariable %}item.id{% templatetag closevariable %}&container_type={% templatetag openvariable %}container_type{% templatetag closevariable %}">Open</a></li>
-									<li><a href="/container_delete.html?container_id={% templatetag openvariable %}item.id{% templatetag closevariable %}&container_type={% templatetag openvariable %}container_type{% templatetag closevariable %}">Delete</a></li>
+									{% verbatim %}
+										{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+											{% include template_name %}
+										{% endwith %}
+									{% endverbatim %}
 								</ul>
 							</div>
 						</td>

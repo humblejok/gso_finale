@@ -1,0 +1,140 @@
+{% extends "finale_base_edit.html" %}
+{% block title %}Financial Lightweight Editor - Setup{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+				containerChanged();
+{% endblock %}
+{% block headeroptions %}
+<script>
+	var allItems = {{global|safe}};
+
+	var waiting = 0;
+
+	var callbacks = [];
+
+	var currentIndex = 0;
+	var defaultRow = "<tr id='menu-row-%%index%%' class='container-row'><td><select id='group_%%index%%' class='form-control no-enter col-lg-11' onchange='updateTargetSelect(%%index%%, targetLoaded)'></select></td><td><select id='target_%%index%%' class='form-control no-enter col-lg-11'></select></td><td><button id='remove-button-%%index%%' type='button' class='btn btn-default col-lg-12' onclick='removeRow(%%index%%)'>Remove</button></td></tr>";
+
+	function onCallError(e) {
+		alert(e.status);
+	}
+
+	function containerChanged() {
+		currentIndex = 0;
+		$(".container-row").remove();
+		console.log($("#containerType").val());
+		if (allItems.hasOwnProperty($("#containerType").val())) {
+			waiting = allItems[$("#containerType").val()].length;
+			console.log(waiting);
+			$.each(allItems[$("#containerType").val()], function(index, value) {
+				var wrkIndex = currentIndex;
+				callbacks.push(function() {
+					$("#group_" + wrkIndex ).val(value["menu_target"]);
+					updateTargetSelect(wrkIndex, function() {
+						$("#target_" + wrkIndex ).val(value["entry_id"]);
+					})
+				});
+				addRow();
+			});
+		}
+	}
+
+	function updateTargetSelect(index, onCompleted) {
+		$("#target_" + index).load("/menu_setup_render.html",
+			 {"menu_target": $("#group_" + index).val(),
+			  "language":"en",
+			  "container_type":$("#containerType").val(),
+			 },
+			 onCompleted);
+	}
+
+	function removeRow(index) {
+		$("#menu-row-" + index).remove();
+		for (var i=index + 1; i<currentIndex; i++) {
+			$("#menu-row-" + i).attr("id", "menu-row-" + (i-1));
+			$("#group_" + i).attr("onchange", "updateTargetSelect(" + (i-1) + ", targetLoaded)");
+			$("#group_" + i).attr("id", "group_" + (i-1));
+			$("#target_" + i).attr("id", "target_" + (i-1));
+			$("#remove-button-" + i).attr("onclick", "removeRow(" + (i-1) + ")");
+			$("#remove-button-" + i).attr("id", "remove-button-" + (i-1));
+		}
+		currentIndex -= 1;
+	}
+
+	function targetLoaded() {
+		if (waiting>0) {
+			waiting -= 1;
+			console.log(waiting);
+			if (waiting==0) {
+				$.each(callbacks, function(index, f) {
+					f();
+				});
+				callbacks = [];
+			}
+		}
+	}
+
+	function containerFieldsSaved() {
+		location.reload();
+	}
+
+	function getSetup() {
+		var containerSetup = {};
+		containerSetup.type = $("#containerType").val();
+		containerSetup.data = [];
+		for (var index=0; index<currentIndex; index++) {
+			containerSetup.data.push({"menu_target": $("#group_" + index).val(), "entry_id": $("#target_" + index).val()});
+		}
+		return containerSetup;
+	}
+
+	function saveContent() {
+		var updateForm = new FormData();
+		updateForm.append('container_setup', JSON.stringify(getSetup()));
+		updateForm.append('item',urlParams['item']);
+		updateForm.append('type',urlParams['type']);
+		updateForm.append('render_name','view');
+		$.ajax({
+			url: '/container_setup_save.html',
+			type: 'POST',
+			data: updateForm,
+			processData: false,
+			contentType: false,
+			success: containerFieldsSaved,
+			error: onCallError
+		});
+	}
+
+	function checkLoads() {
+		updateTargetSelect(currentIndex-1, targetLoaded);
+	}
+
+	function addRow() {
+		$("#menuTable").append(defaultRow.replaceAll('%%index%%', currentIndex));
+		$("#group_" + currentIndex).load("/static/templates/container_menu_target_select_en.html",
+										 checkLoads);
+		currentIndex = currentIndex + 1;
+	}
+</script>
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">Menus definition</h1>
+	  			<p class="lead">Define the menu entries for the selected container.<br/>
+			</div>
+		</div>
+		<div class="row">
+			<select class="form-control no-enter col-lg-12" id="containerType" name="containerType" onchange="containerChanged()">
+				{% with value='' %}
+					{% include selection_template %}
+				{% endwith %}
+			</select>
+		</div>
+		<div class="row">&nbsp;</div>
+		<form class="form">
+			<table id='menuTable' class="table">
+				<tr><th class='col-lg-5'>Menu group</th><th class='col-lg-5'>Target</th><th><button type='button' class='btn btn-default col-lg-6' onclick='addRow()'>Add</button><button type='button' class='btn btn-default col-lg-6' onclick='saveContent()'>Save</button></th></tr>
+			</table>
+		</form>
+{% endblock %}

@@ -89,9 +89,9 @@
 	}
 
 	function saveListSetup() {
-		var containerSetup = {}
+		var containerSetup = {};
 		containerSetup.type = $("#containerType").val();
-		containerSetup.fields = allItems[$("#containerType").val()];
+		containerSetup.data = allItems[$("#containerType").val()];
 		var updateForm = new FormData();
 		updateForm.append('container_setup', JSON.stringify(containerSetup));
 		updateForm.append('item',urlParams['item']);

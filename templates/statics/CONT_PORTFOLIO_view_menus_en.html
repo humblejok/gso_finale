@@ -1,0 +1,50 @@
+
+
+	
+	<li role="presentation" class="dropdown-header">Actions</li>
+	
+		
+		<li><a href="/container_get.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Open</a></li>
+		
+	
+		
+		<li><a href="/container_delete.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Delete</a></li>
+		
+	
+		
+		<li><a href="#" onclick="proceedPageAjax('/container_valuations_compute.html?container_id={{container.id}}&container_type={{container.type.identifier}}', null, 'GET')">Compute valuations</a></li>
+		
+	
+		
+		<li><a href="/container_valuations.html?container_id={{container.id}}&container_type={{container.type.identifier}}">Show valuations</a></li>
+		
+	
+	
+
+	
+	<li role="presentation" class="dropdown-header">Guardian</li>
+	
+		
+		<li><a href="#" onclick="proceedPageAjax('/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=portfolio', null, 'GET')">Import portfolio information</a></li>
+		
+	
+		
+		<li><a href="#" onclick="proceedPageAjax('/container_external_import.html?container_id={{container.id}}&container_type={{container.type.identifier}}&external=guardian&target=transactions', null, 'GET')">Import transactions</a></li>
+		
+	
+	
+
+	
+	<li role="presentation" class="dropdown-header">Sequoia</li>
+	
+		
+		<li><a href="/custom_view.html?container_id={{container.id}}&container_type={{container.type.identifier}}&custom=sequoia&target=map">View MAP/BUD</a></li>
+		
+	
+		
+		<li><a href="/custom_edit.html?container_id={{container.id}}&container_type={{container.type.identifier}}&custom=sequoia&target=map">Edit MAP/BUD</a></li>
+		
+	
+	
+
+	

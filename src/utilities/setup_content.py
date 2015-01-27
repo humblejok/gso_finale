@@ -40,7 +40,14 @@ def set_object_type_fields(values):
 
 
 def get_container_type_details():
-    results = setup.container_type_lists.find().sort("_id", -1)
+    results = setup.container_type_details.find().sort("_id", -1)
+    if results.count()>0:
+        return results[0]
+    else:
+        return {}
+
+def get_container_type_menus():
+    results = setup.container_type_menus.find().sort("_id", -1)
     if results.count()>0:
         return results[0]
     else:
@@ -60,9 +67,20 @@ def get_container_type_creations():
     else:
         return {}
 
+def get_container_type_fields():
+    results = setup.container_type_fields.find().sort("_id", -1)
+    if results.count()>0:
+        return results[0]
+    else:
+        return {}
+
 def set_container_type_details(values):
     values['_id'] = epoch_time(datetime.datetime.today())
-    setup.container_type_lists.insert(values)
+    setup.container_type_details.insert(values)
+
+def set_container_type_menus(values):
+    values['_id'] = epoch_time(datetime.datetime.today())
+    setup.container_type_menus.insert(values)
 
 def set_container_type_lists(values):
     values['_id'] = epoch_time(datetime.datetime.today())
@@ -72,13 +90,6 @@ def set_container_type_creations(values):
     values['_id'] = epoch_time(datetime.datetime.today())
     setup.container_type_creations.insert(values)
 
-def get_container_type_fields():
-    results = setup.container_type_fields.find().sort("_id", -1)
-    if results.count()>0:
-        return results[0]
-    else:
-        return {}
-    
 def set_container_type_fields(values):
     values['_id'] = epoch_time(datetime.datetime.today())
     setup.container_type_fields.insert(values)

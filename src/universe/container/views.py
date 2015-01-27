@@ -8,7 +8,7 @@ import logging
 import os
 
 from universe.models import Attributes, TrackContainer, FieldLabel,\
-    PortfolioContainer
+    PortfolioContainer, MenuEntries, SecurityContainer
 from seq_common.utils import classes
 from django.shortcuts import render, redirect, render_to_response
 from django.contrib.auth.models import User
@@ -30,6 +30,7 @@ from utilities.valuation_content import get_portfolio_valuations,\
     get_valuation_content_display, get_positions_portfolio, get_closest_value,\
     get_closest_date
 import datetime
+from utilities.computing import get_previous_date
 
 
 LOGGER = logging.getLogger(__name__)
@@ -62,19 +63,48 @@ def setup_save(request):
     effective_class = classes.my_class_import(effective_class_name)
     
     all_data = getattr(setup_content, 'get_' + item + '_' + item_view_type)()
-    all_data[container_setup["type"]] = container_setup['information' if item_view_type=='details' else 'fields']
+    all_data[container_setup["type"]] = container_setup['data']
     getattr(setup_content, 'set_' + item + '_' + item_view_type)(all_data)
-    if item_view_type=='details':
-        context = Context({"information": container_setup['information'], "container" : container_setup["type"]})
-    else:
-        data_as_dict = container_setup["fields"]
+    if item_view_type=='fields':
+        data_as_dict = container_setup["data"]
         # TODO Clean the mess
-        if isinstance(container_setup["fields"], list):
+        if isinstance(container_setup["data"], list):
             data_as_dict = {}
-            for field in container_setup["fields"]:
+            for field in container_setup["data"]:
                 if '.' not in field:
                     data_as_dict[field] = {'name': field}
         context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
+        template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
+        rendition = template.render(context)
+        # TODO Implement multi-langage
+        outfile = os.path.join(STATICS_PATH, container_setup["type"] + '_' + item_render_name + '_' + item_view_type + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
+    elif item_view_type=='menus':
+        headers = Attributes.objects.filter(active=True, type='container_menu_target').order_by('name')
+        print headers
+        entries = {}
+        for entry in container_setup['data']:
+            if entry['entry_id']!=None:
+                if not entries.has_key(entry['menu_target']):
+                    entries[entry['menu_target']] = []
+                entries[entry['menu_target']].append(MenuEntries.objects.get(id=entry['entry_id']))
+        context = Context({'entries': entries, 'headers': headers})
+        template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
+        rendition = template.render(context)
+        # TODO Implement multi-langage
+        outfile = os.path.join(STATICS_PATH, container_setup["type"] + '_' + item_render_name + '_' + item_view_type + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
+    elif item_view_type!='details':
+        data_as_dict = container_setup["data"]
+        # TODO Clean the mess
+        if isinstance(container_setup["data"], list):
+            data_as_dict = {}
+            for field in container_setup["data"]:
+                if '.' not in field:
+                    data_as_dict[field] = {'name': field}
+        context = Context({"fields":container_setup['data'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
         template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
         rendition = template.render(context)
         # TODO Implement multi-langage
@@ -283,8 +313,30 @@ def valuations_compute(request):
     
     container = effective_class.objects.get(id=container_id)
     computer = NativeValuationsComputer()
-    computer.compute_daily_valuation(container)
-    return HttpResponse('{"result": "Finished", "status_message": "Computed"}',"json")
+    #computer.compute_daily_valuation(container)
+    computer.compute_valuation(container, Attributes.objects.get(identifier='FREQ_DAILY', active=True))
+    return HttpResponse('{"result": true, "status_message": "Computed"}',"json")
+
+def partial_save(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id']
+    container_data = request.POST['container_data']
+    container_data = json.loads(container_data)
+    container_type = request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    for field_key in container_data.keys():
+        #TODO Handle relation
+        field_info = Attributes()
+        field_info.short_name = field_key.split('.')[0]
+        field_info.name = field_key.split('.')[0]
+        container.set_attribute('web', field_info, container_data[field_key])
+    container.save()
+    return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
 def search(request):
     context = {}
@@ -337,7 +389,45 @@ def positions(request):
     context = {'currencies': currencies, 'positions': positions, 'positions_date': positions_date , 'working_date': working_date, 'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'labels': labels}
     return render(request,'rendition/container_type/details/positions.html', context)
 
-def valuations(request):
+def valuation(request, view_extension):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    working_date = request.GET['working_date']
+    container_id = request.GET['container_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    
+    previous_date = get_previous_date(datetime.datetime.strptime(working_date,'%Y-%m-%d'), container.frequency)
+    # TODO Optimize, do not convert all the items
+    valuations = get_portfolio_valuations(container)
+    if valuations!=None:
+        valuations = get_valuation_content_display(valuations['data'])
+        valuation = get_closest_value(valuations, working_date, False)
+    else:
+        valuation = None
+    positions = get_positions_portfolio(container)
+    if positions!=None:
+        positions = get_valuation_content_display(positions['data'])
+        current_positions = get_closest_value(positions, working_date, False)
+        previous_positions = get_closest_value(positions, previous_date, False)
+    securities = SecurityContainer.objects.filter(id__in=current_positions.keys())
+    securities = {str(security.id): dict_to_json_compliance(model_to_dict(security), SecurityContainer) for security in securities}
+    
+    context = {'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
+               'securities': dumps(securities),
+               'valuation': dumps(valuation),
+               'previous_positions': dumps(previous_positions),
+               'positions': dumps(current_positions),
+               'date': working_date,
+               'aggregates': ['currency.short_name']}
+    return render(request,'rendition/container_type/details/valuation.' + view_extension, context)
+
+def valuations(request, view_extension):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     container_id = request.GET['container_id']
@@ -348,12 +438,9 @@ def valuations(request):
     effective_class = classes.my_class_import(effective_class_name)
     
     container = effective_class.objects.get(id=container_id)
-    filtering = lambda d, k: d[k]['data']
-    fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
     # TODO: Handle other langage and factorize with other views
-    labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
     valuations = get_valuation_content_display(get_portfolio_valuations(container)['data'])
     valuations_date = sorted(valuations.keys(), reverse=True)
     currencies = list(set([account.currency.short_name for account in container.accounts.all()]))
-    context = {'currencies': currencies, 'valuations': valuations, 'valuations_date': valuations_date , 'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'labels': labels}
-    return render(request,'rendition/container_type/details/valuations.html', context)
+    context = {'currencies': currencies, 'valuations': valuations, 'valuations_date': valuations_date, 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type}
+    return render(request,'rendition/container_type/details/valuations.' + view_extension, context)

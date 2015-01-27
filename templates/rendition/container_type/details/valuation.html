@@ -1,0 +1,84 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - {{container.name}} - Valuations{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+				generateAggregates();
+{% endblock %}
+{% block headeroptions %}
+	<script>
+		var container = {{container_json|safe}};
+		var positions = {{positions|safe}};
+		var valuation = {{valuation|safe}};
+		var previousPositions = {{previous_positions|safe}};
+		var securities = {{securities|safe}};
+		var aggregatedData = {};
+
+		function generateAggregates() {
+			var aggregationTable;
+			{% for aggregate in aggregates %}
+			aggregatedData["{{aggregate}}"] = {};
+			$.each(positions, function(position_id, position_details){
+				security = securities[position_id];
+				currentKey = getPropertyFromString(security, "{{aggregate}}");
+				console.log(currentKey);
+				if (!aggregatedData["{{aggregate}}"].hasOwnProperty(currentKey)) {
+					aggregatedData["{{aggregate}}"][currentKey] = [];
+				}
+				aggregatedData["{{aggregate}}"][currentKey].push({'position':position_details, 'security': security});
+			});
+			aggregationTable = "<table class='table'>";
+			$.each(aggregatedData["{{aggregate}}"], function(key, value){
+				aggregationTable += "<tr><th colspan=8>Securities [" + key + "]</th></tr>";
+				aggregationTable += "<tr><th>&nbsp;</th><th>Quantity</th><th>Buy price</th><th>Market price</th><th>Total (security currency)</th><th>PNL</th><th>Performance</th><th>PNL (since buy)</th></tr>";
+				$.each(aggregatedData["{{aggregate}}"][key], function(index, positionInfo){
+					var pnl_sb = (positionInfo.position.price - positionInfo.position.buy_price) * positionInfo.position.total;
+					var pnl_sb_str = pnl_sb.toFixed(2);
+					if (pnl_sb<0) {
+						pnl_sb_str = "(" + (-pnl_sb).toFixed(2) + ")";
+					}
+					var pnl_previous_str = pnl_sb_str;
+					var pnl_previous = pnl_sb;
+					if (previousPositions && previousPositions.hasOwnProperty(String(positionInfo.security.id))) {
+						pnl_previous = (positionInfo.position.price * previousPositions[String(positionInfo.security.id)].total) - (previousPositions[String(positionInfo.security.id)].price * previousPositions[String(positionInfo.security.id)].total);
+						if (previousPositions[String(positionInfo.security.id)].total<positionInfo.position.total) {
+							pnl_previous += (positionInfo.position.total-previousPositions[String(positionInfo.security.id)].total) * (positionInfo.position.price-positionInfo.position.buy_price);
+						}
+						pnl_previous_str = pnl_previous.toFixed(2);
+						if (pnl_previous<0) {
+							pnl_previous_str = "(" + (-pnl_previous).toFixed(2) + ")";
+						}
+					}
+					var performance = (pnl_previous * 100.0)/(previousPositions[String(positionInfo.security.id)].price * previousPositions[String(positionInfo.security.id)].total);
+					aggregationTable += "<tr><td>" + positionInfo.security.name + "</td><td>" + positionInfo.position.total + "</td><td>" + positionInfo.position.buy_price.toFixed(2) + "</td><td>" + positionInfo.position.price.toFixed(2) + "</td><td>" + (positionInfo.position.total * positionInfo.position.price).toFixed(2) + "</td><td class='" + (pnl_previous>=0.0?"success":"danger") + "'>" + pnl_previous_str +  "</td><td class='" + (performance>=0.0?"success":"danger") + "'>" + performance.toFixed(2) + "%</td><td class='" + (pnl_sb>=0.0?"success":"danger") + "'>" + pnl_sb_str + "</td></tr>";
+				});
+				aggregationTable += "<tr><td colspan=6>&nbsp;</td></tr>";
+			});
+			aggregationTable += "</table>";
+			$("#main-content").append(aggregationTable);
+			{% endfor %}
+		}
+	</script>
+{% endblock %}
+{% block content %}
+{% with perfs=container.frequency|get_frequency_perfs %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ container.name }}
+					<div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+								{% include template_name %}
+							{% endwith %}
+						</ul>
+					</div>
+				</h1>
+	  			<p class="lead">Valuation details - {{date}}<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div id="main-content" class="row">
+		</div>
+{% endwith %}
+{% endblock %}

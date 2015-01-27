@@ -42,7 +42,7 @@ def get_portfolio_valuations(portfolio):
     return valuation['valuation_portfolios'].find_one({'_id': str(portfolio.id)})
 
 def get_valuation_content_display(content):
-    return {from_epoch(long(key_date)).strftime('%Y-%m-%d'): content[key_date] for key_date in content.keys()}
+    return {from_epoch(long(key_date)).strftime('%Y-%m-%d'): content[key_date] for key_date in sorted(content.keys())}
 
 def get_closest_date(all_data, value_date, epoch_search=True):
     if value_date==None:
@@ -50,8 +50,10 @@ def get_closest_date(all_data, value_date, epoch_search=True):
     previous = None
     if epoch_search:
         searched_date = str(epoch_time(value_date))
-    else:
+    elif not isinstance(value_date, basestring):
         searched_date = value_date.strftime('%Y-%m-%d')
+    else:
+        searched_date = value_date
     key_dates = sorted(all_data.keys())
     for key in key_dates:
         if key==searched_date:
@@ -70,8 +72,10 @@ def get_closest_value(all_data, value_date, epoch_search=True):
     previous = None
     if epoch_search:
         searched_date = str(epoch_time(value_date))
-    else:
+    elif not isinstance(value_date, basestring):
         searched_date = value_date.strftime('%Y-%m-%d')
+    else:
+        searched_date = value_date
     key_dates = sorted(all_data.keys())
     for key in key_dates:
         if key==searched_date:

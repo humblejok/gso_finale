@@ -6,6 +6,16 @@ Created on 10 mars 2014
 from django import template
 from json import dumps
 from universe.models import Attributes
+import datetime
+from utilities.compute.valuations import get_work_date
+
+PERF_MAPPING = { 'FREQ_DAILY': ['day', 'wtd', 'mtd', 'qtd', 'std', 'ytd', 'si'],
+                 'FREQ_WEEKLY': ['wtd', 'mtd', 'qtd', 'std', 'ytd', 'si'],
+                 'FREQ_MONTHLY': ['mtd', 'qtd', 'std', 'ytd', 'si'],
+                 'FREQ_QUARTERLY': ['qtd', 'std', 'ytd', 'si'],
+                 'FREQ_SEMESTERLY': ['std', 'ytd', 'si'],
+                 'FREQ_ANNUALLY': ['ytd', 'si']
+                }
 
 register = template.Library()
 
@@ -53,3 +63,19 @@ def get_value(data, field_chain):
     if isinstance(data, Attributes):
         return data.identifier
     return data if data!=None else ''
+
+@register.filter()
+def get_jquery_id(identity):
+    return identity.replace('.', '\\\\.')
+
+@register.filter()
+def match_frequency(date_value, frequency):
+    if isinstance(date_value,basestring):
+        wrk_date = datetime.datetime.strptime(date_value,'%Y-%m-%d')
+    else:
+        wrk_date = date_value
+    return get_work_date(wrk_date, frequency)==wrk_date
+
+@register.filter()
+def get_frequency_perfs(frequency):
+    return PERF_MAPPING[frequency.identifier]

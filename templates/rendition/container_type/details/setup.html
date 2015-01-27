@@ -87,7 +87,7 @@
 		var toSave = {"layout": gridsterLayout, "data": blockData};
 		var containerSetup = {}
 		containerSetup.type = $("#containerType").val();
-		containerSetup.information = toSave;
+		containerSetup.data = toSave;
 		var updateForm = new FormData();
 		console.log(containerSetup);
 		updateForm.append('container_setup', JSON.stringify(containerSetup));

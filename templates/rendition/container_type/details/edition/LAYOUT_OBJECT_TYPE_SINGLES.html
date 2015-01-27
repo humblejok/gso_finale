@@ -1,4 +1,18 @@
 {% load universe_tags %}
+		<script>
+			function onchange_{{index}}(save) {
+				editedData[{{index}}] = {};
+				{% for entry in data.data %}
+					editedData[{{index}}]['{{entry}}'] = $("#{{entry|get_jquery_id}}").val();
+					{% if current_field.filter %}
+					editedData[{{index}}]['{{entry}}-{{current_field.filter}}'] = $("#{{entry|get_jquery_id}}-{{current_field.filter|get_jquery_id}}").val();
+					{% endif %}
+				{% endfor %}
+				if (save) {
+					updateContainer({{index}});
+				}
+			}
+		</script>
 		<div class="modal fade" id="modal_define_{{index}}" tabindex="-1" role="dialog" aria-labelledby="modal_define_{{index}}_label" aria-hidden="true">
 			<div class="modal-dialog">
 				<div class="modal-content">
@@ -42,8 +56,8 @@
 						</div>
 					</form>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-warning" role="button" data-toggle="tooltip" data-placement="bottom" title="Save the modifications" onclick="updateContainer({{index}})" data-dismiss="modal">Save</button>
-						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Close the popup" onclick="" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-warning" role="button" data-toggle="tooltip" data-placement="bottom" title="Save the modifications" onclick="onchange_{{index}}(true)" data-dismiss="modal">Save</button>
+						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Close the popup" onclick="onchange_{{index}}(false)" data-dismiss="modal">Close</button>
 					</div>
 				</div>
 			</div>

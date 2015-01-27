@@ -25,9 +25,9 @@
 	function saveListSetup() {
 		var containerSetup = {}
 		containerSetup.type =  $("#containerType").val();
-		containerSetup.fields = new Array();
+		containerSetup.data = new Array();
 		$.each($("#selectedfieldsList").children(), function(index, value) {
-			containerSetup.fields.push($(value).text());
+			containerSetup.data.push($(value).text());
 		});
 		var updateForm = new FormData();
 		updateForm.append('container_setup', JSON.stringify(containerSetup));
@@ -148,7 +148,6 @@
 					{% include selection_template %}
 				{% endwith %}
 			</select>
-			<b
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">

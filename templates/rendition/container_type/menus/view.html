@@ -1,0 +1,17 @@
+{% load universe_tags %}
+{% for header in headers %}
+	{% if entries|get_dict_key:header.identifier %}
+	<li role="presentation" class="dropdown-header">{{header.short_name}}</li>
+	{% for entry in entries|get_dict_key:header.identifier %}
+		{% if entry.menu_type == 'link' %}
+		<li><a href="/container_{{entry.data_target}}.html?container_id={% templatetag openvariable %}container.id{% templatetag closevariable %}&container_type={% templatetag openvariable %}container.type.identifier{% templatetag closevariable %}">{{entry.action_label}}</a></li>
+		{% elif entry.menu_type == 'ajax' %}
+		<li><a href="#" onclick="proceedPageAjax('/container_{{entry.data_target}}.html?container_id={% templatetag openvariable %}container.id{% templatetag closevariable %}&container_type={% templatetag openvariable %}container.type.identifier{% templatetag closevariable %}', null, 'GET')">{{entry.action_label}}</a></li>
+		{% elif entry.menu_type == 'provider' %}
+		<li><a href="#" onclick="proceedPageAjax('/container_external_import.html?container_id={% templatetag openvariable %}container.id{% templatetag closevariable %}&container_type={% templatetag openvariable %}container.type.identifier{% templatetag closevariable %}&external={{entry.menu_target.short_name|lower}}&target={{entry.data_target}}', null, 'GET')">{{entry.action_label}}</a></li>
+		{% elif entry.menu_type == 'custom' %}
+		<li><a href="/custom_{{entry.action_type}}.html?container_id={% templatetag openvariable %}container.id{% templatetag closevariable %}&container_type={% templatetag openvariable %}container.type.identifier{% templatetag closevariable %}&custom={{entry.menu_target.short_name|lower}}&target={{entry.data_target}}">{{entry.action_label}}</a></li>
+		{% endif %}
+	{% endfor%}
+	{% endif %}
+{% endfor %}
