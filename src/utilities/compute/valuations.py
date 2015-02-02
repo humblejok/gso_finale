@@ -224,6 +224,9 @@ class NativeValuationsComputer():
                             valuation[key_date]['movement'][account.currency.short_name] = 0.0
                         if value!=None:
                             valuation[key_date][account_key][account.currency.short_name]['account'] += value['assets']
+                            if not valuation[key_date]['total'].has_key(account.currency.short_name):
+                                valuation[key_date]['total'][account.currency.short_name] = 0.0
+                            valuation[key_date]['total'][account.currency.short_name] += value['assets']
                             valuation[key_date][account_key][account.currency.short_name]['portfolio'] += value['assets_pf']
                             valuation[key_date][account_key + '_pf'] += value['assets_pf']
                             valuation[key_date]['spot_pf'][account.currency.short_name] = value['spot_pf']
@@ -252,7 +255,15 @@ class NativeValuationsComputer():
             valuation[key_date]['total']['portfolio'] = valuation[key_date]['cash_pf'] + valuation[key_date]['invested']['portfolio']
             # Modified dietz
             if previous_key!=key_date:
-                mdietz_up = valuation[key_date]['total']['portfolio'] - valuation[key_date]['invested_fop']['portfolio'] - (valuation[previous_key]['total']['portfolio'] if previous_key!=None else 0.0)  - valuation[key_date]['movement']['portfolio']
+                if previous_key!=None:
+                    movement_previous_spot = 0.0
+                    for key_currency in valuation[key_date]['movement'].keys():
+                        if key_currency!='portfolio' and key_currency!='portfolio_tw' and valuation[key_date]['movement'][key_currency]!=0.0:
+                            movement_previous_spot += valuation[key_date]['movement'][key_currency] * (valuation[previous_key]['spot_pf'][key_currency] if valuation[previous_key]['spot_pf'].has_key(key_currency) else valuation[key_date]['spot_pf'][key_currency])
+                    movement_previous_spot = movement_previous_spot * ((period_duration - period_position + 1.0)/period_duration)
+                else:
+                    movement_previous_spot = valuation[key_date]['movement']['portfolio_tw']
+                mdietz_up = valuation[key_date]['total']['portfolio'] - valuation[key_date]['invested_fop']['portfolio'] - (valuation[previous_key]['total']['portfolio'] if previous_key!=None else 0.0) - movement_previous_spot
                 mdietz_down = (valuation[previous_key]['total']['portfolio'] if previous_key!=None else 0.0) + valuation[key_date]['movement']['portfolio_tw']
                 if mdietz_down!=0.0:
                     mdietz = mdietz_up / mdietz_down

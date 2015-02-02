@@ -1,49 +1,57 @@
 {% load universe_tags %}
+		<script>
+			function onchange_{{index}}(save) {
+				{% for entry in data.data %}
+					{% if forloop.first %}
+						editedData[{{index}}] = {'id': $("#{{entry}}-id").val(), 'many-to-many': '{{entry}}'};
+					{% endif %}
+					{% with current_field=complete_fields|get_dict_key:entry%}
+						{% for option in current_field.options %}
+							editedData[{{index}}]['{{option}}'] = $("#{{entry}}-{{option}}").val();
+						{% endfor %}
+					{% endwith %}
+				{% endfor %}
+				if (save) {
+					updateContainer({{index}});
+				} else {
+					console.log(editedData[{{index}}]);
+				}
+			}
+		</script>
 		<div class="modal fade" id="modal_define_{{index}}" tabindex="-1" role="dialog" aria-labelledby="modal_define_{{index}}_label" aria-hidden="true">
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
 						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title" id="modal_define_{{index}}_label">{{data.title}} - Edit information</h4>
+						<h4 class="modal-title" id="modal_define_{{index}}_label">{{data.title}} - Add/edit information</h4>
 					</div>
 					<form id="edit_form_{{index}}" role="form" action="#" method="POST">{% csrf_token %}
 						<div id="optionBody"  class="modal-body">
 							<div class="row">&nbsp;</div>
 							{% for entry in data.data %}
 							{% with current_field=complete_fields|get_dict_key:entry%}
-							{% if current_field.options %}
-							{% for option in current_field.options %}
 							<div class="form-group">
-								<label for="{{entry}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
+								<label for="{{entry}}-{{current_field.filter}}">{% if labels|get_dict_key:current_field.filter %}{{labels|get_dict_key:current_field.filter}}{% else %}{{current_field.filter}}{% endif %}</label>
 								<select id="{{entry}}-{{current_field.filter}}" name="{{entry}}-{{current_field.filter}}" class="form-control">
 									{% with value=container|get_value:entry active_list=option %}
 										{% include current_field.template %}
 									{% endwith %}
 								</select>
-								<input name="{{entry}}" id="{{entry}}" type="text" class="form-control with-autocomplete" placeholder="Enter a {{entry}}" value="" datasource="{{current_field.datasource}}"/>
-							</div>
-							{% endfor %}
-							{% else %}
-							<div class="form-group">
-								<label for="{{entry}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
-								{% if current_field.template %}
-									<select id="{{entry}}" name="{{entry}}" class="form-control">
-									{% with value=container|get_value:entry active_list=option %}
-										{% include current_field.template %}
-									{% endwith %}
-									</select>
-								{% else %}
-								<input name="{{entry}}" type="text" class="form-control{% if current_field.type == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{entry}}" placeholder="Enter a {{entry}}" value="{{container|get_value:entry}}"/>
+								{% for option in current_field.options %}
+								{% if  option != current_field.filter %}
+								<label for="{{entry}}-{{option}}">{% if labels|get_dict_key:option %}{{labels|get_dict_key:option}}{% else %}{{option}}{% endif %}</label>
+								<input name="{{entry}}-{{option}}" id="{{entry}}-{{option}}" type="text" class="form-control with-autocomplete" placeholder="Enter a {{option}}" value="" datasource="{{current_field.datasource}}"/>
 								{% endif %}
+								{% endfor %}
+								<input type="hidden" id="{{entry}}-id"/>
 							</div>
-							{% endif %}
 							{% endwith %}
 							{% endfor %}
 						</div>
 					</form>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-warning" role="button" data-toggle="tooltip" data-placement="bottom" title="Save the modifications" onclick="updateContainer({{index}})" data-dismiss="modal">Save</button>
-						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Close the popup" onclick="" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-warning" role="button" data-toggle="tooltip" data-placement="bottom" title="Save the modifications" onclick="onchange_{{index}}(true)" data-dismiss="modal">Save</button>
+						<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Close the popup" onclick="onchange_{{index}}(false)" data-dismiss="modal">Close</button>
 					</div>
 				</div>
 			</div>

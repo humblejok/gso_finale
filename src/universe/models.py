@@ -557,7 +557,8 @@ class CoreModel(models.Model):
                 values.append(field)
         return values        
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return []
     
     def get_identifier(self):
@@ -655,7 +656,8 @@ class FieldLabel(CoreModel):
     langage = models.CharField(max_length=3)
     field_label = models.CharField(max_length=1024)
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['identifier','langage','field_label']
     
     def get_identifier(self):
@@ -668,7 +670,8 @@ class Attributes(CoreModel):
     type = models.CharField(max_length=64)
     active = models.BooleanField()
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['identifier','name','short_name','type','active']
     
     def get_short_json(self):
@@ -689,7 +692,8 @@ class MenuEntries(CoreModel):
     action_type = models.CharField(max_length=128, null=True, blank=True)
     action_label = models.CharField(max_length=128)
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['menu_target','menu_type','container_type','language','data_target','action_type','action_label']
 
     class Meta:
@@ -727,7 +731,8 @@ class Dictionary(CoreModel):
     name = models.CharField(max_length=128)
     auto_create = models.BooleanField()
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['identifier','name','auto_create']
     
     class Meta:
@@ -743,7 +748,8 @@ class Address(CoreModel):
     def get_identifier(self):
         return 'id'
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['address_type','line_1','line_2','zip_code','city']
     
     @staticmethod
@@ -757,7 +763,8 @@ class Email(CoreModel):
     def get_identifier(self):
         return 'id'
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['address_type','address']
     
     @staticmethod
@@ -775,7 +782,8 @@ class Phone(CoreModel):
     def get_identifier(self):
         return 'id'
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['line_type','phone']
     
 class Alias(CoreModel):
@@ -786,7 +794,8 @@ class Alias(CoreModel):
     def get_identifier(self):
         return 'id'
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['alias_type','alias_value','alias_additional']
     
     @staticmethod
@@ -806,22 +815,36 @@ class Alias(CoreModel):
         
     @staticmethod
     def retrieve_or_create(parent, source, key, value):
-        translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
-        if translation.exists():
-            translation = translation[0].short_name
+        if isinstance(value, basestring):
+            translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
+            if translation.exists():
+                translation = translation[0].short_name
+            else:
+                translation = key
+    
+            alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
+            if not parent.aliases.filter(alias_type__id=alias_type.id).exists():
+                new_alias = Alias()        
+                new_alias.alias_type = alias_type
+                new_alias.alias_value = value
+                new_alias.alias_additional = ''
+                new_alias.save()
+                return new_alias
+            else:
+                return parent.aliases.get(alias_type__id=alias_type.id)
         else:
-            translation = key
-
-        alias_type = Attributes.objects.get(Q(active=True), Q(type='alias_type'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
-        if not parent.aliases.filter(alias_type__id=alias_type.id).exists():
-            new_alias = Alias()        
-            new_alias.alias_type = alias_type
-            new_alias.alias_value = value
-            new_alias.alias_additional = ''
-            new_alias.save()
-            return new_alias
-        else:
-            return parent.aliases.get(alias_type__id=alias_type.id)
+            if value['id']!=None and value['id']!='':
+                alias = Alias.objects.get(id=value['id'])
+            else:
+                alias = Alias()
+            for field in value.keys():
+                if field not in ['id', 'many-to-many']:
+                    if field!='alias_type':
+                        setattr(alias, field, value[field])
+                    else:
+                        alias.alias_type = Attributes.objects.get(active=True, type='alias_type', identifier=value[field])
+            alias.save()
+            return alias
 
     class Meta:
         ordering = ['alias_value']
@@ -843,7 +866,8 @@ class Container(CoreModel):
         entity.many_fields = {}
         return entity
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['name','short_name','type','inception_date','closed_date','status']
     
     def finalize(self):
@@ -925,8 +949,9 @@ class FinancialContainer(Container):
             self.aliases.add(wrk_alias)
             self.save()
     
-    def get_fields(self):
-        return super(FinancialContainer, self).get_fields() + ['currency','owner_role','owner','aliases', 'frequency', 'frequency_reference', 'associated_thirds', 'associated_companies']
+    @staticmethod
+    def get_fields():
+        return Container.get_fields() + ['currency','owner_role','owner','aliases', 'frequency', 'frequency_reference', 'associated_thirds', 'associated_companies']
     
     def get_currency_in_name(self):
         currencies = Attributes.objects.filter(type='currency').values_list('short_name', flat=True)
@@ -956,7 +981,8 @@ class FinancialOperation(CoreModel):
     termination_date = models.DateTimeField(default=datetime.datetime.today())
     associated_operation = models.ForeignKey('FinancialOperation', related_name='parent_operation_rel', null=True)
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['name','short_name','status','operation_type','creation_date','operator','validator','source','target','spot','repository','quantity','amount','price','operation_date','operation_pnl','value_date','termination_date','associated_operation']
     
     class Meta:
@@ -967,16 +993,18 @@ class ThirdPartyContainer(Container):
     emails = models.ManyToManyField(Email)
     phones = models.ManyToManyField(Phone)
 
-    def get_fields(self):
-        return super(ThirdPartyContainer, self).get_fields() + ['addresses','emails','phones']
+    @staticmethod
+    def get_fields():
+        return Container.get_fields() + ['addresses','emails','phones']
 
 class PersonContainer(ThirdPartyContainer):
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
     birth_date = models.DateField(null=True)
     
-    def get_fields(self):
-        return super(PersonContainer, self).get_fields() + ['first_name','last_name','birth_date']
+    @staticmethod
+    def get_fields():
+        return ThirdPartyContainer.get_fields() + ['first_name','last_name','birth_date']
     
     def get_short_json(self):
         return {'id': self.id, 'first_name': self.first_name, 'last_name': self.last_name}
@@ -992,7 +1020,8 @@ class CompanySubsidiary(CoreModel):
     def get_identifier(self):
         return 'id'
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['company','role']
     
     @staticmethod
@@ -1010,7 +1039,8 @@ class CompanyMember(CoreModel):
     def get_identifier(self):
         return 'id'
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['person','role']
     
     @staticmethod
@@ -1025,8 +1055,9 @@ class CompanyContainer(ThirdPartyContainer):
     members = models.ManyToManyField(CompanyMember)
     subsidiary = models.ManyToManyField(CompanySubsidiary)
     
-    def get_fields(self):
-        return super(CompanyContainer, self).get_fields() + ['members','subsidiary']
+    @staticmethod
+    def get_fields():
+        return ThirdPartyContainer.get_fields() + ['members','subsidiary']
 
     def get_short_json(self):
         data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
@@ -1042,8 +1073,9 @@ class AccountContainer(FinancialContainer):
     account_type = models.ForeignKey(Attributes, limit_choices_to={'type':'account_type'}, related_name='account_type_rel', null=True)
     bank = models.ForeignKey(CompanyContainer, related_name='account_bank_rel', null=True)
     
-    def get_fields(self):
-        return super(AccountContainer, self).get_fields() + ['account_type','bank']
+    @staticmethod
+    def get_fields():
+        return FinancialContainer.get_fields() + ['account_type','bank']
     
     @staticmethod
     def get_filtering_field():
@@ -1067,7 +1099,8 @@ class RelatedCompany(CoreModel):
     def get_identifier(self):
         return 'id'
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['company','role']
 
     @staticmethod
@@ -1117,7 +1150,8 @@ class RelatedThird(CoreModel):
     def get_identifier(self):
         return 'id'
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['third','role']
     
     @staticmethod
@@ -1127,6 +1161,13 @@ class RelatedThird(CoreModel):
     @staticmethod
     def get_querying_class():
         return universe.models.PersonContainer
+    
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['third.name','role.name','third.status.name']
+        elif rendition_width=='small':
+            return ['third.name','role.name']
     
     @staticmethod
     def retrieve_or_create(parent, source, key, value):
@@ -1156,8 +1197,9 @@ class RelatedThird(CoreModel):
 class PortfolioContainer(FinancialContainer):
     accounts = models.ManyToManyField('AccountContainer', related_name='portfolio_accounts_rel')
     
-    def get_fields(self):
-        return super(PortfolioContainer, self).get_fields() + ['accounts']
+    @staticmethod
+    def get_fields():
+        return FinancialContainer.get_fields() + ['accounts']
     
     def get_short_json(self):
         return {'id': self.id, 'name': self.name, 'short_name': self.short_name, 'currency': self.currency.short_name if self.currency!=None else '', 'manager':'', 'bank':'', 'aum':0.0}
@@ -1170,7 +1212,8 @@ class BloombergDataContainerMapping(CoreModel):
     model_visible = models.BooleanField(default=False)
     active = models.BooleanField(default=True)
 
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['name','field','container','model_link','model_visible','active']
 
 class BloombergTrackContainerMapping(CoreModel):
@@ -1178,7 +1221,9 @@ class BloombergTrackContainerMapping(CoreModel):
     short_name = models.ForeignKey(BloombergField, limit_choices_to={'get_history':True}, related_name='bloomberg_field_track_rel')
     container = models.ForeignKey(Attributes, limit_choices_to={'type':'container_type'}, related_name='bloomberg_container_track_rel')
     active = models.BooleanField(default=True)
-    def get_fields(self):
+    
+    @staticmethod
+    def get_fields():
         return ['name', 'field', 'container', 'active']
 
 
@@ -1192,8 +1237,9 @@ class SecurityContainer(FinancialContainer):
     
     attached_account = models.ForeignKey('AccountContainer', related_name='financials_account_rel', null=True)
     
-    def get_fields(self):
-        return super(SecurityContainer, self).get_fields() + ['security_type','country','region','market_sector', 'parent_security','attached_account']
+    @staticmethod
+    def get_fields():
+        return FinancialContainer.get_fields() + ['security_type','country','region','market_sector', 'parent_security','attached_account']
     
     def get_short_json(self):
         isin = self.aliases.filter(alias_type__short_name='ISIN')
@@ -1231,8 +1277,9 @@ class BacktestContainer(FinancialContainer):
     history = models.ForeignKey(Attributes, limit_choices_to={'type':'history_completion'}, related_name='backtest_history_completion_rel')
     initial_aum = models.FloatField()
     
-    def get_fields(self):
-        return super(FinancialContainer).get_fields() + ['universe','public','publisher','from_date','to_date','reweight','organic_date','hedging','fees','leverage','leverage_level','history','initial_aum']
+    @staticmethod
+    def get_fields():
+        return FinancialContainer.get_fields() + ['universe','public','publisher','from_date','to_date','reweight','organic_date','hedging','fees','leverage','leverage_level','history','initial_aum']
 
 class TrackContainer(CoreModel):
     container = models.ForeignKey(ContentType)
@@ -1250,5 +1297,6 @@ class TrackContainer(CoreModel):
     def get_identifier(self):
         return 'id'
     
-    def get_fields(self):
+    @staticmethod
+    def get_fields():
         return ['effective_container','type','quality','source','start_date','end_date']

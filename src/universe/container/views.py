@@ -8,7 +8,8 @@ import logging
 import os
 
 from universe.models import Attributes, TrackContainer, FieldLabel,\
-    PortfolioContainer, MenuEntries, SecurityContainer
+    PortfolioContainer, MenuEntries, SecurityContainer, AccountContainer,\
+    FinancialOperation
 from seq_common.utils import classes
 from django.shortcuts import render, redirect, render_to_response
 from django.contrib.auth.models import User
@@ -19,7 +20,8 @@ from django.db.models import Q
 from finale.settings import STATICS_PATH
 
 from django.http.response import HttpResponse
-from finale.utils import complete_fields_information, dict_to_json_compliance
+from finale.utils import complete_fields_information, dict_to_json_compliance,\
+    get_model_foreign_field_class
 from django.forms.models import model_to_dict
 from json import dumps
 from bson import json_util
@@ -28,7 +30,7 @@ from utilities.track_token import get_track
 from utilities.compute.valuations import NativeValuationsComputer
 from utilities.valuation_content import get_portfolio_valuations,\
     get_valuation_content_display, get_positions_portfolio, get_closest_value,\
-    get_closest_date
+    get_closest_date, get_account_history
 import datetime
 from utilities.computing import get_previous_date
 
@@ -273,7 +275,12 @@ def render_many_to_many(request):
     foreign_class = effective_class._meta.get_field(container_field).rel.to
 
     container = effective_class.objects.get(id=container_id)
-    context = {'title': widget_title, 'index':widget_index, 'data': getattr(container,container_field), 'fields': foreign_class.get_displayed_fields(rendition_witdh), 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=foreign_class.get_displayed_fields(rendition_witdh), langage='en')}}
+    context = {'title': widget_title,
+               'container_id': container_id, 'container_type': container_type, 'container_field': container_field,
+               'index':widget_index,
+               'data': getattr(container,container_field),
+               'fields': foreign_class.get_displayed_fields(rendition_witdh),
+               'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=foreign_class.get_displayed_fields(rendition_witdh), langage='en')}}
     return render(request, 'container/view/many_to_many_field.html', context)
 
 def filters(request):
@@ -317,6 +324,27 @@ def valuations_compute(request):
     computer.compute_valuation(container, Attributes.objects.get(identifier='FREQ_DAILY', active=True))
     return HttpResponse('{"result": true, "status_message": "Computed"}',"json")
 
+
+def partial_delete(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id']
+    container_type = request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    container_field = request.POST['container_field']
+    item_id = request.POST['item_id']
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    foreign = get_model_foreign_field_class(effective_class, container_field)
+    if foreign!=None:
+        entry = foreign.objects.get(id=item_id)
+        getattr(container, container_field).remove(entry)
+        container.save()
+        entry.delete()
+    return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
+
 def partial_save(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -329,12 +357,19 @@ def partial_save(request):
     effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
     effective_class = classes.my_class_import(effective_class_name)
     container = effective_class.objects.get(id=container_id)
-    for field_key in container_data.keys():
-        #TODO Handle relation
-        field_info = Attributes()
-        field_info.short_name = field_key.split('.')[0]
-        field_info.name = field_key.split('.')[0]
-        container.set_attribute('web', field_info, container_data[field_key])
+    if container_data.has_key('many-to-many'):
+        foreign = get_model_foreign_field_class(effective_class, container_data['many-to-many'])
+        if foreign!=None:
+            entry = foreign.retrieve_or_create('web', None, None, container_data)
+            getattr(container, container_data['many-to-many']).add(entry)
+            container.save()
+    else:
+        for field_key in container_data.keys():
+            #TODO Handle relation
+            field_info = Attributes()
+            field_info.short_name = field_key.split('.')[0]
+            field_info.name = field_key.split('.')[0]
+            container.set_attribute('web', field_info, container_data[field_key])
     container.save()
     return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
@@ -388,6 +423,45 @@ def positions(request):
     working_date = get_closest_date(positions, datetime.datetime.strptime(working_date, '%Y-%m-%d'), False)
     context = {'currencies': currencies, 'positions': positions, 'positions_date': positions_date , 'working_date': working_date, 'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'labels': labels}
     return render(request,'rendition/container_type/details/positions.html', context)
+
+def accounts(request, view_extension):
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    account_id = request.GET['accounts_id']
+    container_type = request.GET['container_type']
+    if request.GET.has_key('working_date'):
+        working_date = datetime.datetime.strptime(request.GET['working_date'],'%Y-%m-%d')
+    else:
+        working_date = None
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    account = AccountContainer.objects.get(id=account_id)
+    account_history = get_account_history(account)
+    if account_history!=None:
+        account_history = account_history['data']
+        account_history = get_valuation_content_display(account_history, start_date=None, end_date=working_date)
+    accounts_dates = sorted(account_history.keys(), reverse=True)
+    operations = FinancialOperation.objects.filter(Q(source__id=account_id) | Q(target__id=account_id))
+    sorted_operations = {}
+    for operation in operations:
+        key = operation.value_date.strftime('%Y-%m-%d')
+        if not sorted_operations.has_key(key):
+            sorted_operations[key] = []
+        if operation.operation_type.identifier in ['OPE_TYPE_SPOT_BUY','OPE_TYPE_SPOT_SELL']:
+            if operation.target.id==account.id:
+                operation.amount = operation.amount * operation.spot
+            else:
+                operation.amount = operation.amount * -1.0
+        sorted_operations[key].append(operation)
+    context = {'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
+               'account' : account, 'history': account_history,
+               'operations': sorted_operations,
+               'dates': accounts_dates, 'date': working_date}
+    return render(request,'rendition/container_type/details/accounts.' + view_extension, context)
 
 def valuation(request, view_extension):
     # TODO: Check user

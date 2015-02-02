@@ -5,9 +5,11 @@ Created on 10 mars 2014
 '''
 from django import template
 from json import dumps
-from universe.models import Attributes
+from universe.models import Attributes, CoreModel
 import datetime
 from utilities.compute.valuations import get_work_date
+from django.forms.models import model_to_dict
+from finale.utils import dict_to_json_compliance
 
 PERF_MAPPING = { 'FREQ_DAILY': ['day', 'wtd', 'mtd', 'qtd', 'std', 'ytd', 'si'],
                  'FREQ_WEEKLY': ['wtd', 'mtd', 'qtd', 'std', 'ytd', 'si'],
@@ -44,7 +46,10 @@ def get_dict_key(d, key):
 
 @register.filter()
 def get_as_json_string(data):
-    return dumps(data)
+    if isinstance(data, CoreModel):
+        return dumps(dict_to_json_compliance(model_to_dict(data), data.__class__))
+    else:
+        return dumps(data)
 
 @register.filter()
 def get_field_value(data, field_chain):

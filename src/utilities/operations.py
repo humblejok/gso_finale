@@ -219,6 +219,33 @@ def create_spot_movement(container, source, target, details, label):
     create_expenses(operation, operation.target, details['target_expenses'])
     return operation
 
+def create_transfer(container, source, target, details, label):
+    current_account_type = Attributes.objects.get(identifier='ACC_CURRENT', active=True)
+    operation = FinancialOperation()
+    operation.name = label if label!=None else generate_spot_movement_label(source, target, details)
+    operation.short_name = generate_spot_movement_short_label(source, target, details)
+    operation.status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True) if not details.has_key('status') else details['status']
+    operation.operation_type = Attributes.objects.get(identifier='OPE_TYPE_INTERNAL_TRANSFER')
+    operation.creation_date = details['operation_date']
+    operation.operator = None
+    operation.validator = None
+    operation.source = get_account(container, source, current_account_type)
+    operation.target = get_account(container, target, current_account_type)
+    operation.spot = None
+    operation.repository = None
+    operation.quantity = None
+    operation.amount = get_cash_movement_amount(source, target, details)
+    operation.price = None
+    operation.operation_date = details['trade_date']
+    operation.operation_pnl = 0.0
+    operation.value_date = details['value_date']
+    operation.termination_date = details['value_date']
+    operation.associated_operation = None
+    operation.save()
+    create_expenses(operation, operation.source, details['source_expenses'])
+    create_expenses(operation, operation.target, details['target_expenses'])
+    return operation
+
 def create_expenses(parent_operation, account, information):
     expenses = ['fees', 'tax', 'commission']
     for expense in expenses:
@@ -378,7 +405,7 @@ def compute_account_details(portfolio, operation, spots, accounts_history, curre
         multiplier = operation.spot if operation.spot!=None else 1.0
     computed_amount = operation.amount * multiplier
     accounts_history[current_account_key][key_date]['assets'] += computed_amount
-    accounts_history[current_account_key][key_date]['assets_pf'] += computed_amount * spot_pf
+    accounts_history[current_account_key][key_date]['assets_pf'] = accounts_history[current_account_key][key_date]['assets'] * spot_pf
     accounts_history[current_account_key][key_date]['spot_pf'] = spot_pf
     if operation.operation_type.identifier not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL']:
         accounts_history[current_account_key][key_date]['mvt_pnl' if operation.operation_type.identifier=='OPE_TYPE_FEES' else 'mvt_no_pnl'] += computed_amount
@@ -509,6 +536,7 @@ def compute_positions(container=None):
     securities = {}
     previous_date = {}
     for operation in all_operations:
+        LOGGER.info(operation.name)
         portfolio = PortfolioContainer.objects.filter(accounts__id=operation.repository.id)
         if portfolio.exists():
             portfolio = portfolio[0]
@@ -555,8 +583,8 @@ def compute_positions(container=None):
         if not portfolios[portfolio_id][key_date].has_key('decrease_fop'):
             portfolios[portfolio_id][key_date]['decrease_fop'] = {'portfolio': 0.0}
         computed_amount = operation.quantity * (1.0 if operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else -1.0)
-        if computed_amount>=0.0:
-            portfolios[portfolio_id][key_date][security_id]['buy_price'] = computed_amount * operation.price + portfolios[portfolio_id][key_date][security_id]['buy_price'] * portfolios[portfolio_id][key_date][security_id]['total']
+        if (portfolios[portfolio_id][key_date][security_id]['total'] + computed_amount)!=0.0:
+            portfolios[portfolio_id][key_date][security_id]['buy_price'] = computed_amount * (operation.price if operation.price!=None else 0.0) + portfolios[portfolio_id][key_date][security_id]['buy_price'] * portfolios[portfolio_id][key_date][security_id]['total']
             portfolios[portfolio_id][key_date][security_id]['buy_price'] = portfolios[portfolio_id][key_date][security_id]['buy_price']/(portfolios[portfolio_id][key_date][security_id]['total'] + computed_amount)
             
         portfolios[portfolio_id][key_date][security_id]['total'] += computed_amount

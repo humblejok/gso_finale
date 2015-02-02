@@ -41,8 +41,15 @@ def get_account_history(account):
 def get_portfolio_valuations(portfolio):
     return valuation['valuation_portfolios'].find_one({'_id': str(portfolio.id)})
 
-def get_valuation_content_display(content):
-    return {from_epoch(long(key_date)).strftime('%Y-%m-%d'): content[key_date] for key_date in sorted(content.keys())}
+def get_valuation_content_display(content, start_date=None, end_date=None):
+    key_start = 0
+    if start_date!=None:
+        key_start = epoch_time(start_date)
+    key_end = float('inf')
+    if end_date!=None:
+        key_end = epoch_time(end_date)
+    all_values = {from_epoch(long(key_date)).strftime('%Y-%m-%d'): content[key_date] for key_date in sorted(content.keys()) if key_start<=long(key_date) and key_end>=long(key_date)}
+    return all_values
 
 def get_closest_date(all_data, value_date, epoch_search=True):
     if value_date==None:

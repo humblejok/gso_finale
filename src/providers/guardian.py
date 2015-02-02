@@ -33,8 +33,6 @@ def import_portfolio(container):
 def import_transactions(container):
     for account in container.accounts.all():
         FinancialOperation.objects.filter(Q(source=account) | Q(target=account) | Q(repository=account)).delete()
-        container.accounts.remove(account)
-        account.delete()    
 
     executed_status = Attributes.objects.get(identifier='OPE_STATUS_EXECUTED', active=True)
     cancelled_status = Attributes.objects.get(identifier='OPE_STATUS_CANCELLED', active=True)
@@ -133,7 +131,7 @@ def import_transactions(container):
                                 }
                            }
                 operations.create_spot_movement(container, source, target, details, transaction['des_mov'])
-            elif transaction['cod_ope']=='SSPOT':
+            elif transaction['cod_ope']=='SSPOT' or (transaction['cod_ope']=='INTERNALTRANS' and transaction['cod_div_tit']!=transaction['cod_div_reg']):
                 source = {'currency': transaction['cod_div_tit'], 'initial_amount': transaction['ctv_tit_dn'], 'amount': transaction['ctv_tot_dn'], 'account_id': transaction['cod_dep_liq2']}
                 target = {'currency': transaction['cod_div_reg'], 'initial_amount': transaction['ctv_tit_dr'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
                 details = {'operation': 'SELL', 'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else (1.0/transaction['cambiod']),
@@ -151,6 +149,23 @@ def import_transactions(container):
                                 }
                            }
                 operations.create_spot_movement(container, source, target, details, transaction['des_mov'])
+            elif transaction['cod_ope']=='INTERNALTRANS':
+                source = {'initial_amount': transaction['ctv_tit_dn'], 'amount': transaction['ctv_tot_dn'], 'account_id': transaction['cod_dep_liq2']}
+                target = {'initial_amount': transaction['ctv_tit_dr'], 'amount': transaction['ctv_tot_dr'], 'account_id': transaction['cod_dep_liq']}
+                details = {'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'amount': transaction['ctv_tot_dn'], 'value_date': transaction['data_val'],
+                           'status': cancelled_status if transaction['annullato']=='A' else executed_status, 'cashier': transaction['cash']=='S',
+                          'target_expenses': {
+                               'fees': transaction['spese_dr'] if transaction['spese_dr']!=None else 0.0,
+                               'tax': transaction['imposte_dr'] if transaction['imposte_dr']!=None else 0.0,
+                               'commission': transaction['coma_alt_dr'] if transaction['coma_alt_dr']!=None else 0.0
+                               },
+                           'source_expenses': {
+                               'fees': transaction['spese_dn'] if transaction['spese_dn']!=None else 0.0,
+                               'tax': transaction['imposte_dn'] if transaction['imposte_dn']!=None else 0.0,
+                               'commission': transaction['coma_alt_dn'] if transaction['coma_alt_dn']!=None else 0.0
+                                }
+                           }
+                operations.create_transfer(container, source, target, details, transaction['des_mov'])
             elif transaction['cod_ope']=='B' or transaction['cod_ope']=='BUYFOP':
                 security = SecurityContainer.objects.filter(aliases__alias_type=guardian_alias, aliases__alias_value=transaction['cod_tit'])
                 if security.exists():

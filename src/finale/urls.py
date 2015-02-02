@@ -61,6 +61,7 @@ urlpatterns = patterns('',
     url(r'^financials_bloomberg_wizard_execute.html', 'universe.views.bloomberg_wizard_execute', name='bloomberg_wizard_execute', kwargs={'entity':'financials'}),
 
     # Containers views
+    url(r'^container_accounts.html', 'universe.container.views.accounts', name='accounts', kwargs={'view_extension':'html'}),
     url(r'^containers.html', 'universe.container.views.lists', name='containers'),
     url(r'^container_definition_save.html','universe.container.views.definition_save', name='container_definition_save'),
     url(r'^container_delete.html', 'universe.container.views.delete', name='container_delete'),
@@ -79,7 +80,7 @@ urlpatterns = patterns('',
     url(r'^container_valuations.csv', 'universe.container.views.valuations', name='valuations', kwargs={'view_extension':'csv'}),
     url(r'^container_positions.html', 'universe.container.views.positions', name='positions'),
     url(r'^container_partial_save.html', 'universe.container.views.partial_save', name='partial_save'),
-    
+    url(r'^container_partial_delete.html', 'universe.container.views.partial_delete', name='partial_delete'),
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

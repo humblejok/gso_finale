@@ -6,6 +6,7 @@ import datetime
 from django.contrib.auth.models import User
 from django.db.models.fields import FieldDoesNotExist
 from django.forms.models import model_to_dict
+from seq_common.utils import classes
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,6 +66,13 @@ def batch(iterable, n = 1):
     for ndx in range(0, l, n):
         yield iterable[ndx:min(ndx+n, l)]
 
+def get_model_foreign_field_class(model_class, field):
+    all_fields = get_static_fields(model_class)
+    if all_fields[field].has_key('target_class'):
+        return classes.my_class_import(all_fields[field]['target_class'])
+    else:
+        return None    
+    
 def complete_fields_information(model_class, information):
     all_fields = get_static_fields(model_class)
     for field in information:
@@ -75,6 +83,9 @@ def complete_fields_information(model_class, information):
         if all_fields.has_key(field_effective):
             information[field].update(all_fields[field_effective])
             if information[field]['type'] in ['ForeignKey', 'ManyToManyField']:
+                current_class = classes.my_class_import(information[field]['target_class'])
+                if hasattr(current_class, 'get_fields'):
+                    information[field]['options'] = getattr(current_class,'get_fields')()
                 if information[field]['target_class']=='universe.models.Attributes':
                     information[field]['template'] = 'statics/' + information[field]['link']['type'] + '_en.html'
                 else:
