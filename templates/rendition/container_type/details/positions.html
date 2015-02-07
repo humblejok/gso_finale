@@ -12,13 +12,13 @@
 		var positions = {{positions|get_as_json_string|safe}};
 
 		function fillContent() {
-			console.log($("#positionsDate").val());
 			$("#positions").empty();
 			var newContent = "<table class='table'>";
 			newContent += "<tr><th>Security</th><th>Quantity</th><th>Price</th><th>Price date</th><th>Amount (Security)</th><th>Amount (Portfolio)</th></tr>";
 			$.each(positions[$("#positionsDate").val()], function(index, value) {
+				console.log(value);
 				if (index!='increase' && index!='decrease' && index!='increase_fop' && index!='decrease_fop') {
-					newContent += "<tr><td>" + value['name'] + "</td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td><td>" + (value['price_pf'] * value['total']).toFixed(2) + "</td></tr>";
+					newContent += "<tr><td><a href='/container_get.html?container_id=" + value['id'] + "&container_type=" + value['type'] + "'>" + value['name'] + "</a></td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td><td>" + (value['price_pf'] * value['total']).toFixed(2) + "</td></tr>";
 				}
 			});
 			if (positions[$("#positionsDate").val()].increase && Object.keys(positions[$("#positionsDate").val()].increase).length>0) {

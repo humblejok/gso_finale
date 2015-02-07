@@ -44,6 +44,7 @@ QUERIES = { 'guardian': {'securities':
                              'ISIN': 'cod_isin', 
                              'EXTERNAL': 'cod_tit'},
                           'transactions': {'query': "select * from tra order by cod_rap, data_ins", 'group_by': 'cod_rap'},
+                          'tracks': {'query': "select * from prezzi order by cod_tit, data_ins", 'group_by': 'cod_tit'},
                           'portfolios': {'query': "select * from rap order by cod_rap", 'group_by': ['cod_rap']},
                           'positions':
                             {'query':"select t1.cod_rap, r.des_rap, r.cod_sta, r.cod_lin, r.cod_gru, r.cod_ges, r.cod_pro, r.cod_ctp, r.cod_soc, t1.cod_tit, tit.cod_isin, tit.cod_bloomberg, tit.des_tit,\n\
@@ -55,7 +56,7 @@ QUERIES = { 'guardian': {'securities':
                                       where t0.richiesta1=(select max(richiesta1) request from tmppostit0) and t1.ordinamento='B' and r.cod_soc<>'NOSEQ' order by cod_rap, cod_tit",
                              'group_by':['data_cal', 'des_rap']
                              },
-                          'tracks':
+                          'tracks_old':
                             {'query': "select * from prezzi where cod_tit='%s' order by data_ins"
                             }
                          },
@@ -370,6 +371,13 @@ def get_positions(data_source, working_date):
 def get_portfolios(data_source):
     try:
         return client[data_source]['portfolios'].find()
+    except:
+        return []
+
+def get_prices(data_source, key):
+    try:
+        database = getattr(client, data_source)
+        return database['tracks'].find_one({'_id': key})['data']
     except:
         return []
 

@@ -3,7 +3,8 @@ from utilities.external_content import get_positions
 import logging
 import sys
 from universe.models import Universe, Alias, Attributes, SecurityContainer,\
-    TrackContainer, CompanyContainer
+    TrackContainer, CompanyContainer, Address, PersonContainer, CompanyMember,\
+    Phone, Email
 from utilities.track_content import get_track_content
 from seq_common.utils import dates
 import traceback
@@ -12,8 +13,224 @@ from finale.settings import WORKING_PATH
 from openpyxl.workbook import Workbook
 from external.sequoia_data import ROLE_MAPS_TEMPLATE, SEQUOIA_STYLES
 from openpyxl.worksheet.dimensions import RowDimension
+from openpyxl.reader.excel import load_workbook
+from django.db.models import Q
+from django.contrib.auth.models import User
 
 LOGGER = logging.getLogger(__name__)
+
+def import_crm_file(file_name):
+    LOGGER.info("Loading data from " + file_name)
+    workbook = load_workbook(file_name)
+    sheet = workbook.get_sheet_by_name('Investment managers prospect 20')
+    row_index = 1
+    # Reading header
+    header = []
+    for column_index in range(1, sheet.get_highest_column() + 1):
+        value = sheet.cell(row = row_index, column=column_index).value
+        if value!=None:
+            header.append(value.strip() if value!='' else header[-1])
+        else:
+            break
+    LOGGER.info('Using header:' + str(header))
+    LOGGER.info('Rows:' + str(sheet.get_highest_row()))
+    LOGGER.info('Columns:' + str(sheet.get_highest_column()))
+    
+    company_type = Attributes.objects.get( active=True, type='container_type', identifier='CONT_COMPANY')
+    person_type = Attributes.objects.get( active=True, type='container_type', identifier='CONT_PERSON')
+    active = Attributes.objects.get(active=True, type='status', identifier='STATUS_ACTIVE')
+    closed = Attributes.objects.get(active=True, type='status', identifier='STATUS_CLOSED')
+    main_address = Attributes.objects.get(active=True, type='address_type', identifier='ADR_MAIN_OFFICE')
+    secondary_address = Attributes.objects.get(active=True, type='address_type', identifier='ADR_SUBSI_OFFICE')
+    web_address = Attributes.objects.get(active=True, type='address_type', identifier='ADR_WEB')
+    mobile_work_phone = Attributes.objects.get(active=True, type='phone_type', identifier='PHONE_MOB_WORK')
+    land_work_phone = Attributes.objects.get(active=True, type='phone_type', identifier='PHONE_LAND_WORK')
+    email_work = Attributes.objects.get(active=True, type='email_type', identifier='EMAIL_WORK')
+    
+    row_index += 1
+    
+    company_name_index = header.index('Company') + 1
+    description_index = header.index('Company Info') + 1
+    active_index = header.index('Dead/Alive') + 1
+    address_line_1_index = header.index('Address') + 1
+    address_zip_index = header.index('Zip Code') + 1
+    address_city_index = header.index('City') + 1
+    address_country_index = header.index('Country') + 1
+    website_index = header.index('Internet site') + 1
+    
+    person_first_index = header.index('First name') + 1
+    person_last_index = header.index('Family name') + 1
+    person_title_index = header.index('Title') + 1
+    person_office_phone_index = header.index('Office phone') + 1
+    person_mobile_phone_index = header.index('Mobile') + 1
+    person_email_index = header.index('Email') + 1
+    
+    universe = Universe()
+    universe.name = 'CRM Universe ' + str(datetime.datetime.now())
+    universe.short_name = str(datetime.datetime.now())
+    universe.type = Attributes.objects.get(identifier='CONT_UNIVERSE')
+    universe.inception_date = datetime.date.today()
+    universe.closed_date = None
+    universe.status = Attributes.objects.get(identifier='STATUS_ACTIVE')
+    universe.public = True
+    universe.owner = User.objects.get(id=1)
+    universe.description = "This universe contains all CRM related companies as of " + str(datetime.datetime.now()) + "."
+    universe.save()
+    
+    treated_company = []
+    
+    while row_index<=sheet.get_highest_row():
+        LOGGER.info("Working on row:" + str(row_index))
+        if sheet.cell(row = row_index, column=company_name_index).value==None or sheet.cell(row = row_index, column=company_name_index).value=='':
+            row_index += 1
+            continue
+        company_name = sheet.cell(row = row_index, column=company_name_index).value.strip()
+        company = CompanyContainer.objects.filter(Q(name=company_name) | Q(short_name=company_name))
+        
+        is_active = sheet.cell(row = row_index, column=active_index).value.strip().upper()!='DEAD' if sheet.cell(row = row_index, column=active_index).value!=None else True
+
+        if company.exists():
+            company = company[0]
+            LOGGER.info("Company " + company_name + " already exists, updating.")
+            if company_name not in treated_company:
+                for phone in company.phones.all():
+                    company.phones.remove(phone)
+                    company.save()
+                    phone.delete()
+                for address in company.addresses.all():
+                    company.addresses.remove(address)
+                    company.save()
+                    address.delete()
+                for member in company.members.all():
+                    company.members.remove(member)
+                    company.save()
+                    member.delete()
+        else:
+            LOGGER.info("Company " + company_name + " is being created.")
+            company = CompanyContainer()
+            company.type = company_type
+            company.name = company_name
+            company.short_name =  company_name
+            company.status = active if is_active else closed
+            company.save()
+        
+        company.short_description = sheet.cell(row = row_index, column=description_index).value.strip() if sheet.cell(row = row_index, column=description_index).value!=None else None
+        
+        country_name = sheet.cell(row = row_index, column=address_country_index).value.strip().upper() if sheet.cell(row = row_index, column=address_country_index).value!=None else ''
+        country_attribute = Attributes.objects.filter(active=True, type='country_iso2', name__iexact=country_name)
+        if country_attribute.exists():
+            country_attribute = country_attribute[0]
+        else:
+            country_attribute = None
+        if country_attribute!=None \
+            or sheet.cell(row = row_index, column=address_line_1_index).value!=None \
+            or sheet.cell(row = row_index, column=address_zip_index).value!=None \
+            or sheet.cell(row = row_index, column=address_city_index).value!=None:
+            
+            line_1_value = sheet.cell(row = row_index, column=address_line_1_index).value.strip().upper() if sheet.cell(row = row_index, column=address_line_1_index).value!=None else None
+            zip_code_value = str(sheet.cell(row = row_index, column=address_zip_index).value).strip().upper() if sheet.cell(row = row_index, column=address_zip_index).value!=None else None
+            city_value = sheet.cell(row = row_index, column=address_city_index).value.strip().upper() if sheet.cell(row = row_index, column=address_city_index).value!=None else None
+            addresses = company.addresses.filter(line_1=line_1_value,
+                                         zip_code=zip_code_value,
+                                         city=city_value,
+                                         country=country_attribute)
+            if not addresses.exists():
+                company.save()
+                address = Address()
+                address.address_type = main_address if len(addresses)==0 else secondary_address
+                address.line_1 = line_1_value
+                address.line_2 = None
+                address.zip_code = zip_code_value
+                address.city = city_value
+                address.country = country_attribute
+                address.save()
+                company.addresses.add(address)
+                company.save()
+        if sheet.cell(row = row_index, column=website_index).value!=None and sheet.cell(row = row_index, column=website_index).value!='':
+            website_url = str(sheet.cell(row = row_index, column=website_index).value).strip()
+            website = company.addresses.filter(address_type=web_address, line_1=website_url)
+            if not website.exists() and website_url!='' and website_url!=None:
+                website = Address()
+                website.address_type = web_address
+                website.line_1 = website_url
+                website.line_2 = None
+                website.zip_code = None
+                website.city = None
+                website.country = None
+                website.save()
+                company.addresses.add(website)
+                company.save()
+        
+        person_first = sheet.cell(row = row_index, column=person_first_index).value.strip() if sheet.cell(row = row_index, column=person_first_index).value!=None and sheet.cell(row = row_index, column=person_first_index).value!='' else None
+        person_last = sheet.cell(row = row_index, column=person_last_index).value.strip().upper() if sheet.cell(row = row_index, column=person_last_index).value!=None and sheet.cell(row = row_index, column=person_last_index).value!='' else None
+        
+        if person_first!=None and person_last!=None:
+            persons = PersonContainer.objects.filter(last_name=person_last, first_name=person_first)
+            if not persons.exists():
+                LOGGER.info("Person " + person_last + ' ' + person_first + " is being created.")
+                person = PersonContainer()
+                person.first_name = person_first
+                person.last_name = person_last
+                person.birth_date = None
+                person.name = person_last + ' ' + person_first
+                person.type = person_type
+                person.status = active if is_active else closed
+                person.save()
+            else:
+                LOGGER.info("Person " + person_last + ' ' + person_first + " already exists, updating.")
+                person = persons[0]
+                for phone in person.phones.all():
+                    person.phones.remove(phone)
+                    person.save()
+                    phone.delete()
+                for email in person.emails.all():
+                    person.emails.remove(email)
+                    person.save()
+                    email.delete()
+            if sheet.cell(row = row_index, column=person_title_index).value!=None and sheet.cell(row = row_index, column=person_title_index).value!='':
+                titles = sheet.cell(row = row_index, column=person_title_index).value.split('/')
+                for title in titles:
+                    current_title = Attributes.objects.filter(Q(short_name__iexact=title.strip()) | Q(name__iexact=title.strip()), Q(type='company_member_role'), Q(active=True))
+                    if current_title.exists():
+                        LOGGER.info("Person " + person_last + ' ' + person_first + " is assigned as " + title + ".")
+                        member = CompanyMember()
+                        member.person = person
+                        member.role = current_title[0]
+                        member.save()
+                        company.members.add(member)
+                    else:
+                        LOGGER.warn("Title [" + title + "] doesn't exists please correct your data or add that role to the system." )
+            else:
+                LOGGER.warn("Person " + person_last + ' ' + person_first + " has no title within the company.")
+                
+            if sheet.cell(row = row_index, column=person_mobile_phone_index).value!=None and sheet.cell(row = row_index, column=person_mobile_phone_index).value!='':
+                mobile = Phone()
+                mobile.phone_number = sheet.cell(row = row_index, column=person_mobile_phone_index).value.strip()
+                mobile.line_type = mobile_work_phone
+                mobile.save()
+                person.phones.add(mobile)
+                person.save()
+            if sheet.cell(row = row_index, column=person_office_phone_index).value!=None and sheet.cell(row = row_index, column=person_office_phone_index).value!='':
+                land = Phone()
+                land.phone_number = sheet.cell(row = row_index, column=person_office_phone_index).value.strip()
+                land.line_type = land_work_phone
+                land.save()
+                person.phones.add(land)
+                person.save()
+            if sheet.cell(row = row_index, column=person_email_index).value!=None and sheet.cell(row = row_index, column=person_email_index).value!='':
+                email = Email()
+                email.email_address = sheet.cell(row = row_index, column=person_email_index).value.strip()
+                email.address_type = email_work
+                email.save()
+                person.emails.add(email)
+                person.save()
+        company.save()
+        universe.members.add(company)
+        if company_name not in treated_company:
+            treated_company.append(company_name)
+        row_index += 1
+    universe.save()
+
 
 def define_xslx_header(sheet, headers):
     row_index = 1

@@ -1,0 +1,233 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - {{universe.name}}{% endblock %}
+{% block readyoptions %}
+				$(".btn").tooltip();
+				rtfEditor = $("#rtfContent").Editor();
+				console.log(rtfEditor);
+{% endblock %}
+{% block headeroptions %}
+		<script>
+			var rtfEditor;
+			var currentItem = 0;
+
+			function onCallError(e) {
+				alert(e.status);
+				$("#backgroundProgress").addClass("invisible");
+			}
+
+			function mailExecuted(e) {
+				$("#backgroundProgress").addClass("invisible");
+			}
+
+			function setSelection(status) {
+				if (typeof status === 'boolean') {
+					console.log('Status:' + status);
+					$(".mail-select").prop("checked", status);
+				} else {
+					console.log('Invertion');
+					var boxes = $(".mail-select");
+					$.each(boxes, function(index, box) {
+						$(this).prop("checked", !$(this).prop("checked"));
+					});
+				}
+				return false;
+			}
+
+			function launchTestConfirmation(event) {
+				event.preventDefault();
+				$("#testMode").prop("checked", true);
+				$('#modal_mass_mail').modal('toggle');
+				return false;
+			}
+
+			function launchConfirmation(event) {
+				event.preventDefault();
+				$("#testMode").prop("checked", false);
+				$('#modal_mass_mail').modal('toggle');
+				return false;
+			}
+
+			function getSelectedIds() {
+				var list = [];
+				$.each($(".mail-select"), function(index, node) {
+					if ($(node).prop("checked")) {
+						list.push($(node).val());
+					}
+				});
+				return JSON.stringify(list);
+			}
+
+			function getSelectedFiles() {
+				var list = [];
+				$.each($(".selected-file"), function(index, node) {
+					list.push($(node).text());
+				});
+				return JSON.stringify(list);
+			}
+
+			function executeMailing() {
+				var mailForm = new FormData();
+				$("#backgroundProgress").removeClass("invisible");
+				mailForm.append('universe_id', '{{universe.id}}');
+				mailForm.append('mail_subject', $("#subject").val());
+				mailForm.append('mail_test',$("#testMode").prop("checked")?"True":"False");
+				mailForm.append('mail_content', rtfEditor.Editor("getText"));
+				mailForm.append('mail_attachments', getSelectedFiles());
+				mailForm.append('mail_ids', getSelectedIds());
+				$.ajax({
+					url: '/universe_mass_mail_execute.html',
+					type: 'POST',
+					data: mailForm,
+					processData: false,
+					contentType: false,
+					success: mailExecuted,
+					error: onCallError
+				});
+			}
+
+
+			function allowDrop(event) {
+				event.preventDefault();
+				$("#holder").removeClass("hover");
+				$("#holder").addClass("hover");
+				return false;
+			}
+
+			function endDrop(event) {
+				event.preventDefault();
+				$("#holder").removeClass("hover");
+				return false;
+				
+			}
+
+			function removeFile(itemIndex) {
+				console.log(".file-item_" + itemIndex);
+				$(".file-item_" + itemIndex).remove();
+			}
+
+			function handleDrop(event) {
+				
+				$("#holder").removeClass("hover");
+				$.each(event.dataTransfer.files, function(index, currentFile) {
+					var file = currentFile;
+					var fileReader = new FileReader();
+					$("#holderDetails").append("<tr class='file-item_" + currentItem + "'><td class='selected-file'>" + file.name + "</td><td><button class='btn btn-default' type='button' role='button' onclick='removeFile(" + currentItem + ")'><span class='glyphicon glyphicon-remove'/></button></td></tr>");
+					currentItem = currentItem + 1;
+					sendFile(file);
+				});
+				event.preventDefault();
+				return false;
+			}
+
+			function fileUploadProgressHandler(event) {
+				console.log(event);
+				$("#backgroundProgress").addClass("invisible");
+			};
+
+			function sendFile(file) {
+				$("#backgroundProgress").removeClass("invisible");
+				var tempForm = new FormData();
+				tempForm.append('uploaded_file', file);
+				$.ajax({
+					url: '/file_upload.html',
+					type: 'POST',
+					data: tempForm,
+					processData: false,
+					contentType: false,
+					success: console.log('Sent'),
+					complete: fileUploadProgressHandler
+				});
+			};
+
+		</script>
+{% endblock %}
+	</head>
+	<body>
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{universe.name}}</h1>
+	  			<p class="lead">Perform mass mailing operation for all or a selection of members of that universe.<br/>
+			</div>
+			<a href="/universes.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Back to universes list">
+				<span class="glyphicon glyphicon-home"></span>
+			</a>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div class="btn-group col-lg-offset-9 col-lg-2">
+				<button class="btn btn-default dropdown-toggle col-lg-12" data-toggle="dropdown">Operations&nbsp;<span class="caret"/></button>
+				<ul class="dropdown-menu" role="menu">
+					<li role="presentation" class="dropdown-header">Selection</li>
+					<li><a href="#" onclick="setSelection(true)">Select all</a></li>
+					<li><a href="#" onclick="setSelection(false)">Unselect all</a></li>
+					<li><a href="#" onclick="setSelection('invert')">Invert selection</a></li>
+					<li role="presentation" class="dropdown-header">Email</li>
+					<li><a href="#modal_mass_mail" onclick="launchTestConfirmation(event)">Perform mailing test</a></li>
+					<li><a href="#modal_mass_mail" onclick="launchConfirmation(event)">Execute mass mailing</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div class="col-lg-11">
+				<table class="table table.striped">
+					<tr>
+						{% if universe|has_container_type:"CONT_COMPANY" %}<th>Company</th>{% endif %}
+						<th>Target name</th>
+						<th>Target type</th>
+						<th>Target address</th>
+						<th>Selection</th>
+					</tr>
+					{% for element in members %}
+						{% if element.type.identifier == 'CONT_COMPANY' %}
+							{% for member in element.members.all %}
+								{% include 'container/view/person_emailing.html' with member=member.person %}
+							{% endfor %}
+						{% elif element.type.identifier == 'CONT_PERSON' %}
+							{% include 'container/view/person_emailing.html' with member=element %}
+						{% endif %}
+					{% endfor %}
+				</table>
+			</div>
+		</div>
+		<div class="modal fade" id="modal_mass_mail" tabindex="-1" role="dialog" aria-labelledby="modal_mass_mail_label" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_mass_mail_label">Execute mass mailing operation</h4>
+					</div>
+					<form id="create_form" role="form" action="" method="POST">{% csrf_token %}
+						<div class="modal-body">
+							<div class="form-group">
+								<label for="subject">Subject</label>
+								<input name="subject" type="text" class="form-control" id="subject" placeholder="Enter a subject" value=""/>
+							</div>
+							<div class="checkbox">
+								<label>
+  									<input id="testMode" name="testMode" type="checkbox" value="True"/> Test mode
+								</label>
+							</div>
+							<div class="row">
+								<div class="col-lg-6">
+									<div id="holder-small" ondragover="allowDrop(event)" ondragleave="endDrop(event)" ondrop="handleDrop(event)"></div>
+								</div>
+								<div class="col-lg-6">
+									<table id="holderDetails" class="table table-condensed">
+										<tr><th>Filename</th><th>&nbsp;</th></tr>
+									</table>
+								</div>
+							</div>
+							<textarea id="rtfContent"></textarea>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							<button type="button" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Perform mass mailing operation" onclick="executeMailing()">Send</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+{% endblock %}

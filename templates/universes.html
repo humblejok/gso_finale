@@ -60,6 +60,8 @@
 									{% for format in export_formats %}
 									<li><a href="/universe_export.html?universe_id={{universe.id}}&export_to={{format.identifier}}&export_type=history">{{format.name}}</a></li>
 									{% endfor %}
+									<li role="presentation" class="dropdown-header">CRM</li>
+									<li><a href="/universe_mass_mail.html?universe_id={{universe.id}}">Mass emailing</a></li>
 								</ul>
 							</div>
 						</td>

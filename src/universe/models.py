@@ -744,36 +744,51 @@ class Address(CoreModel):
     line_2 = models.CharField(max_length=128, null=True)
     zip_code = models.CharField(max_length=16, null=True)
     city = models.CharField(max_length=128, null=True)
+    country = models.ForeignKey(Attributes, limit_choices_to={'type':'country_iso2'}, related_name='address_country_rel', null=True)
 
     def get_identifier(self):
         return 'id'
 
     @staticmethod
     def get_fields():
-        return ['address_type','line_1','line_2','zip_code','city']
+        return ['address_type','line_1','line_2','zip_code','city','country']
     
     @staticmethod
     def get_filtering_field():
         return "address_type"
+    
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['address_type.name', 'line_1','line_2','zip_code','city', 'country.name']
+        elif rendition_width=='small':
+            return ['address_type.name', 'city', 'country.name']
 
 class Email(CoreModel):
     address_type = models.ForeignKey(Attributes, limit_choices_to={'type':'email_type'}, related_name='email_type_rel', null=True)
-    address = models.EmailField()
+    email_address = models.EmailField()
 
     def get_identifier(self):
         return 'id'
 
     @staticmethod
     def get_fields():
-        return ['address_type','address']
+        return ['address_type','email_address']
     
     @staticmethod
     def get_filtering_field():
         return "address_type"
     
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['address_type.name', 'email_address']
+        elif rendition_width=='small':
+            return ['address_type.name', 'email_address']
+    
 class Phone(CoreModel):
     line_type = models.ForeignKey(Attributes, limit_choices_to={'type':'phone_type'}, related_name='phone_type_rel', null=True)
-    phone = models.TextField(max_length=32)
+    phone_number = models.TextField(max_length=32)
 
     @staticmethod
     def get_filtering_field():
@@ -784,7 +799,14 @@ class Phone(CoreModel):
 
     @staticmethod
     def get_fields():
-        return ['line_type','phone']
+        return ['line_type','phone_number']
+    
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['line_type.name', 'phone_number']
+        elif rendition_width=='small':
+            return ['line_type.name', 'phone_number']
     
 class Alias(CoreModel):
     alias_type = models.ForeignKey(Attributes, limit_choices_to={'type':'alias_type'}, related_name='alias_type_rel', null=True)
@@ -912,7 +934,7 @@ class Container(CoreModel):
 
 class Universe(Container):
     public = models.BooleanField()
-    members = models.ManyToManyField("SecurityContainer", related_name='universe_financial_rel')
+    members = models.ManyToManyField("Container", related_name='universe_financial_rel')
     owner = models.ForeignKey(User, related_name='universe_owner_rel')
     description = models.TextField(null=True, blank=True)
 
@@ -1031,6 +1053,13 @@ class CompanySubsidiary(CoreModel):
     @staticmethod
     def get_querying_class():
         return universe.models.CompanyContainer
+    
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['company.name', 'company.inception_date', 'company.status.name']
+        elif rendition_width=='small':
+            return ['company.name']
 
 class CompanyMember(CoreModel):
     person = models.ForeignKey(PersonContainer, null=True)
@@ -1050,6 +1079,13 @@ class CompanyMember(CoreModel):
     @staticmethod
     def get_querying_class():
         return PersonContainer
+    
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['person.last_name', 'person.first_name', 'person.birth_date']
+        elif rendition_width=='small':
+            return ['person.last_name', 'person.first_name']
 
 class CompanyContainer(ThirdPartyContainer):
     members = models.ManyToManyField(CompanyMember)
@@ -1263,6 +1299,13 @@ class SecurityContainer(FinancialContainer):
     @staticmethod
     def get_querying_fields():
         return ['name', 'short_name', 'short_description']
+    
+    @staticmethod
+    def get_displayed_fields(rendition_width):
+        if rendition_width=='large':
+            return ['name', 'type.name', 'currency.short_name', 'inception_date', 'closed_date', 'status.name']
+        elif rendition_width=='small':
+            return ['name', 'type.name', 'currency.short_name']
 
 class BacktestContainer(FinancialContainer):
     universe = models.ForeignKey(Universe, related_name='backtest_universe_rel')

@@ -13,7 +13,7 @@ urlpatterns = patterns('',
     url(r'^index.html$', 'universe.views.universes', name='index'),
     
     # Common views
-    
+    url(r'^file_upload.html', 'universe.views.file_upload', name='file_upload'),
     url(r'^get_attributes.html', 'universe.views.get_attributes', name='get_attributes'),
     url(r'^check_execution.html', 'universe.views.check_execution', name='check_execution'),
     url(r'^get_execution.html', 'universe.views.get_execution', name='get_execution'),
@@ -52,6 +52,8 @@ urlpatterns = patterns('',
     url(r'^universe_member_delete.html$', 'universe.views.universe_member_delete', name='universe_member_delete'),
     url(r'^universe_report.html$', 'universe.views.universe_report', name='universe_report'),
     url(r'^universe_add_security.html$', 'universe.views.universe_add_security', name='universe_add_security'),
+    url(r'^universe_mass_mail.html$', 'universe.views.universe_mass_mail', name='universe_mass_mail'),
+    url(r'^universe_mass_mail_execute.html$', 'universe.views.universe_mass_mail_execute', name='universe_mass_mail_execute'),
     
     url(r'^backtest_wizard_execute.html$', 'universe.views.backtest_wizard_execute', name='backtest_wizard_execute'),
 
@@ -81,6 +83,7 @@ urlpatterns = patterns('',
     url(r'^container_positions.html', 'universe.container.views.positions', name='positions'),
     url(r'^container_partial_save.html', 'universe.container.views.partial_save', name='partial_save'),
     url(r'^container_partial_delete.html', 'universe.container.views.partial_delete', name='partial_delete'),
+    url(r'^container_add_price.html', 'universe.container.views.add_price', name='add_price'),
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

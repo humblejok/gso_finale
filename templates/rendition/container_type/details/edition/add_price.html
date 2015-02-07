@@ -1,0 +1,52 @@
+			<script>
+				function addPrice() {
+					var updateForm = new FormData();
+					updateForm.append('container_id',urlParams['container_id']);
+					updateForm.append('container_type',urlParams['container_type']);
+					updateForm.append('price_date', $('#price_date').val());
+					updateForm.append('price_value', $('#price_value').val());
+					$.ajax({
+						url: '/container_add_price.html',
+						type: 'POST',
+						data: updateForm,
+						processData: false,
+						contentType: false,
+						success: containerFieldsSaved,
+						error: onCallError
+					});
+				}
+			</script>
+
+			<div class="modal fade" id="modal_add_price" tabindex="-1" role="dialog" aria-labelledby="modal_add_price_label" aria-hidden="true">
+				<div class="modal-dialog modal-lg">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+							<h4 class="modal-title" id="modal_add_price_label">{{container.name}} - Add price</h4>
+						</div>
+						<form id="add_price" role="form" action="#" method="POST">{% csrf_token %}
+							<div class="modal-body">
+								<div class="row">
+									<div class="col-lg-2"><strong>Short name:</strong></div>
+									<div class="col-lg-7">{% if container.short_name %}{{container.short_name}}{% else %}None{% endif %}</div>
+									<div class="col-lg-1"><strong>Currency:</strong></div>
+									<div class="col-lg-2">{% if container.currency %}{{container.currency.name}}{% else %}None{% endif %}</div>
+								</div>
+								<div class="row">&nbsp;</div>
+								<div class="form-group">
+									<label for="price_date">Date</label>
+									<input name="price_date" type="text" class="form-control date-form-field" id="price_date" placeholder="Enter a date" value=""/>
+								<div>
+								<div class="form-group">
+									<label for="price_value">Value</label>
+									<input name="price_value" type="text" class="form-control no-enter" id="price_value" placeholder="Enter a value" value=""/>
+								<div>
+							</div>
+						</form>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-warning" role="button" data-toggle="tooltip" data-placement="bottom" title="Save the price" onclick="addPrice()" data-dismiss="modal">Save</button>
+							<button type="button" class="btn btn-success" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>

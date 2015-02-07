@@ -246,7 +246,9 @@
 		var index = currentItem;
 		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {
 			changeType(index);
-			callback();
+			if (callback) {
+				callback();
+			}
 		});
 		$("#type_" + currentItem).attr('onchange','changeType(' + currentItem + ')');
 		
@@ -315,7 +317,7 @@
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">
-			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Create a new widget to the current layout" onclick='addWidget({"row": 1, "size_x": 1, "col": 1, "size_y": 1})'>Add</button>
+			<button class="btn btn-default col-lg-3" type="button" data-placement="bottom" title="Add a new widget to the current layout" onclick='addWidget({"row": 1, "size_x": 1, "col": 1, "size_y": 1})'>Add</button>
 			<button class="btn btn-default col-lg-offset-6 col-lg-3" type="button" data-placement="bottom" title="Save the current layout" onclick="saveLayout()">Save</button>
 		</div>
 		<div class="row">

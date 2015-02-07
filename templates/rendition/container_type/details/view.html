@@ -44,8 +44,6 @@
 		}
 
 		function sendItemForEdition(data, containerField) {
-			console.log(containerField);
-			console.log(data);
 			$.each(data, function(field, value) {
 				if (value.hasOwnProperty('identifier')) {
 					$("#" + containerField + "-" + field).val(value.identifier);
@@ -133,4 +131,7 @@
 			{% include 'rendition/container_type/details/edition/'|add:template_name|add:".html" with index=index complete_fields=complete_fields data=layout|get_dict_key:"data"|get_dict_key:index labels=labels container=container %}
 		{% endwith %}
 	{% endfor %}
+
+	{% include 'rendition/container_type/details/edition/add_price.html' %}
+
 {% endblock %}

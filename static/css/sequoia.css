@@ -1,3 +1,23 @@
+#holder-small {
+  border: 10px dashed #ccc;
+  width: 200px;
+  height: 100px;
+  margin: 20px auto;
+}
+#holder-small.hover {
+  border: 10px dashed #333;
+}
+
+#holder {
+  border: 10px dashed #ccc;
+  width: 300px;
+  height: 300px;
+  margin: 20px auto;
+}
+#holder.hover {
+  border: 10px dashed #333;
+}
+
 .gridster ul {
   list-style-type: none;
 }

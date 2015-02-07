@@ -5,14 +5,72 @@ Created on Dec 15, 2014
 '''
 from django.db.models import Q
 from universe.models import Attributes, FinancialOperation, Alias,\
-    SecurityContainer
-from utilities.external_content import get_transactions, get_portfolios
+    SecurityContainer, CompanyContainer, RelatedCompany, TrackContainer
+from utilities.external_content import get_transactions, get_portfolios,\
+    get_prices
 from utilities import operations
 from utilities.operations import compute_positions, compute_accounts
 
 import logging
+import datetime
+from utilities.track_content import set_track_content
 
 LOGGER = logging.getLogger(__name__)
+
+def import_prices(container):
+    guardian_alias = Attributes.objects.get(type='alias_type', short_name='GUARDIAN')
+
+    nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
+    final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
+    official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
+    daily = Attributes.objects.get(identifier='FREQ_DAILY', active=True)
+    data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
+
+    guardian = CompanyContainer.objects.get(short_name__icontains='GUARDIAN')
+
+    guardian_provider = RelatedCompany.objects.filter(company=guardian, role=data_provider)
+    if guardian_provider.exists():
+        guardian_provider = guardian_provider[0]
+    else:
+        guardian_provider = RelatedCompany()
+        guardian_provider.role = data_provider
+        guardian_provider.company = guardian
+        guardian_provider.save()
+
+    if container.aliases.filter(alias_type=guardian_alias).exists():
+        old_provider = container.associated_companies.filter(role=data_provider)
+        if old_provider.exists():
+            old_provider = old_provider[0]
+            container.associated_companies.remove(old_provider)
+            container.save()
+            container.associated_companies.add(guardian_provider)
+            container.save()
+        try:
+            track = TrackContainer.objects.get(
+                                effective_container_id=container.id,
+                                type__id=nav_value.id,
+                                quality__id=official_type.id,
+                                source__id=guardian.id,
+                                frequency__id=daily.id,
+                                status__id=final_status.id)
+            LOGGER.info("\tTrack already exists")
+        except:
+            track = TrackContainer()
+            track.effective_container = container
+            track.type = nav_value
+            track.quality = official_type
+            track.source = guardian
+            track.status = final_status
+            track.frequency = daily
+            track.frequency_reference = None
+            track.save()
+        all_prices = get_prices('guardian', container.aliases.get(alias_type=guardian_alias).alias_value)
+        all_tokens = []
+        for price in all_prices:
+            if price['prezzo']!=None:
+                all_tokens.append({'date': datetime.datetime.strptime(price['data_ins'], '%Y-%m-%d'), 'value': price['prezzo']})
+        set_track_content(track, all_tokens, True)
+        print all_tokens
 
 def import_portfolio(container):
     guardian_alias = Attributes.objects.get(type='alias_type', short_name='GUARDIAN')

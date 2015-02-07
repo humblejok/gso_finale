@@ -18,6 +18,7 @@
 		<script src="/static/amcharts/themes/light.js" type="text/javascript"></script>
 		<script src="/static/date.js" type="text/javascript"></script>
 		<script src="/static/gammasimos.js"></script>
+		<script src="/static/bootstrap-wysiwyg.js"></script>
 		<script>
 			function taskFinished(e) {
 				if (e.result) {
@@ -143,6 +144,8 @@
 								<li><a href="/containers.html?item=CONT_SECURITY">Explore</a></li>
 								<li role="presentation" class="dropdown-header">Companies</li>
 								<li><a href="/containers.html?item=CONT_COMPANY">Explore</a></li>
+								<li role="presentation" class="dropdown-header">Persons</li>
+								<li><a href="/containers.html?item=CONT_PERSON">Explore</a></li>
 							</ul>
 						</li>
 						<li class="dropdown">
@@ -168,8 +171,10 @@
 							<ul class="dropdown-menu">
 								<li role="presentation" class="dropdown-header">Swiss-Rev Guardian</li>
 								<li><a onclick="importExternalData('guardian','securities', false)">Import securities</a></li>
-								<li><a onclick="importExternalData('guardian','tracks', false)">Import tracks</a></li>
-								<li><a onclick="importExternalData('guardian','positions', true)">Import positions</a></li>
+								<li><a onclick="importExternalData('guardian','tracks', false)">Download tracks</a></li>
+								<li><a onclick="importExternalData('guardian','portfolios', true)">Download portfolios</a></li>
+								<li><a onclick="importExternalData('guardian','positions', true)">Download positions</a></li>
+								<li><a onclick="importExternalData('guardian','transactions', false)">Download transactions</a></li>
 								<li role="presentation" class="dropdown-header">DST Webfolio</li>
 								<li><a onclick="importExternalData('webfolio','securities', false)">Import securities</a></li>
 								<li role="presentation" class="dropdown-header">Sequoia</li>

@@ -1,0 +1,71 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Financial Lightweight Editor - SEQUOIA Import CRM data{% endblock %}
+{% block readyoptions %}
+{% endblock %}
+{% block headeroptions %}
+	<script type="text/javascript">
+
+		function allowDrop(event) {
+			event.preventDefault();
+			$("#holder").removeClass("hover");
+			$("#holder").addClass("hover");
+			return false;
+		}
+
+		function endDrop(event) {
+			event.preventDefault();
+			$("#holder").removeClass("hover");
+			return false;
+			
+		}
+
+		function handleDrop(event) {
+			
+			$("#holder").removeClass("hover");
+
+			var file = event.dataTransfer.files[0];
+			var fileReader = new FileReader();
+
+			console.log(file);
+			sendFile(file);
+			event.preventDefault();
+			return false;
+		}
+
+		function fileUploadProgressHandler(event) {
+			$("#backgroundProgress").addClass("invisible");
+		};
+
+		function sendFile(file) {
+			$("#backgroundProgress").removeClass("invisible");
+			var tempForm = new FormData();
+			tempForm.append('uploaded_file', file);
+			tempForm.append('provider', urlParams['provider'])
+			tempForm.append('action', urlParams['action'])
+			tempForm.append('step', 'crm_file')
+			$.ajax({
+				url: '/file_upload.html',
+				type: 'POST',
+				data: tempForm,
+				processData: false,
+				contentType: false,
+				success: console.log('Sent'),
+				complete: fileUploadProgressHandler
+			});
+		};
+	</script>
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">Import CRM data from file
+				</h1>
+	  			<p class="lead">Drag a CRM data file to import its content<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div id="holder" ondragover="allowDrop(event)" ondragleave="endDrop(event)" ondrop="handleDrop(event)"></div>
+		</div>
+{% endblock %}

@@ -84,3 +84,11 @@ def match_frequency(date_value, frequency):
 @register.filter()
 def get_frequency_perfs(frequency):
     return PERF_MAPPING[frequency.identifier]
+
+@register.filter()
+def is_security(container):
+    return container.type!=None and container.type.identifier in ['CONT_BOND','CONT_INDEX','CONT_FUND','CONT_PORTFOLIO','CONT_SECURITY','CONT_SPOT','CONT_FORWARD','CONT_PUT','CONT_CALL']
+
+@register.filter()
+def has_container_type(universe, container_type):
+    return universe.members.filter(type__identifier=container_type).exists()

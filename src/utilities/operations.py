@@ -1,6 +1,6 @@
 from universe.models import FinancialOperation, Attributes, AccountContainer,\
     PortfolioContainer, SecurityContainer
-from seq_common.utils.dates import epoch_time
+from seq_common.utils.dates import epoch_time, from_epoch
 import logging
 from utilities.valuation_content import set_accounts_history,\
     set_positions_portfolios, set_positions_securities
@@ -504,7 +504,7 @@ def compute_underlying_security(portfolios, tracks, spots, portfolio, operation,
         tracks[inner_security] = track
     value = get_closest_value(tracks[inner_security], operation.value_date if work_date==None else work_date)
     if value==None:
-        LOGGER.error("No NAV available for " + operation.target.name + " as of " + key_date)
+        LOGGER.error("No NAV available for " + operation.target.name + " as of " + str(from_epoch(long(key_date))))
         return None
     portfolios[portfolio_id][key_date][inner_security]['price'] = value['value']
     spot_pf = 1.0
@@ -554,7 +554,7 @@ def compute_positions(container=None):
         if previous_date.has_key(security_id):
             securities[security_id][key_date] = copy.deepcopy(securities[security_id][previous_date[security_id]])
         if not securities[security_id].has_key(key_date):
-            securities[security_id][key_date] = {'total': 0.0, 'name': operation.target.short_name}
+            securities[security_id][key_date] = {'total': 0.0, 'name': operation.target.short_name, 'id': operation.target.id, 'type': operation.target.type.identifier}
         if not portfolios[portfolio_id].has_key(key_date):
             portfolios[portfolio_id][key_date] = {}
         if not securities[security_id][key_date].has_key(portfolio_id):
@@ -573,7 +573,7 @@ def compute_positions(container=None):
                 if portfolios[portfolio_id][key_date].has_key('decrease_fop'):
                     del portfolios[portfolio_id][key_date]['decrease_fop']
         if not portfolios[portfolio_id][key_date].has_key(security_id):
-            portfolios[portfolio_id][key_date][security_id] = {'total': 0.0, 'name': operation.target.short_name, 'price': 0.0, 'price_pf': 0.0, 'price_date': None, 'buy_price': 0.0}
+            portfolios[portfolio_id][key_date][security_id] = {'total': 0.0, 'name': operation.target.short_name, 'id': operation.target.id, 'type': operation.target.type.identifier, 'price': 0.0, 'price_pf': 0.0, 'price_date': None, 'buy_price': 0.0}
         if not portfolios[portfolio_id][key_date].has_key('increase'):
             portfolios[portfolio_id][key_date]['increase'] = {'portfolio': 0.0}
         if not portfolios[portfolio_id][key_date].has_key('decrease'):

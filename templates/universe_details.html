@@ -49,15 +49,15 @@
 			<div class="col-lg-11">
 				<table class="table table.striped">
 					<tr>
-						<th>Security name</th>
-						<th>Security type</th>
+						<th>Member name</th>
+						<th>Member type</th>
 						<th>Currency</th>
 						<th>Action</th>
 					</tr>
 					{% for member in universe.members.all %}
 					<tr id="row_{{member.id}}">
 						<td>{{member.name}}</td>
-						<td>{{member.security_type.name}}</td>
+						<td>{{member.type.name}}</td>
 						<td>{{member.currency.short_name}}</td>
 						<td>
 							<a href="#modal_view_history_{{member.id}}" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="View official historical track of {{member.security_type.name}}">
@@ -72,7 +72,7 @@
 				</table>
 			</div>
 		</div>
-		{% for member in universe.members.all %}
+		{% for member in universe.members.all %}{% if member|is_security%}
 			<div class="modal fade" id="modal_view_history_{{member.id}}" tabindex="-1" role="dialog" aria-labelledby="modal_view_history_label_{{member.id}}" aria-hidden="true">
 				<div class="modal-dialog modal-lg">
 					<div class="modal-content">
@@ -126,5 +126,5 @@
 					</div>
 				</div>
 			</div>
-		{% endfor %}
+		{% endif %}{% endfor %}
 {% endblock %}

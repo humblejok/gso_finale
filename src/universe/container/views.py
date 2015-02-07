@@ -33,6 +33,7 @@ from utilities.valuation_content import get_portfolio_valuations,\
     get_closest_date, get_account_history
 import datetime
 from utilities.computing import get_previous_date
+from utilities.track_content import get_track_content, set_track_content
 
 
 LOGGER = logging.getLogger(__name__)
@@ -344,6 +345,37 @@ def partial_delete(request):
         container.save()
         entry.delete()
     return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
+
+def add_price(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id']
+    container_type = request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    
+    price_date = datetime.datetime.strptime(request.POST['price_date'], '%Y-%m-%d')
+    price_value = float(request.POST['price_value'])
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    track = get_track(container, {'track_default': True, 'track_type': 'NUM_TYPE_NAV'})
+    if track==None:
+        return HttpResponse('{"result": "No valid track", "status_message": "Not saved"}',"json")
+    all_tokens = get_track_content(track)
+    if all_tokens==None:
+        all_tokens = []
+    found = False
+    for token in all_tokens:
+        if token['date']==price_date:
+            found = True
+            token['value'] = price_value
+    if not found:
+        all_tokens.append({'date': price_date, 'value': price_value})
+
+    set_track_content(track, all_tokens, True)
+    
+    return HttpResponse('{"result": "Token added", "status_message": "Saved"}',"json")
 
 def partial_save(request):
     # TODO: Check user

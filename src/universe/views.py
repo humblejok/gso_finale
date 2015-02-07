@@ -20,7 +20,7 @@ from reports import universe_reports
 from universe.models import Universe, TrackContainer, SecurityContainer, \
     Attributes, CompanyContainer, BloombergTrackContainerMapping, BacktestContainer, \
     Container, RelatedCompany, PortfolioContainer, FinancialContainer, \
-    PersonContainer, MenuEntries
+    PersonContainer, MenuEntries, Email
 from utilities.external_content import import_external_data, \
     import_external_grouped_data, import_external_tracks,\
     import_external_data_sequence
@@ -35,9 +35,21 @@ from finale.settings import STATICS_PATH, STATICS_GLOBAL_PATH, WORKING_PATH
 from django.db.models.fields import FieldDoesNotExist
 from django.forms.models import model_to_dict
 from openpyxl.writer.excel import save_virtual_workbook
+import requests
+from providers import mailgun
 
 
 LOGGER = logging.getLogger(__name__)
+
+def file_upload(request):
+    file_name = os.path.join(WORKING_PATH,request.FILES['uploaded_file'].name)
+    with open(file_name, 'wb+') as destination:
+        for chunk in request.FILES['uploaded_file'].chunks():
+            destination.write(chunk)
+    if request.POST.has_key('provider') and request.POST.has_key('action') and request.POST.has_key('step'):
+        clazz = classes.my_import('external.' + request.POST['provider'])
+        getattr(clazz, request.POST['action'] + '_' + request.POST['step'])(file_name)
+    return HttpResponse('{"result": "OK"}',"json")
 
 def menu_setup_render(request):
     container_type = request.POST['container_type']
@@ -359,7 +371,7 @@ def external_import(request):
     provider = request.POST['provider']
     data_type = request.POST['data_type']
     if data_type=='tracks':
-        import_external_tracks(provider)
+        import_external_data_sequence(provider, data_type)
     elif data_type=='transactions':
         import_external_data_sequence(provider, data_type)
     elif request.POST.has_key('grouped'):
@@ -590,6 +602,54 @@ def universe_get_writable(request):
     context = {'universes': universes}
     return render(request, 'rendition/universes/universes_list.json', context)
 
+def universe_mass_mail(request):
+    if request.POST.has_key('universe_id'):
+        universe_id = request.POST['universe_id']
+    else:
+        universe_id = request.GET['universe_id']
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    all_members = []
+    try:
+        source = Universe.objects.get(Q(id=universe_id),Q(public=True)|Q(owner__id=request.user.id))
+        for member in source.members.all():
+            effective_class_name = Attributes.objects.get(identifier=member.type.identifier + '_CLASS', active=True).name
+            effective_class = classes.my_class_import(effective_class_name)
+            effective_member = effective_class.objects.get(id=member.id)
+            all_members.append(effective_member)
+
+    except:
+        # TODO: Return error message
+        return redirect('universes.html')
+    context = {'universe': source, 'members': all_members}
+    return render(request, 'universe_mass_mail.html', context)
+
+
+def universe_mass_mail_execute(request):
+    user = User.objects.get(id=request.user.id)
+    universe_id = request.POST['universe_id']
+    mail_subject = request.POST['mail_subject']
+    mail_test = request.POST['mail_test']
+    mail_content = request.POST['mail_content']
+    mail_attachments = [os.path.join(WORKING_PATH, attachment) for attachment in eval(request.POST['mail_attachments'])]
+    mail_ids = eval(request.POST['mail_ids'])
+    
+    treated_addresses = []
+    email_test = Email()
+    email_test.email_address = 'sdejonckheere@sequoia-ge.com'
+    addressees = []
+    for mail_id in mail_ids:
+        keys = mail_id.split("_")
+        person = PersonContainer.objects.get(id=keys[0])
+        email = Email.objects.get(id=keys[1])
+        if email.email_address not in treated_addresses or mail_test=='True':
+            addressees.append((person, email if mail_test!='True' else email_test))
+        treated_addresses.append(email.email_address)
+    mailgun.send_message(mail_subject, mail_content, addressees, mail_attachments)
+
+    return HttpResponse('{"result": true, "status_message": "Mails sent"}',"json")
+
+
 def universe_details(request):
     if request.POST.has_key('universe_id'):
         universe_id = request.POST['universe_id']
@@ -605,11 +665,16 @@ def universe_details(request):
     context = {'universe': source, 'tracks': {}}
  
     for member in source.members.all():
-        content = get_main_track_content(member, True, True)
-        if content!=None:
-            context['tracks']['track_' + str(member.id)] = content
-        else:
-            context['tracks']['track_' + str(member.id)] = []
+        if member.type.identifier not in ['CONT_COMPANY', 'CONT_BACKTEST', 'CONT_PORTFOLIO', 'CONT_COMPANY', 'CONT_OPERATION', 'CONT_PERSON', 'CONT_UNIVERSE']:
+            effective_class_name = Attributes.objects.get(identifier=member.type.identifier + '_CLASS', active=True).name
+            effective_class = classes.my_class_import(effective_class_name)
+            member = effective_class.objects.get(id=member.id)
+            content = get_main_track_content(member, True, True)
+            if content!=None:
+                context['tracks']['track_' + str(member.id)] = content
+            else:
+                context['tracks']['track_' + str(member.id)] = []
+        
     return render(request, 'universe_details.html', context)
 
 def universe_details_edit(request):

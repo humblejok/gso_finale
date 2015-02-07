@@ -188,11 +188,18 @@ RESOURCES_MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 
 WORKING_PATH = 'u:\\DEV\\Tests\\FinaLE'
 
+EDM_PATH = 'u:\\DEV\\Tests\\FinaLE-Documents'
+
 MAIN_PATH = 'c:\\DEV\\Sources\\gso_finale\\resources'
 STATICS_PATH = 'c:\\DEV\\Sources\\gso_finale\\templates\\statics'
 STATICS_GLOBAL_PATH = 'c:\\DEV\\Sources\\gso_finale\\static\\templates'
 
 BLOOMBERG_BROKER_URL = 'amqp://bloomberg:bloomberg@192.168.9.93:5672/bloomberg'
+
+MAILGUN_KEY = 'key-531bd6d34425805a27746678af906ec2'
+MAILGUN_DOMAIN = 'sequoia-ge.com'
+MAILGUN_FROM = 'SEQUOIA Asset Management <info@sequoia-ge.com>'
+MAILGUN_DEFAULT_CAMPAIGN = 'e59lm'
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
