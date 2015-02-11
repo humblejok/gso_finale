@@ -61,7 +61,7 @@
 			function getSelectedFiles() {
 				var list = [];
 				$.each($(".selected-file"), function(index, node) {
-					list.push($(node).text());
+					list.push("u'" + $(node).text() + "'");
 				});
 				return JSON.stringify(list);
 			}

@@ -37,6 +37,7 @@ from django.forms.models import model_to_dict
 from openpyxl.writer.excel import save_virtual_workbook
 import requests
 from providers import mailgun
+import sys
 
 
 LOGGER = logging.getLogger(__name__)
@@ -631,7 +632,7 @@ def universe_mass_mail_execute(request):
     mail_subject = request.POST['mail_subject']
     mail_test = request.POST['mail_test']
     mail_content = request.POST['mail_content']
-    mail_attachments = [os.path.join(WORKING_PATH, attachment) for attachment in eval(request.POST['mail_attachments'])]
+    mail_attachments = [os.path.join(WORKING_PATH, attachment) for attachment in eval(request.POST['mail_attachments'].replace('"',''))]
     mail_ids = eval(request.POST['mail_ids'])
     
     treated_addresses = []
@@ -695,23 +696,23 @@ def universe_details_edit(request):
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
     monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
-    
     for member in source.members.all():
-        provider = member.associated_companies.filter(role__identifier='SCR_DP')
-        if provider.exists():
-            provider = provider[0]
-            try:
-                track = TrackContainer.objects.get(
-                    effective_container_id=member.id,
-                    type__id=nav_value.id,
-                    quality__id=official_type.id,
-                    source__id=provider.company.id,
-                    frequency__id=monthly.id,
-                    status__id=final_status.id)
-                context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
-            except:
-                LOGGER.warn("No track found for container [" + str(member.id) + "]")
-                context['tracks']['track_' + str(member.id)] = []
+        if member.type.identifier not in ['CONT_COMPANY', 'CONT_BACKTEST', 'CONT_PORTFOLIO', 'CONT_COMPANY', 'CONT_OPERATION', 'CONT_PERSON', 'CONT_UNIVERSE']:
+            provider = member.associated_companies.filter(role__identifier='SCR_DP')
+            if provider.exists():
+                provider = provider[0]
+                try:
+                    track = TrackContainer.objects.get(
+                        effective_container_id=member.id,
+                        type__id=nav_value.id,
+                        quality__id=official_type.id,
+                        source__id=provider.company.id,
+                        frequency__id=monthly.id,
+                        status__id=final_status.id)
+                    context['tracks']['track_' + str(member.id)] = get_track_content_display(track)
+                except:
+                    LOGGER.warn("No track found for container [" + str(member.id) + "]")
+                    context['tracks']['track_' + str(member.id)] = []
     return render(request, 'universe_details_edit.html', context)
 
 def universe_member_delete(request):

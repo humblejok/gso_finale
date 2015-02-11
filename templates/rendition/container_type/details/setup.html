@@ -2,16 +2,7 @@
 {% block title %}Financial Lightweight Editor - Setup{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
-				containerChanged();
-				gridster = $(".gridster ul").gridster({
-					widget_margins: [10, 10],
-					widget_base_dimensions: [340, 340],
-					resize: {
-						enabled: true,
-						max_size: [4, 4],
-						min_size: [1, 1]
-					}
-				}).data('gridster');
+				initGridster();
 {% endblock %}
 {% block headeroptions %}
 <script>
@@ -25,7 +16,6 @@
 	var singleFields;
 	var multipleFields;
 
-	var remainingLoads = 0;
 	var callbacks = [];
 
 	var blockData = {};
@@ -36,6 +26,35 @@
 
 	function containerFieldsSaved(e) {
 
+	}
+
+	function checkClear() {
+		currentItem = currentItem - 1;
+		if (currentItem==0) {
+			initGridster();
+		}
+	}
+
+	function clearAndLoad() {
+		if (gridster) {
+			gridster.remove_all_widgets(checkClear);
+		}
+		if (currentItem==0) {
+			initGridster();
+		}
+	}
+
+	function initGridster() {
+		gridster = $(".gridster ul").gridster({
+			widget_margins: [10, 10],
+			widget_base_dimensions: [340, 370],
+			resize: {
+				enabled: true,
+				max_size: [4, 4],
+				min_size: [1, 1]
+			}
+		}).data('gridster');
+		containerChanged();
 	}
 
 	function dismiss(toRemove) {
@@ -57,11 +76,17 @@
 		currentItem -= 1;
 	}
 
-	function checkLoads() {
-		remainingLoads -= 1;
-		$.each(callbacks, function(index, f) {
-			f();
-		})
+	function checkLoads(event) {
+		var wrkItem = $(this).prop("id");
+		var indexPos = wrkItem.lastIndexOf("_");
+		var identifier = wrkItem.substring(0, indexPos);
+		var index = wrkItem.substr(indexPos + 1);
+		var currentInformation = allItems[$("#containerType").val()];
+		if (currentInformation.data[index].data.hasOwnProperty("track_" + identifier)) {
+			$(this).val(currentInformation.data[index].data["track_" + identifier]);
+		} else {
+			$(this).val(currentInformation.data[index].data[identifier]);
+		}
 	}
 
 	function completeSaveData() {
@@ -106,8 +131,8 @@
 	}
 
 	function trackDefaultChanged(index) {
-		$("#frequency_" + index).prop('disabled', !$("#frequency_" + index).prop('disabled'));
-		$("#datasource_" + index).prop('disabled', !$("#datasource_" + index).prop('disabled'));
+		$("#frequency_" + index).prop('disabled', $("#track_default_" + index).prop('checked'));
+		$("#datasource_" + index).prop('disabled', $("#track_default_" + index).prop('checked'));
 	}
 
 	function onForeignClick(index, fieldName) {
@@ -158,7 +183,7 @@
 
 	}
 
-	function changeType(index) {
+	function changeType(index, callback) {
 		var selectedType = $("#type_" + index).val();
 		$("#content_" + index).empty();
 		var htmlToAppend = "";
@@ -198,57 +223,56 @@
 			htmlToAppend = htmlToAppend.replaceAll('%%index%%', index);
 			
 			callLater = function() {
-				remainingLoads += 3;
 				$("#frequency_" + index).load("/static/templates/frequency_select_en.html", checkLoads);
 				$("#track_type_" + index).load("/static/templates/numeric_type_select_en.html", checkLoads);
 				$("#datasource_" + index).load("/static/templates/data_source_select_en.html", checkLoads);
 			};
 		}
 		$("#content_" + index).append(htmlToAppend);
+
 		callLater();
+		if (callback) {
+			callback();
+		}
 	}
 	
-	function buildWidgets(savedLayout) {
+
+	function buildWidgets_() {
 		var currentInformation = allItems[$("#containerType").val()];
-		remainingLoads -= 1;
-		callbacks = [];
-		blockData = {};
 		if (currentInformation) {
-			$.each(currentInformation.layout, function (index, savedLayout) {
-				addWidget(savedLayout, function() {
-					$("#title_" + index).val(currentInformation.data[index.toString()].title);
-					$("#type_" + index).val(currentInformation.data[index.toString()].type);
-					changeType(index);
+			$.each(currentInformation.layout, function (index, layout) {
+				var closureIndex = currentItem;
+				gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),layout.size_x, layout.size_y]);
+				$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {
+					$("#title_" + closureIndex).val(currentInformation.data[closureIndex.toString()].title);
+					$("#type_" + closureIndex).attr('onchange','changeType(' + closureIndex + ')');
+					$("#type_" + closureIndex).val(currentInformation.data[closureIndex.toString()].type);
+					changeType(closureIndex, function() {
+						if (currentInformation.data[closureIndex.toString()].type=='LAYOUT_OBJECT_TYPE_SINGLES') {
+							$.each(currentInformation.data[closureIndex.toString()].data, function(fieldIndex, field) {
+								onFieldClick(index, field);
+							});
+						} else if(currentInformation.data[closureIndex.toString()].type=='LAYOUT_OBJECT_TYPE_LIST') {
+							$.each(currentInformation.data[closureIndex.toString()].data, function(fieldIndex, field) {
+								onMultipleFieldClick(closureIndex, field);
+							});
+						} else if (currentInformation.data[closureIndex.toString()].type=='LAYOUT_HISTORY_CHART' || currentInformation.data[closureIndex.toString()].type=='LAYOUT_DISTRIBUTION_CHART' || currentInformation.data[closureIndex.toString()].type=='LAYOUT_HISTORICAL_DISTRIBUTION_CHART') {
+							$("#track_default_" + closureIndex).prop('checked', currentInformation.data[index.toString()].data.track_default)
+							$("#track_default_" + closureIndex).change();
+						}
+					});
+					
 				});
-				callbacks.push(function() {
-					if (currentInformation.data[index.toString()].type=='LAYOUT_OBJECT_TYPE_SINGLES') {
-						$.each(currentInformation.data[index.toString()].data, function(fieldIndex, field) {
-							onFieldClick(index, field);
-						});
-					} else if(currentInformation.data[index.toString()].type=='LAYOUT_OBJECT_TYPE_LIST') {
-						$.each(currentInformation.data[index.toString()].data, function(fieldIndex, field) {
-							onMultipleFieldClick(index, field);
-						});
-					} else if (currentInformation.data[index.toString()].type=='LAYOUT_HISTORY_CHART' || currentInformation.data[index.toString()].type=='LAYOUT_DISTRIBUTION_CHART' || currentInformation.data[index.toString()].type=='LAYOUT_HISTORICAL_DISTRIBUTION_CHART') {
-						$("#track_default_" + index).prop('checked', currentInformation.data[index.toString()].data.track_default)
-						$("#track_default_" + index).change();
-						$("#frequency_" + index).val(currentInformation.data[index.toString()].data.track_frequency);
-						$("#datasource_" + index).val(currentInformation.data[index.toString()].data.track_datasource);
-						$("#track_type_" + index).val(currentInformation.data[index.toString()].data.track_type);
-					}
-				});
+				currentItem = currentItem + 1;
 			});
 		}
 	}
 
-	function addWidget(layout, callback) {
+	function addWidget(layout) {
 		gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', currentItem),layout.size_x, layout.size_y]);
 		var index = currentItem;
 		$("#type_" + currentItem).load("/static/templates/layout_object_type_select_en.html", function() {
 			changeType(index);
-			if (callback) {
-				callback();
-			}
 		});
 		$("#type_" + currentItem).attr('onchange','changeType(' + currentItem + ')');
 		
@@ -257,14 +281,11 @@
 
 	function fieldsLoaded(e) {
 		allFieldsInformation = e.result;
-		for (var index=currentItem-1;index>=0;index--) {
-			gridster.remove_widget($('.gridster li').eq(index));
-		}
 		currentItem = 0;
 		allFields = [];
 		singleFields = [];
 		multipleFields = [];
-
+		callbacks = [];
 		$.each(e.result, function(index, value) {
 			allFields.push(index);
 		});
@@ -281,7 +302,12 @@
 			}
 		});
 
-		buildWidgets();
+		buildWidgets_();
+		if (callbacks) {
+			$.each(callbacks, function(index, callback){
+				callback();
+			});
+		}
 	}
 
 	function containerChanged() {
@@ -309,7 +335,7 @@
 			</div>
 		</div>
 		<div class="row">
-			<select class="form-control no-enter" id="containerType" name="containerType" onchange="containerChanged()">
+			<select class="form-control no-enter" id="containerType" name="containerType" onchange="clearAndLoad()">
 				{% with value='' %}
 					{% include selection_template %}
 				{% endwith %}
