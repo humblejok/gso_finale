@@ -84,6 +84,7 @@ urlpatterns = patterns('',
     url(r'^container_partial_save.html', 'universe.container.views.partial_save', name='partial_save'),
     url(r'^container_partial_delete.html', 'universe.container.views.partial_delete', name='partial_delete'),
     url(r'^container_add_price.html', 'universe.container.views.add_price', name='add_price'),
+    url(r'^container_create_operation.html', 'universe.container.views.create_operation', name='create_operation'),
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

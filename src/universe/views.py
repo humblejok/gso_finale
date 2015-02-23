@@ -38,6 +38,7 @@ from openpyxl.writer.excel import save_virtual_workbook
 import requests
 from providers import mailgun
 import sys
+from utilities.setup_content import get_container_type_fields
 
 
 LOGGER = logging.getLogger(__name__)
@@ -304,6 +305,20 @@ def object_fields_get(request):
     effective_class = classes.my_class_import(effective_class_name)
     object_static_fields = get_static_fields(effective_class)
     return HttpResponse('{"result": ' + dumps(object_static_fields) + ', "status_message": "Found"}',"json")
+
+def object_custom_fields_get(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_class = request.POST['container_type'] + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    object_custom_fields = get_container_type_fields()
+    if object_custom_fields.has_key(request.POST['container_type']):
+        object_custom_fields = object_custom_fields[request.POST['container_type']]
+    else:
+        object_custom_fields = []
+    return HttpResponse('{"result": ' + dumps(object_custom_fields) + ', "status_message": "Found"}',"json")
 
 def object_base_edit(request):
     # TODO: Check user
@@ -698,6 +713,9 @@ def universe_details_edit(request):
     monthly = Attributes.objects.get(identifier='FREQ_MONTHLY', active=True)
     for member in source.members.all():
         if member.type.identifier not in ['CONT_COMPANY', 'CONT_BACKTEST', 'CONT_PORTFOLIO', 'CONT_COMPANY', 'CONT_OPERATION', 'CONT_PERSON', 'CONT_UNIVERSE']:
+            effective_class_name = Attributes.objects.get(identifier=member.type.identifier + '_CLASS', active=True).name
+            effective_class = classes.my_class_import(effective_class_name)
+            member = effective_class.objects.get(id=member.id)
             provider = member.associated_companies.filter(role__identifier='SCR_DP')
             if provider.exists():
                 provider = provider[0]

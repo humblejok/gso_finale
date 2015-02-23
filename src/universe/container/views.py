@@ -346,6 +346,21 @@ def partial_delete(request):
         entry.delete()
     return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
+def create_operation(request):
+    user = User.objects.get(id=request.user.id)
+    
+    container_id = request.GET['container_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    context = {'container': container,
+               'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
+               }
+    
+    return render(request,'container/create/operation.html', context)
+
 def add_price(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -413,11 +428,9 @@ def search(request):
         if not isinstance(searching, basestring):
             searching = searching[0]
         action = request.POST['action']
-        print action
         # TODO: Check user
         user = User.objects.get(id=request.user.id)
-        container_id = request.GET['container_id']
-        container_type = request.GET['container_type']
+        container_type = request.POST['container_type']
         container_class = container_type + '_CLASS'
         # TODO: Handle error
         effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name

@@ -227,6 +227,26 @@
 				$("#track_type_" + index).load("/static/templates/numeric_type_select_en.html", checkLoads);
 				$("#datasource_" + index).load("/static/templates/data_source_select_en.html", checkLoads);
 			};
+		} else if(selectedType=='LAYOUT_OBJECT_CUSTOM_STANDARD') {
+			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 195px;'>";
+			$.each(singleFields, function(valueIndex, value) {
+				if (allFieldsInformation[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+					htmlToAppend += '<a class="list-group-item main-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '\')">' + value + '</a>';
+				} else {
+					htmlToAppend += '<a class="list-group-item multiple-master main-' + value + '" onclick="onForeignClick(' + index + ',\'' + value + '\')">' + value + '</a>';
+
+					var subCurrentList = [];
+					$.each(allFieldsInformation[value].fields, function(subIndex, subValue) {
+						subCurrentList.push(subIndex);
+					});
+					subCurrentList.sort();
+					$.each(subCurrentList, function (subIndex, subValue) {
+						htmlToAppend += '<a class="list-group-item list-group-item-info multiple-slave hidden main-' + subValue + ' sub-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '.' + subValue + '\')">' + subValue + '</a>';
+					});
+
+				}
+			});
+			htmlToAppend += "</div>";
 		}
 		$("#content_" + index).append(htmlToAppend);
 
