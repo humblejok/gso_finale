@@ -346,7 +346,7 @@ def partial_delete(request):
         entry.delete()
     return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
-def create_operation(request):
+def security_operation(request):
     user = User.objects.get(id=request.user.id)
     
     container_id = request.GET['container_id']
@@ -359,7 +359,7 @@ def create_operation(request):
                'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
                }
     
-    return render(request,'container/create/operation.html', context)
+    return render(request,'container/create/security_operation.html', context)
 
 def add_price(request):
     # TODO: Check user

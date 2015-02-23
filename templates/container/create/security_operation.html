@@ -1,0 +1,63 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Create securities operation{% endblock %}
+{% block readyoptions %}
+{% endblock %}
+{% block headeroptions %}
+	<script>
+		var container = {{container_json|safe}};
+	</script>
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ container.name }}
+					<div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+								{% include template_name %}
+							{% endwith %}
+						</ul>
+					</div>
+				</h1>
+	  			<p class="lead">{% if container.short_description %}{{ container.short_description }}{% else %}No description is available.{% endif %}<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<div class="col-lg-2">
+				<select class='form-control no-enter' id='operationType' name='operationType' onchange="operationTypeChanged()">
+					{% with value='' %}
+						{% include 'statics/operation_type_en.html' %}
+					{% endwith %}
+				</select>
+			</div>
+			<div class="col-lg-1">
+				<label for="operationDate">Operation date</label>
+			</div>
+			<div class="col-lg-2">
+				<input name="operationDate" type="text" class="form-control date-form-field" id="operationDate" placeholder="Enter a date" value=""/>
+			</div>
+			<div class="col-lg-1">
+				<label for="valueDate">Value date</label>
+			</div>
+			<div class="col-lg-2">
+				<input name="valueDate" type="text" class="form-control date-form-field" id="valueDate" placeholder="Enter a date" value=""/>
+			</div>
+			<div class="col-lg-1">
+				<label for="accountingDate">Accounting date</label>
+			</div>
+			<div class="col-lg-2">
+				<input name="accountingDate" type="text" class="form-control date-form-field" id="accountingDate" placeholder="Enter a date" value=""/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<button class="btn btn-default col-lg-offset-11">Add</button>
+		</div>
+		<div class="row">&nbsp;</div>
+		<table class="table" id="buyTable">
+			<tr><th>Security</th><th>Operation</th><th>Quantity</th><th>Price</th><th>Fees</th><th>Taxes</th><th>Operation date</th><th>Value date</th><th>Accounting date</th></tr>
+		</table>
+{% endblock %}
