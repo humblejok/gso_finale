@@ -24,6 +24,15 @@ def get_track_content_display(track, ascending = True, intraday = False):
     content = get_track_content(track, ascending)
     return [{'date':value['date'].strftime('%Y-%m-%d %H:%M:%S' if intraday else '%Y-%m-%d'), 'value':value['value']} for value in content]
 
+
+def update_end_date(track, intraday):
+    container_id = 'trackscontainer_' + str(track.effective_container_id)
+    track_id = 'track_' + str(track.id)
+    last_value = client[container_id][track_id].find_one({},{'_id': -1})
+    if last_value!=None:
+        track.end_date = from_epoch(last_value['_id'])
+        track.save()
+
 def set_track_content(track, values, clean):
     LOGGER.info('Storing track content')
     if len(values)>0:
@@ -32,7 +41,10 @@ def set_track_content(track, values, clean):
         proper_values = [{'_id': epoch_time(value['date']), 'value': value['value']} for value in values]
         if clean:
             client[container_id][track_id].drop()
-        client[container_id][track_id].insert(proper_values)
+            client[container_id][track_id].insert(proper_values)
+        else:
+            for value in proper_values:
+                client[container_id][track_id].update({'_id': value['_id']}, value, True)
         LOGGER.info('Track content stored as ' + container_id + '.' + track_id + ' with ' + str(client[container_id][track_id].count()) + ' elements.')
         if len(values)>0:
             track.start_date = values[0]['date']

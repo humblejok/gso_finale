@@ -3,37 +3,38 @@ Created on Oct 3, 2014
 
 @author: sdejonckheere
 '''
+import datetime
+import itertools
+from json import dumps
 import json
 import logging
 import os
 
-from universe.models import Attributes, TrackContainer, FieldLabel,\
-    PortfolioContainer, MenuEntries, SecurityContainer, AccountContainer,\
-    FinancialOperation
-from seq_common.utils import classes
-from django.shortcuts import render, redirect, render_to_response
-from django.contrib.auth.models import User
-from utilities import setup_content
-from django.template.context import Context
-from django.template import loader
-from django.db.models import Q
-from finale.settings import STATICS_PATH
-
-from django.http.response import HttpResponse
-from finale.utils import complete_fields_information, dict_to_json_compliance,\
-    get_model_foreign_field_class
-from django.forms.models import model_to_dict
-from json import dumps
 from bson import json_util
-import itertools
-from utilities.track_token import get_track
+from django.contrib.auth.models import User
+from django.db.models import Q
+from django.forms.models import model_to_dict
+from django.http.response import HttpResponse
+from django.shortcuts import render, redirect
+from django.template import loader
+from django.template.context import Context
+from seq_common.utils import classes
+
+from finale.settings import STATICS_PATH
+from finale.utils import complete_fields_information, dict_to_json_compliance, \
+    get_model_foreign_field_class
+from universe.models import Attributes, FieldLabel, \
+    PortfolioContainer, MenuEntries, SecurityContainer, AccountContainer, \
+    FinancialOperation
+from utilities import setup_content, operations
 from utilities.compute.valuations import NativeValuationsComputer
-from utilities.valuation_content import get_portfolio_valuations,\
-    get_valuation_content_display, get_positions_portfolio, get_closest_value,\
-    get_closest_date, get_account_history
-import datetime
 from utilities.computing import get_previous_date
+from utilities.operations import compute_accounts, compute_positions
 from utilities.track_content import get_track_content, set_track_content
+from utilities.track_token import get_track
+from utilities.valuation_content import get_portfolio_valuations, \
+    get_valuation_content_display, get_positions_portfolio, get_closest_value, \
+    get_closest_date, get_account_history
 
 
 LOGGER = logging.getLogger(__name__)
@@ -284,6 +285,31 @@ def render_many_to_many(request):
                'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=foreign_class.get_displayed_fields(rendition_witdh), langage='en')}}
     return render(request, 'container/view/many_to_many_field.html', context)
 
+def render_operation_types(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    operation_group = request.POST['operation_group']
+    all_operations = [attribute.name for attribute in Attributes.objects.filter(type='operation_group_mapping', active=True, short_name=operation_group)]
+    all_operations = Attributes.objects.filter(type='operation_type', active=True, identifier__in=all_operations)
+    context = {'selection': all_operations}
+    return render(request, 'rendition/attributes_filtered_option_renderer.html', context)
+
+def render_account_selection(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id'][0] if isinstance(request.POST['container_id'], list) else request.POST['container_id']
+    container_type = request.POST['container_type'][0] if isinstance(request.POST['container_type'], list) else request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    
+    account_allow_new = request.POST['account_allow_new'].lower()=='true'
+    account_types = request.POST['account_types']
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    context = {'accounts': container.accounts.filter(account_type__identifier__in=account_types.split(',')), 'allow_new': account_allow_new }
+    return render(request, 'container/view/accounts_options_list.html', context)
+
 def filters(request):
     user = User.objects.get(id=request.user.id)
     if request.GET.has_key('container_type'):
@@ -309,6 +335,20 @@ def filters(request):
     results = dumps([dict_to_json_compliance(model_to_dict(item)) for item in results], default=json_util.default)
     return HttpResponse('{"result": ' + results + ', "status_message": "Deleted"}',"json")
 
+def compute_accounts_statuses(request):
+    container_id = request.POST['container_id']
+    container_type = request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    compute_accounts(container)
+    compute_positions(container)
+    computer = NativeValuationsComputer()
+    computer.compute_valuation(container, container.frequency)
+    return HttpResponse('{"result": true, "status_message": "Computed"}',"json")
+
 def valuations_compute(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
@@ -322,7 +362,7 @@ def valuations_compute(request):
     container = effective_class.objects.get(id=container_id)
     computer = NativeValuationsComputer()
     #computer.compute_daily_valuation(container)
-    computer.compute_valuation(container, Attributes.objects.get(identifier='FREQ_DAILY', active=True))
+    computer.compute_valuation(container, container.frequency)
     return HttpResponse('{"result": true, "status_message": "Computed"}',"json")
 
 
@@ -346,6 +386,99 @@ def partial_delete(request):
         entry.delete()
     return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
+def cash_operation(request):
+    user = User.objects.get(id=request.user.id)
+    
+    container_id = request.GET['container_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    container = effective_class.objects.get(id=container_id)
+    context = {'container': container,
+               'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
+               'active_list': ['OPE_TYPE_CASH_WITHDRAWAL','OPE_TYPE_CASH_CONTRIBUTION','OPE_TYPE_WITHDRAWAL',
+                               'OPE_TYPE_CONTRIBUTION','OPE_TYPE_INTERNAL_TRANSFER','OPE_TYPE_FEES',
+                               'OPE_TYPE_COMMISSION','OPE_TYPE_TAX','OPE_TYPE_COUPON','OPE_TYPE_DIVIDEND']
+               }
+    
+    return render(request,'container/create/cash_operation.html', context)
+
+def cash_operation_create(request):
+    user = User.objects.get(id=request.user.id)
+    
+    portfolio_id = request.POST['container_id']
+    operation_type = request.POST['operation_type']
+    operation_fees = float(request.POST['operation_fees']) if request.POST.has_key('operation_fees') else 0.0
+    operation_taxes = float(request.POST['operation_taxes']) if request.POST.has_key('operation_taxes') else 0.0
+    operation_commission = float(request.POST['operation_commission']) if request.POST.has_key('operation_commission') else 0.0
+    operation_date = request.POST['operation_date']
+    operation_value_date = request.POST['operation_value_date']
+    operation_accounting_date = request.POST['operation_accounting_date']
+    
+    operation_source_account = request.POST['operation_source_account']
+    operation_source_amount = float(request.POST['operation_source_amount'])
+    operation_source_currency = request.POST['operation_source_currency']
+    
+    operation_target_account = request.POST['operation_target_account']
+    operation_target_amount = float(request.POST['operation_target_amount'])
+    operation_target_currency = request.POST['operation_target_currency']
+    
+    
+    portfolio = PortfolioContainer.objects.get(id=portfolio_id)
+    if operation_type in ['OPE_TYPE_CASH_WITHDRAWAL','OPE_TYPE_WITHDRAWAL','OPE_TYPE_COMMISSION','OPE_TYPE_FEES','OPE_TYPE_TAX']:
+        source = {'currency': operation_source_currency, 'initial_amount': operation_source_amount, 'amount': operation_source_amount - operation_fees - operation_taxes, 'account_id': operation_source_account}
+        target = None
+        details = {'cancelled': False, 'impact_pnl': operation_type in ['OPE_TYPE_CASH_WITHDRAWAL','OPE_TYPE_WITHDRAWAL'], 'operation_date': operation_date,
+                   'trade_date': operation_date, 'amount': operation_source_amount, 'value_date': operation_value_date,
+                   'cashier': operation_type=='OPE_TYPE_CASH_WITHDRAWAL',
+                  'target_expenses': {
+                       'fees': 0.0,
+                       'tax': 0.0,
+                       'commission': 0.0
+                       },
+                   'source_expenses': {
+                       'fees': operation_fees,
+                       'tax': operation_taxes,
+                       'commission': 0.0
+                        }}
+        operations.create_cash_movement(portfolio, source, target, details, None)
+    elif operation_type in ['OPE_TYPE_CASH_CONTRIBUTION','OPE_TYPE_CONTRIBUTION','OPE_TYPE_COUPON','OPE_TYPE_COUPON']:
+        source = None
+        target = {'currency': operation_target_currency, 'initial_amount': operation_target_amount, 'amount': operation_target_amount - operation_fees - operation_taxes, 'account_id': operation_target_account}
+        details = {'cancelled': False, 'impact_pnl': operation_type in ['OPE_TYPE_CASH_WITHDRAWAL','OPE_TYPE_WITHDRAWAL'], 'operation_date': operation_date,
+                   'trade_date': operation_date, 'amount': operation_target_amount, 'value_date': operation_value_date,
+                   'cashier': operation_type=='OPE_TYPE_CASH_WITHDRAWAL',
+                  'target_expenses': {
+                       'fees': 0.0,
+                       'tax': 0.0,
+                       'commission': 0.0
+                       },
+                   'source_expenses': {
+                       'fees': operation_fees,
+                       'tax': operation_taxes,
+                       'commission': 0.0
+                        }}
+        operations.create_cash_movement(portfolio, source, target, details, None)
+    elif operation_type=='OPE_TYPE_INTERNAL_TRANSFER':
+        source = {'currency': operation_source_currency, 'initial_amount': operation_source_amount, 'amount': operation_source_amount, 'account_id': operation_source_account}
+        target = {'currency': operation_target_currency, 'initial_amount': operation_target_amount, 'amount': operation_target_amount - operation_fees - operation_taxes, 'account_id': operation_target_account}
+        details = {'operation_date': operation_date, 'trade_date': operation_date, 'amount': operation_target_amount, 'value_date': operation_value_date,
+                   'cashier': False,
+                  'target_expenses': {
+                       'fees': 0.0,
+                       'tax': 0.0,
+                       'commission': 0.0
+                       },
+                   'source_expenses': {
+                       'fees': operation_fees,
+                       'tax': operation_taxes,
+                       'commission': 0.0
+                        }}
+        operations.create_transfer(portfolio, source, target, details)
+
+    return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
+
 def security_operation(request):
     user = User.objects.get(id=request.user.id)
     
@@ -357,9 +490,49 @@ def security_operation(request):
     container = effective_class.objects.get(id=container_id)
     context = {'container': container,
                'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
+               'active_list': ['OPE_TYPE_BUY','OPE_TYPE_SELL','OPE_TYPE_BUY_FOP','OPE_TYPE_SELL_FOP']
                }
     
     return render(request,'container/create/security_operation.html', context)
+
+def security_operation_create(request):
+    user = User.objects.get(id=request.user.id)
+    
+    portfolio_id = request.POST['container_id']
+    security_id = request.POST['operation_security']
+    operation_type = request.POST['operation_type']
+    operation_quantity = request.POST['operation_quantity']
+    operation_price = request.POST['operation_price']
+    operation_fees = request.POST['operation_fees']
+    operation_taxes = request.POST['operation_taxes']
+    operation_date = request.POST['operation_date']
+    operation_value_date = request.POST['operation_value_date']
+    operation_accounting_date = request.POST['operation_accounting_date']
+
+    security = SecurityContainer.objects.get(id=security_id)
+    portfolio = PortfolioContainer.objects.get(id=portfolio_id)
+    
+    # TODO Handle commission and target account in other currency    
+    source = None
+    target = {'security': security, 'quantity': float(operation_quantity), 'price': float(operation_price)}
+    details = {'operation_date': operation_date, 'trade_date': operation_date, 'value_date': operation_value_date,
+               'spot_rate':1.0,
+               'operation': 'BUY' if operation_type.find('SELL')==-1 else 'BUY', 'impact_pnl': operation_type.find('FOP')==-1, 'currency': security.currency.short_name,
+               'target_expenses': {
+                   'fees': 0.0,
+                   'tax': 0.0,
+                   'commission': 0.0
+                   },
+               'source_expenses': {
+                   'fees': operation_fees,
+                   'tax': operation_taxes,
+                   'commission': 0.0 #operation_commission
+                    }
+               }
+    operations.create_security_movement(portfolio, source, target, details, None)
+    
+
+    return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
 def add_price(request):
     # TODO: Check user

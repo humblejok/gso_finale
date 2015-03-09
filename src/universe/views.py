@@ -24,7 +24,7 @@ from universe.models import Universe, TrackContainer, SecurityContainer, \
 from utilities.external_content import import_external_data, \
     import_external_grouped_data, import_external_tracks,\
     import_external_data_sequence
-from utilities.track_content import get_track_content_display
+from utilities.track_content import get_track_content_display, update_end_date
 from utilities.track_token import get_main_track_content
 from utilities import setup_content, external_content
 from bson.json_util import dumps
@@ -166,6 +166,12 @@ def bloomberg_wizard_execute(request, entity):
     context = {'response_key': response_key}
     return render(request,entity + '/bloomberg/wizard_waiting.html', context)
 
+def track_end_date(request):
+    all_tracks = TrackContainer.objects.all()
+    for track in all_tracks:
+        update_end_date(track, False)
+    return redirect('universes.html')    
+    
 def bloomberg_update(request):
     # TODO: Check user
     # TODO: Check Bloomberg method (Terminal/DL)
@@ -183,25 +189,30 @@ def bloomberg_update(request):
     else:
         all_tracks = TrackContainer.objects.filter(source__id=bloomberg_company.id).order_by('end_date')
     bulk_information = {}
+    count = 0
     for track in all_tracks:
-        if track.end_date!=None:
-            key = dates.AddDay(track.end_date,1)
-        else:
-            key = 'None'
-        if bloomberg_fields.has_key(track.type.name):
-            track_field = bloomberg_fields[track.type.name]
-            if not bulk_information.has_key(track_field):
-                bulk_information[track_field] = {}
-            if not bulk_information[track_field].has_key(key):
-                bulk_information[track_field][key] = []
-            try:
-                bulk_information[track_field][key].append(to_bloomberg_code(track.effective_container.aliases.get(alias_type__name='BLOOMBERG').alias_value, True))
-            except:
-                traceback.print_exc()
-                LOGGER.error("No associated BLOOMBERG information for " + str(track.effective_container.name))
-    history_key = uuid.uuid4().get_hex()
-    update_thread = threading.Thread(None, bloomberg_update_query, history_key, (history_key, bulk_information, True))
-    update_thread.start()
+        if track.end_date==None or dates.AddDay(track.end_date,1)<datetime.datetime.combine(datetime.date.today(), datetime.datetime.min.time()):
+            if track.end_date!=None:
+                key = dates.AddDay(track.end_date,1)
+            else:
+                key = 'None'
+            if bloomberg_fields.has_key(track.type.name):
+                track_field = bloomberg_fields[track.type.name]
+                if not bulk_information.has_key(track_field):
+                    bulk_information[track_field] = {}
+                if not bulk_information[track_field].has_key(key):
+                    bulk_information[track_field][key] = []
+                try:
+                    bb_code = track.effective_container.aliases.get(alias_type__name='BLOOMBERG').alias_value
+                    bulk_information[track_field][key].append(to_bloomberg_code(bb_code, True))
+                    count += 1
+                except:
+                    #traceback.print_exc()
+                    LOGGER.error("No associated BLOOMBERG information for " + str(track.effective_container.name))
+    if count>0:
+        history_key = uuid.uuid4().get_hex()
+        update_thread = threading.Thread(None, bloomberg_update_query, history_key, (history_key, bulk_information, True))
+        update_thread.start()
     # TODO: Return error message
     return redirect('universes.html')
     
@@ -304,7 +315,14 @@ def object_fields_get(request):
     effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
     effective_class = classes.my_class_import(effective_class_name)
     object_static_fields = get_static_fields(effective_class)
-    return HttpResponse('{"result": ' + dumps(object_static_fields) + ', "status_message": "Found"}',"json")
+    
+    object_custom_fields = get_container_type_fields()
+    if object_custom_fields.has_key(request.POST['container_type']):
+        object_custom_fields = object_custom_fields[request.POST['container_type']]
+    else:
+        object_custom_fields = []
+    
+    return HttpResponse('{"static_fields": ' + dumps(object_static_fields) + ', "custom_fields": ' + dumps(object_custom_fields) + ', "status_message": "Found"}',"json")
 
 def object_custom_fields_get(request):
     # TODO: Check user

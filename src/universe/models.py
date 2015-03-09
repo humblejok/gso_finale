@@ -82,6 +82,12 @@ def generate_attributes():
         outfile = os.path.join(STATICS_GLOBAL_PATH, a_type.type + '_select_en.html')
         with open(outfile,'w') as o:
             o.write(rendition.encode('utf-8'))
+        template = loader.get_template('rendition/attributes_list_elements_renderer.html')
+        rendition = template.render(context)
+        # TODO Implement multi-langage
+        outfile = os.path.join(STATICS_GLOBAL_PATH, a_type.type + '_list_elements_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
 
 def populate_attributes_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)

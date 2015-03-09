@@ -17,6 +17,7 @@ from utilities import valuation_content
 from calendar import monthrange
 from utilities.track_token import get_track
 from utilities.track_content import set_track_content
+from utilities.operations import PRICE_DIVISOR
 
 LOGGER = logging.getLogger(__name__)
 
@@ -118,13 +119,7 @@ def get_current_date_position(work_date, frequency):
                 days += monthrange(work_date.year, c_month)
         return days
     elif frequency_id=='FREQ_ANNUALLY':
-        days = 0
-        for c_month in range(1, work_date.month + 1):
-            if c_month==work_date.month:
-                days += work_date.day
-            else:
-                days += monthrange(work_date.year, c_month)
-        return days
+        return work_date.timetuple().tm_yday
 
 class NativeValuationsComputer():
     def __init__(self):
@@ -194,16 +189,17 @@ class NativeValuationsComputer():
             work_date = get_work_date(start_date, frequency)
             key_date = str(epoch_time(work_date))
             period_duration = float(get_current_period_duration(work_date, frequency))
-            period_position = float(get_current_date_position(work_date, frequency))
+            period_position = float(get_current_date_position(start_date, frequency))
             if not valuation.has_key(key_date):
-                valuation[key_date] = {'total': {'portfolio': 0.0}, 'forward': {}, 'forward_pf': 0.0,'cash': {}, 'cash_pf': 0.0, 'spot_pf': {}, 'invested': {}, 'invested_fop':{}, 'pnl': {'portfolio': 0.0}, 'fx_pnl': {}, 'movement':{'portfolio': 0.0, 'portfolio_tw': 0.0}, 'performances': {'mdietz': {'day': 0.0, 'wtd': 0.0, 'mtd': 0.0, 'qtd': 0.0, 'std': 0.0, 'ytd': 0.0}}}
-            elif key_date==previous_key:
+                valuation[key_date] = {'total': {'portfolio': 0.0}, 'forward': {}, 'forward_pf': 0.0,'cash': {}, 'cash_pf': 0.0, 'spot_pf': {}, 'invested': {}, 'invested_fop':{}, 'pnl': {'portfolio': 0.0}, 'fx_pnl': {}, 'movement':{'portfolio': 0.0, 'portfolio_tw': 0.0}, 'performances': {'mdietz': {'day': 0.0, 'wtd': 0.0, 'mtd': 0.0, 'qtd': 0.0, 'std': 0.0, 'ytd': 0.0, 'si': 0.0}}}
+            else:
                 valuation[key_date]['cash'] = {}
                 valuation[key_date]['forward'] = {}
                 valuation[key_date]['cash_pf'] = 0.0
                 valuation[key_date]['forward_pf'] = 0.0
                 valuation[key_date]['spot_pf'] = {}
                 valuation[key_date]['invested'] = {}
+                valuation[key_date]['total'] = {}
             for account in container.accounts.filter(~Q(account_type__identifier='ACC_SECURITY')):
                 history = get_account_history(account)
                 if history!=None:
@@ -244,8 +240,9 @@ class NativeValuationsComputer():
                 for position in current_positions:
                     if position not in ['increase', 'decrease', 'increase_fop', 'decrease_fop']:
                         security = SecurityContainer.objects.get(id=position)
-                        amount = current_positions[position]['total'] * current_positions[position]['price']
-                        amount_portfolio = current_positions[position]['total'] * current_positions[position]['price_pf']
+                        divisor = PRICE_DIVISOR[security.type.identifier] if PRICE_DIVISOR.has_key(security.type.identifier) else 1.0
+                        amount = current_positions[position]['total'] * current_positions[position]['price'] / divisor
+                        amount_portfolio = current_positions[position]['total'] * current_positions[position]['price_pf'] / divisor
                         if not valuation[key_date]['invested'].has_key(security.currency.short_name):
                             valuation[key_date]['invested'][security.currency.short_name] = 0.0
                         valuation[key_date]['invested'][security.currency.short_name] += amount
@@ -253,115 +250,41 @@ class NativeValuationsComputer():
                     elif position in ['increase_fop', 'decrease_fop']:
                         valuation[key_date]['invested_fop']['portfolio'] += (current_positions[position]['portfolio'] * (1.0 if position=='increase_fop' else -1.0))
             valuation[key_date]['total']['portfolio'] = valuation[key_date]['cash_pf'] + valuation[key_date]['invested']['portfolio']
+            new_work_date = get_work_date(dates.AddDay(start_date, 1), frequency)
+            new_key_date = str(epoch_time(new_work_date))
             # Modified dietz
-            if previous_key!=key_date:
+            if key_date!=new_key_date or dates.AddDay(start_date, 1)>=today:
                 if previous_key!=None:
                     movement_previous_spot = 0.0
                     for key_currency in valuation[key_date]['movement'].keys():
                         if key_currency!='portfolio' and key_currency!='portfolio_tw' and valuation[key_date]['movement'][key_currency]!=0.0:
                             movement_previous_spot += valuation[key_date]['movement'][key_currency] * (valuation[previous_key]['spot_pf'][key_currency] if valuation[previous_key]['spot_pf'].has_key(key_currency) else valuation[key_date]['spot_pf'][key_currency])
-                    movement_previous_spot = movement_previous_spot * ((period_duration - period_position + 1.0)/period_duration)
                 else:
-                    movement_previous_spot = valuation[key_date]['movement']['portfolio_tw']
+                    movement_previous_spot = valuation[key_date]['movement']['portfolio']
                 mdietz_up = valuation[key_date]['total']['portfolio'] - valuation[key_date]['invested_fop']['portfolio'] - (valuation[previous_key]['total']['portfolio'] if previous_key!=None else 0.0) - movement_previous_spot
                 mdietz_down = (valuation[previous_key]['total']['portfolio'] if previous_key!=None else 0.0) + valuation[key_date]['movement']['portfolio_tw']
                 if mdietz_down!=0.0:
                     mdietz = mdietz_up / mdietz_down
                 else:
                     mdietz = 0.0
-            first = True
-            for key_perf in PERF_MAPPING[frequency.identifier]:
-                if first:
-                    valuation[key_date]['performances']['mdietz'][key_perf] = mdietz * 100.0
-                else:
-                    if previous_date!=None:
-                        if key_perf=='si' or (previous_key!=key_date and get_work_date(previous_date, DATE_MAPPING[key_perf])==get_work_date(start_date, DATE_MAPPING[key_perf])):
-                            valuation[key_date]['performances']['mdietz'][key_perf] = (((valuation[previous_key]['performances']['mdietz'][key_perf]/100.0 + 1.0) * (mdietz + 1.0)) - 1.0) * 100.0
-                        elif get_work_date(previous_date, DATE_MAPPING[key_perf])!=get_work_date(start_date, DATE_MAPPING[key_perf]):
-                            valuation[key_date]['performances']['mdietz'][key_perf] = mdietz * 100.0
-                    else:
+                # First is used to determine if this is the reference frequency that is computed
+                first = True
+                for key_perf in PERF_MAPPING[frequency.identifier]:
+                    if first:
                         valuation[key_date]['performances']['mdietz'][key_perf] = mdietz * 100.0
-                first = False
-            if key_date!=previous_key:
+                    else:
+                        if previous_date!=None:
+                            if key_perf=='si' or (previous_key!=key_date and get_work_date(previous_date, DATE_MAPPING[key_perf])==get_work_date(start_date, DATE_MAPPING[key_perf])):
+                                valuation[key_date]['performances']['mdietz'][key_perf] = (((valuation[previous_key]['performances']['mdietz'][key_perf]/100.0 + 1.0) * (mdietz + 1.0)) - 1.0) * 100.0
+                            elif get_work_date(previous_date, DATE_MAPPING[key_perf])!=get_work_date(start_date, DATE_MAPPING[key_perf]):
+                                valuation[key_date]['performances']['mdietz'][key_perf] = mdietz * 100.0
+                        else:
+                            valuation[key_date]['performances']['mdietz'][key_perf] = mdietz * 100.0
+                    first = False
+            if key_date!=new_key_date:
                 previous_key = key_date
                 previous_date = start_date
             start_date = dates.AddDay(start_date, 1)
         set_portfolios_valuation({str(container.id): valuation})
         for wrk_frequency in DATE_MAPPING.values():
             self.generate_tracks(container, wrk_frequency, valuation)
-
-    def compute_daily_valuation(self, container):
-        currencies = ['CHF', 'USD', 'EUR']
-        if not container.currency.short_name in currencies:
-            currencies.append(container.currency.short_name)
-        start_date = datetime.date(2014,1,1) if container.inception_date==None else container.inception_date
-        today = datetime.date.today()
-        valuation = {}
-        all_positions = get_positions_portfolio(container)
-        all_positions = all_positions['data'] if all_positions!=None else {}
-        previous_key = None
-        previous_date = None
-        while start_date<today:
-            work_date = dt.combine(start_date, dt.min.time())
-            key_date = str(epoch_time(work_date))
-            valuation[key_date] = {'total': {'portfolio': 0.0}, 'cash': {}, 'cash_pf': 0.0, 'spot_pf': {}, 'invested': {}, 'pnl': {'portfolio': 0.0}, 'fx_pnl': {}, 'movement':{'portfolio': 0.0}, 'performances': {'mdietz': {'day': 0.0, 'wtd': 0.0, 'mtd': 0.0, 'ytd': 0.0}}}
-            for account in container.accounts.filter(~Q(account_type__identifier='ACC_SECURITY')):
-                history = get_account_history(account)['data']
-                if not valuation[key_date]['pnl'].has_key(account.currency.short_name):
-                    valuation[key_date]['pnl'][account.currency.short_name] = 0.0
-                if not valuation[key_date]['movement'].has_key(account.currency.short_name):
-                    valuation[key_date]['movement'][account.currency.short_name] = 0.0
-                if history!=None:
-                    value = valuation_content.get_closest_value(history, work_date, True)
-                    if not valuation[key_date]['cash'].has_key(account.currency.short_name):
-                        valuation[key_date]['cash'][account.currency.short_name] = {'portfolio': 0.0, 'account': 0.0}
-                    if not valuation[key_date]['movement'].has_key(account.currency.short_name):
-                        valuation[key_date]['movement'][account.currency.short_name] = 0.0
-                    if value!=None:
-                        valuation[key_date]['cash'][account.currency.short_name]['account'] += value['assets']
-                        valuation[key_date]['cash'][account.currency.short_name]['portfolio'] += value['assets_pf']
-                        valuation[key_date]['cash_pf'] += value['assets_pf']
-                        valuation[key_date]['spot_pf'][account.currency.short_name] = value['spot_pf']
-                        valuation[key_date]['movement'][account.currency.short_name] += value['mvt_no_pnl']
-                        valuation[key_date]['movement']['portfolio'] += value['mvt_no_pnl_pf']
-                        valuation[key_date]['pnl'][account.currency.short_name] += value['mvt_pnl']
-                        valuation[key_date]['pnl']['portfolio'] += value['mvt_pnl_pf']
-            if not valuation[key_date]['invested'].has_key('portfolio'):
-                valuation[key_date]['invested']['portfolio'] = 0.0
-            if all_positions.has_key(key_date):
-                for position in all_positions[key_date]:
-                    if position not in ['increase', 'decrease']:
-                        security = SecurityContainer.objects.get(id=position)
-                        amount = all_positions[key_date][position]['total'] * all_positions[key_date][position]['price']
-                        amount_portfolio = all_positions[key_date][position]['total'] * all_positions[key_date][position]['price_pf']
-                        if not valuation[key_date]['invested'].has_key(security.currency.short_name):
-                            valuation[key_date]['invested'][security.currency.short_name] = 0.0
-                        valuation[key_date]['invested'][security.currency.short_name] += amount
-                        valuation[key_date]['invested']['portfolio'] += amount_portfolio
-            valuation[key_date]['total']['portfolio'] = valuation[key_date]['cash_pf'] + valuation[key_date]['invested']['portfolio']
-            # Modified dietz
-            if previous_key!=None:
-                mdietz_up = valuation[key_date]['total']['portfolio'] - valuation[previous_key]['total']['portfolio'] - valuation[key_date]['movement']['portfolio']
-                mdietz_down = valuation[previous_key]['total']['portfolio'] + valuation[key_date]['movement']['portfolio']
-                if mdietz_down!=0.0:
-                    mdietz = mdietz_up / mdietz_down
-                else:
-                    mdietz = 0.0
-                if previous_date.month==start_date.month:
-                    valuation[key_date]['performances']['mdietz']['mtd'] = ((valuation[previous_key]['performances']['mdietz']['mtd']/100.0 + 1.0) * (mdietz + 1.0)) - 1.0
-                else:
-                    valuation[key_date]['performances']['mdietz']['mtd'] = mdietz
-                if previous_date.year==start_date.year:
-                    valuation[key_date]['performances']['mdietz']['ytd'] = ((valuation[previous_key]['performances']['mdietz']['ytd']/100.0 + 1.0) * (mdietz + 1.0)) - 1.0
-                else:
-                    valuation[key_date]['performances']['mdietz']['ytd'] = mdietz
-            else:
-                # Implement fees on day one
-                mdietz = 0.0
-            valuation[key_date]['performances']['mdietz']['day'] = mdietz * 100.0
-            valuation[key_date]['performances']['mdietz']['mtd'] = valuation[key_date]['performances']['mdietz']['mtd'] * 100.0
-            valuation[key_date]['performances']['mdietz']['ytd'] = valuation[key_date]['performances']['mdietz']['ytd'] * 100.0
-            previous_key = key_date
-            previous_date = start_date
-            start_date = dates.AddDay(start_date, 1)
-        set_portfolios_valuation({str(container.id): valuation})

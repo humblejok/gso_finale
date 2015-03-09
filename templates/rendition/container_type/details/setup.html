@@ -12,6 +12,7 @@
 	var gridster;
 
 	var allFieldsInformation;
+	var allCustomFieldsInformation;
 	var allFields;
 	var singleFields;
 	var multipleFields;
@@ -300,21 +301,23 @@
 	}
 
 	function fieldsLoaded(e) {
-		allFieldsInformation = e.result;
+		allFieldsInformation = e.static_fields;
+		allCustomFieldsInformation = e.custom_fields;
+		console.log(allCustomFieldsInformation);
 		currentItem = 0;
 		allFields = [];
 		singleFields = [];
 		multipleFields = [];
 		callbacks = [];
-		$.each(e.result, function(index, value) {
+		$.each(e.static_fields, function(index, value) {
 			allFields.push(index);
 		});
 		allFields.sort();
 		$.each(allFields, function(index, value) {
-			if (e.result[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+			if (e.static_fields[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
 				singleFields.push(value);
 			} else {
-				if (e.result[value].type==='ForeignKey') {
+				if (e.static_fields[value].type==='ForeignKey') {
 					singleFields.push(value);
 				} else {
 					multipleFields.push(value);
@@ -343,6 +346,7 @@
 			success: fieldsLoaded,
 			error: onCallError
 		});
+
 	}
 
 </script>

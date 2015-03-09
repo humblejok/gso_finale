@@ -1,0 +1,1 @@
+{% if not active_list or "STRICT_BOOLEAN_FALSE" in active_list %}<option value='STRICT_BOOLEAN_FALSE' {% if value == 'STRICT_BOOLEAN_FALSE' %}selected{% endif %}>No</option>{% endif %}{% if not active_list or "STRICT_BOOLEAN_TRUE" in active_list %}<option value='STRICT_BOOLEAN_TRUE' {% if value == 'STRICT_BOOLEAN_TRUE' %}selected{% endif %}>Yes</option>{% endif %}

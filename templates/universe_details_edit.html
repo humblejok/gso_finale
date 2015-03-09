@@ -164,7 +164,7 @@
 						<form id="addSecurityForm" role="form" class="form-horizontal" action="/security_search.html" method="POST" onsubmit="">{% csrf_token %}
 							<div class="form-group">
 								<label for="searching" class="col-lg-2 col-lg-offset-1">Looking for:</label>
-								<input id="searching" class="col-lg-6" name="searching" type="text" placeholder="Can be a name, ticker or isin">
+								<input id="searching" class="col-lg-6 no-enter" name="searching" type="text" placeholder="Can be a name, ticker or isin">
 								<button type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="searchSecurities()">Search</button>
 							</div>
 						</form>

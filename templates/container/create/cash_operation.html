@@ -1,0 +1,280 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}Create cash operation{% endblock %}
+{% block readyoptions %}
+	checkValidity();
+{% endblock %}
+{% block headeroptions %}
+	<script>
+
+		var waiting = 0;
+		var currentIndex = 0;
+		var workingIndex = 0;
+		var container = {{container_json|safe}};
+		var emptyRow = "<tr align='center' class='row_%%index%%'><td align='left' colspan=3><select class='form-control no-enter' id='operationType_%%index%%' name='operationType_%%index%%'></select></td><td colspan=2><select class='form-control no-enter' id='operationSourceAccount_%%index%%' name='operationSourceAccount_%%index%%'></select></td><td colspan=2><div class='input-group'><div class='input-group-btn'><button type='button' class='btn btn-default dropdown-toggle' data-toggle='dropdown' id='sourceCurrencyLabel_%%index%%''>Currency <span class='caret'></span></button><ul class='dropdown-menu' id='sourceCurrencyDropdown_%%index%%'></ul></div><input id='operationSourceAmount_%%index%%' name='operationSourceAmount_%%index%%' class='form-control' typte='text' placeholder='Source amount' value='0' align='center'></input></div></td><td colspan=2><select class='form-control no-enter' id='operationTargetAccount_%%index%%' name='operationTargetAccount_%%index%%'></select></td><td colspan=2><div class='input-group'><div class='input-group-btn'><button type='button' class='btn btn-default dropdown-toggle' data-toggle='dropdown' id='targetCurrencyLabel_%%index%%''>Currency <span class='caret'></span></button><ul class='dropdown-menu' id='targetCurrencyDropdown_%%index%%'></ul></div><input id='operationTargetAmount_%%index%%' name='operationTargetAmount_%%index%%' class='form-control' typte='text' placeholder='Target amount' value='0' align='center'></input></td><td colspan=1><button class='btn btn-default' onclick='editAdditionalInformation(%%index%%)'><span class='glyphicon glyphicon-cog'></span> Options</button></td></tr><tr class='row_%%index%%'><td colspan=1>Operation date</td><td colspan=2><input name='operationDate_%%index%%' type='text' class='form-control date-form-field' id='operationDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td colspan=1>Value date</td><td colspan=3><input name='valueDate_%%index%%' type='text' class='form-control date-form-field' id='valueDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td colspan=1>Accounting date</td><td colspan=3><input name='accountingDate_%%index%%' type='text' class='form-control date-form-field' id='accountingDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td align='right' colspan=3><button class='btn btn-danger' onclick='removeRow(%%index%%)'><span class='glyphicon glyphicon-remove'></span> Remove</button></td></tr>";
+
+		function onCallError(e) {
+			alert(e.status);
+		}
+
+		function checkValidity() {
+			var valid = true;
+			if (currentIndex==0) {
+				valid = false;
+			} else {
+				for (var index = 0;index<currentIndex; index++) {
+					if ($("#operationDate_" + index).val()==''
+						|| $("#valueDate_" + index).val()==''
+						|| $("#accountingDate_" + index).val()=='') {
+						valid = false;
+					}
+				}
+			}
+			$("#validationButton").prop("disabled",valid?null:"disabled");
+			$("#operationType_" + currentIndex).change();
+		}
+
+		function onComputeSuccess(event) {
+			$("#backgroundProgress").addClass("invisible");
+			setEnabled(true);
+		}
+
+		function onComputeError(event) {
+			$("#backgroundProgress").addClass("invisible");
+			setEnabled(true);
+		}
+
+		function computePortfolioStatuses() {
+			var computeForm = new FormData();
+			computeForm.append('container_id', '{{container.id}}');
+			computeForm.append('container_type', '{{container.type.identifier}}');
+			$.ajax({
+				url: '/container_compute_accounts_statuses.html',
+				type: 'POST',
+				data: computeForm,
+				processData: false,
+				contentType: false,
+				success: onComputeSuccess,
+				error: onComputeError
+			});
+		}
+
+		function executeAction(actionName, id, name) {
+			if (actionName=="Select") {
+				$("#securityId_" + workingIndex).val(id);
+				$("#securityName_" + workingIndex).html(name);
+				$("#modal_add_security").modal('toggle');
+				checkValidity();
+			}
+		}
+
+		function updateSecuritiesResults(e) {
+			$("#securitiesList").html(e);
+		}
+
+		function selectSecurity(index) {
+			workingIndex = index;
+			$("#modal_add_security").modal('toggle');
+		}
+
+		function assignClickChange(event) {
+			console.log(event);
+			$("#sourceCurrencyDropdown_").click();
+		}
+
+		function addRow() {
+			$("#cashTable").append(emptyRow.replaceAll('%%index%%', currentIndex));
+			$("#operationType_" + currentIndex).load('/render_operation_types.html', {"operation_group":"OPE_GROUP_CASH"}, checkValidity);
+			$("#operationDate_" + currentIndex).datepicker({ dateFormat: "yy-mm-dd" });
+			$("#valueDate_" + currentIndex).datepicker({ dateFormat: "yy-mm-dd" });
+			$("#accountingDate_" + currentIndex).datepicker({ dateFormat: "yy-mm-dd" });
+
+			$("#operationDate_" + currentIndex).change(checkValidity);
+			$("#valueDate_" + currentIndex).change(checkValidity);
+			$("#accountingDate_" + currentIndex).change(checkValidity);
+
+			var localIndex = currentIndex;
+
+			$("#operationSourceAccount_" + currentIndex).load('/container_render_account_selection.html',
+															  {"container_id": "{{container.id}}", "container_type": "{{container.type.identifier}}", "account_allow_new":"true","account_types":"ACC_CURRENT"},
+															  function() { $("#operationSourceAccount_" + localIndex).change(); });
+			$("#operationTargetAccount_" + currentIndex).load('/container_render_account_selection.html',
+															  {"container_id": "{{container.id}}", "container_type": "{{container.type.identifier}}", "account_allow_new":"true","account_types":"ACC_CURRENT"},
+															  function() { $("#operationTargetAccount_" + localIndex).change(); });
+
+			$("#operationSourceAccount_" + currentIndex).change(function() {
+				console.log($(this).find(":selected").attr("currency"));
+				if ($(this).find(":selected").attr("currency")!="NONE") {
+					$("#sourceCurrencyLabel_" + localIndex).html($(this).find(":selected").attr("currency") + " <span class='caret'></span>");
+				}
+				checkValidity();
+			});
+
+			$("#operationTargetAccount_" + currentIndex).change(function() {
+				console.log($(this).find(":selected").attr("currency"));
+				if ($(this).find(":selected").attr("currency")!="NONE") {
+					$("#targetCurrencyLabel_" + localIndex).html($(this).find(":selected").attr("currency") + " <span class='caret'></span>");
+				}
+				checkValidity();
+			});
+
+			$("#sourceCurrencyDropdown_" + currentIndex).load('/static/templates/favorite_currency_list_elements_en.html', function() {
+				console.log("#sourceCurrencyDropdown_" + localIndex + " li a");
+				$("#sourceCurrencyDropdown_" + localIndex + " li a").click(function() {
+					var label = $(this).attr('name');
+					$("#sourceCurrencyLabel_" + localIndex).html(label + " <span class='caret'></span>");
+				});
+			});
+
+			$("#targetCurrencyDropdown_" + currentIndex).load('/static/templates/favorite_currency_list_elements_en.html', function() {
+				$("#targetCurrencyDropdown_" + localIndex + " li a").click(function() {
+					var label = $(this).attr('name');
+					$("#targetCurrencyLabel_" + localIndex).html(label + " <span class='caret'></span>");
+				});
+			});
+
+
+			$("#operationType_" + currentIndex).change(function() {
+				$("#operationSourceAccount_" + localIndex).prop("disabled",null);
+				$("#sourceCurrencyLabel_" + localIndex).prop("disabled",null);
+				$("#operationSourceAmount_" + localIndex).prop("disabled",null);
+				
+				$("#operationTargetAccount_" + localIndex).prop("disabled",null);
+				$("#targetCurrencyLabel_" + localIndex).prop("disabled",null);
+				$("#operationTargetAmount_" + localIndex).prop("disabled",null);
+
+				selectedValue = $("#operationType_" + localIndex).val();
+
+				if (selectedValue=="OPE_TYPE_CASH_WITHDRAWAL") {
+					$("#operationTargetAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationTargetAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_CASH_CONTRIBUTION") {
+					$("#operationSourceAccount_" + localIndex).prop("disabled","disabled");
+					$("#sourceCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationSourceAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_WITHDRAWAL") {
+					$("#operationTargetAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationTargetAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_CONTRIBUTION") {
+					$("#operationSourceAccount_" + localIndex).prop("disabled","disabled");
+					$("#sourceCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationSourceAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_COMMISSION") {
+					$("#operationTargetAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationTargetAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_FEES") {
+					$("#operationTargetAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationTargetAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_TAX") {
+					$("#operationTargetAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationTargetAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_COUPON") {
+					$("#operationSourceAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationSourceAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_COUPON") {
+					$("#operationSourceAccount_" + localIndex).prop("disabled","disabled");
+					$("#targetCurrencyLabel_" + localIndex).prop("disabled","disabled");
+					$("#operationSourceAmount_" + localIndex).prop("disabled","disabled");
+				} else if (selectedValue=="OPE_TYPE_INTERNAL_TRANSFER") {
+					// Nothing
+				}
+
+			});
+
+			currentIndex = currentIndex + 1;
+		}
+
+		function onOperationError(event) {
+			waiting = waiting - 1;
+			if (waiting==0) {
+				computePortfolioStatuses();
+			}
+		}
+
+		function removeRow(index) {
+			$(".row_" + index).remove();
+		}
+
+		function updateOperationsStatus(event) {
+			waiting = waiting - 1;
+			if (waiting==0) {
+				computePortfolioStatuses();
+			}
+		}
+
+		function validate() {
+			$("#backgroundProgress").removeClass("invisible");
+			setEnabled(false);
+			for (var index = 0;index<currentIndex; index++) {
+				if ($(".row_" +index).length) {
+					waiting = waiting + 1;
+					var operationForm = new FormData();
+					operationForm.append('container_id', {{container.id}});
+					operationForm.append('operation_type', $("#operationType_" + index).val());
+
+					operationForm.append('operation_source_account', $("#operationSourceAccount_" + index).val());
+					operationForm.append('operation_source_amount', $("#operationSourceAmount_" + index).val());
+					operationForm.append('operation_source_currency', $("#sourceCurrencyLabel_" + index).text());
+
+					operationForm.append('operation_target_account', $("#operationTargetAccount_" + index).val());
+					operationForm.append('operation_target_amount', $("#operationTargetAmount_" + index).val());
+					operationForm.append('operation_target_currency', $("#targetCurrencyLabel_" + index).text());
+					
+					//operationForm.append('operation_fees', $("#operationFees_" + index).val());
+					//operationForm.append('operation_taxes', $("#operationTaxes_" + index).val());
+					operationForm.append('operation_date', $("#operationDate_" + index).val());
+					operationForm.append('operation_value_date', $("#valueDate_" + index).val());
+					operationForm.append('operation_accounting_date', $("#accountingDate_" + index).val());
+					$.ajax({
+						url: '/container_cash_operation_create.html',
+						type: 'POST',
+						data: operationForm,
+						processData: false,
+						contentType: false,
+						success: updateOperationsStatus,
+						error: onOperationError
+					});
+				}
+			}
+		}
+
+		function setEnabled(active) {
+			$(".btn").prop("disabled",active?null:"disabled");
+		}
+
+	</script>
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{ container.name }}
+					<div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+								{% include template_name %}
+							{% endwith %}
+						</ul>
+					</div>
+				</h1>
+	  			<p class="lead">{% if container.short_description %}{{ container.short_description }}{% else %}No description is available.{% endif %}<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div class="row">
+			<button id="addButton" class="btn btn-default col-lg-offset-11 col-lg-1" onclick="addRow()">Add</button>
+		</div>
+		<div class="row">&nbsp;</div>
+		<table class="table" id="cashTable">
+			<tr><th class='col-lg-3' colspan=3>Operation</th><th class='col-lg-2' colspan=2>Source account</th><th class='col-lg-2' colspan=2>Source amount</th><th class='col-lg-2' colspan=2>Target account</th><th class='col-lg-2' colspan=2>Target amount</th><th class='col-lg-1' colspan=1>Action</th></tr>
+		</table>
+		<div class="row">
+			<button id="validationButton" class="btn btn-success col-lg-offset-11 col-lg-1" onclick="validate()">Validate</button>
+		</div>
+{% endblock %}

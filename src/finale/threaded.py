@@ -94,11 +94,12 @@ def bloomberg_update_query(response_key, bulk_information, use_terminal):
     cache.set(response_key, 0.0)
     for field in bulk_information.keys():
         for start_date in bulk_information[field].keys():
-            if str(start_date)=='None':
-                response = BloombergTasks.send_bloomberg_get_history(bulk_information[field][start_date], [field], 'TICKER', use_terminal)
-            else:
-                response = BloombergTasks.send_bloomberg_get_history(bulk_information[field][start_date], [field], 'TICKER', use_terminal, start_date)
-            cache.set('data_' + response_key, response)
-            cache.set('type_' + response_key, 'historical')
-            populate_tracks_from_bloomberg_protobuf(response, True)
+            if len(bulk_information[field][start_date]):
+                if str(start_date)=='None':
+                    response = BloombergTasks.send_bloomberg_get_history(bulk_information[field][start_date], [field], 'TICKER', use_terminal)
+                else:
+                    response = BloombergTasks.send_bloomberg_get_history(bulk_information[field][start_date], [field], 'TICKER', use_terminal, start_date)
+                cache.set('data_' + response_key, response)
+                cache.set('type_' + response_key, 'historical')
+                populate_tracks_from_bloomberg_protobuf(response, True)
             cache.set(response_key, cache.get(response_key) + step)

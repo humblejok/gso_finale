@@ -1,0 +1,1 @@
+{% for account in accounts %}<option value='{{account.id}}' currency='{{account.currency.short_name}}'>{{account.short_name}}</option>{% endfor %}{% if allow_new %}<option value='NEW_ACCOUNT' currency='NONE'>New account</option>{% endif %}

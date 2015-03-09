@@ -23,10 +23,14 @@ urlpatterns = patterns('',
     url(r'^object_base_edit.html', 'universe.views.object_base_edit', name='object_base_edit'),
     url(r'^object_delete.html', 'universe.views.object_delete', name='object_delete'),
     url(r'^object_fields_get.html', 'universe.views.object_fields_get', name='object_fields_get'),
+    url(r'^object_custom_fields_get.html', 'universe.views.object_custom_fields_get', name='object_custom_fields_get'),    
     
     url(r'^object_save.html', 'universe.views.object_save', name='object_save'),
     
     url(r'^get_filtering_entry.html', 'universe.views.get_filtering_entry', name='get_filtering_entry'),
+    # Rendition views
+    url(r'^render_operation_types.html', 'universe.container.views.render_operation_types', name='render_operation_types'),
+    
 
     # Setup views
     url(r'^setup.html', 'universe.views.setup', name='setup'),
@@ -85,6 +89,13 @@ urlpatterns = patterns('',
     url(r'^container_partial_delete.html', 'universe.container.views.partial_delete', name='partial_delete'),
     url(r'^container_add_price.html', 'universe.container.views.add_price', name='add_price'),
     url(r'^container_security_operation.html', 'universe.container.views.security_operation', name='security_operation'),
+    url(r'^container_cash_operation.html', 'universe.container.views.cash_operation', name='cash_operation'),
+    url(r'^container_security_operation_create.html', 'universe.container.views.security_operation_create', name='container_security_operation_create'),
+    url(r'^container_cash_operation_create.html', 'universe.container.views.cash_operation_create', name='container_cash_operation_create'),
+    url(r'^container_compute_accounts_statuses.html', 'universe.container.views.compute_accounts_statuses', name='container_compute_accounts_statuses'),
+    url(r'^container_render_account_selection.html', 'universe.container.views.render_account_selection', name='container_render_account_selection'),
+    
+    url(r'^track_end_date.html', 'universe.views.track_end_date', name='track_end_date'),
     
     # Tracks related views
     url(r'^track_get.html', 'universe.views.track_get', name='track_get'),

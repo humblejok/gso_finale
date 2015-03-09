@@ -15,7 +15,7 @@ from django.db.models import Q
 LOGGER = logging.getLogger(__name__)
 
 # TODO Externalize
-PRICE_DIVISOR = { 'CONT_BON': 100.0 }
+PRICE_DIVISOR = { 'CONT_BOND': 100.0 }
 
 
 def create_forward_operation(container, source, target, details, label):
@@ -295,7 +295,10 @@ def generate_cash_movement_spot(source, target, details):
 
 def get_account(container, description, account_type):
     if description.has_key('account_id') and description['account_id']!=None and account_type.identifier not in ['ACC_SECURITY','ACC_FORWARD']:
-        accounts = container.accounts.filter(name=description['account_id'])
+        if isinstance(description['account_id'], int):
+            accounts = container.accounts.filter(id=description['account_id'])
+        else:
+            accounts = container.accounts.filter(name=description['account_id'])
     else:
         accounts = container.accounts.filter(currency__short_name=description['currency'], account_type=account_type)
     if accounts.exists():
@@ -326,7 +329,7 @@ def generate_forward_close_short_label(source, target, details):
     return 'Close fwd' + details['operation'] + ' ' + source['currency'] + ' -> ' + target['currency']
 
 def generate_security_movement_label(target, details):
-    return details['operation'] + ' ' + details['quantity'] + ' ' + target['security'].name
+    return details['operation'] + ' ' + str(target['quantity']) + ' ' + target['security'].name
 
 def generate_security_movement_short_label(target, details):
     return details['operation'] + ' ' + target['security'].short_name
@@ -506,7 +509,9 @@ def compute_underlying_security(portfolios, tracks, spots, portfolio, operation,
     if value==None:
         LOGGER.error("No NAV available for " + operation.target.name + " as of " + str(from_epoch(long(key_date))))
         return None
+    divisor = PRICE_DIVISOR[operation.target.type.identifier] if PRICE_DIVISOR.has_key(operation.target.type.identifier) else 1.0
     portfolios[portfolio_id][key_date][inner_security]['price'] = value['value']
+    portfolios[portfolio_id][key_date][inner_security]['price_divisor'] = value['value'] / divisor
     spot_pf = 1.0
     if inner_container.currency.short_name!=portfolio.currency.short_name and not spots.has_key(inner_container.currency.short_name):
         spot_track = get_exchange_rate(inner_container.currency.short_name, portfolio.currency.short_name)
@@ -518,6 +523,7 @@ def compute_underlying_security(portfolios, tracks, spots, portfolio, operation,
         if value!=None:
             spot_pf = value['value']
     portfolios[portfolio_id][key_date][inner_security]['price_pf'] = portfolios[portfolio_id][key_date][inner_security]['price'] * spot_pf
+    portfolios[portfolio_id][key_date][inner_security]['price_pf_divisor'] = portfolios[portfolio_id][key_date][inner_security]['price'] * spot_pf / divisor
     portfolios[portfolio_id][key_date][inner_security]['price_date'] = value['date'].strftime('%Y-%m-%d')
 
 def compute_positions(container=None):

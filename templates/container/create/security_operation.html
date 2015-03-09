@@ -2,10 +2,175 @@
 {% load universe_tags %}
 {% block title %}Create securities operation{% endblock %}
 {% block readyoptions %}
+	checkValidity();
 {% endblock %}
 {% block headeroptions %}
 	<script>
+
+		var waiting = 0;
+		var currentIndex = 0;
+		var workingIndex = 0;
 		var container = {{container_json|safe}};
+		var emptyRow = "<tr align='center' class='row_%%index%%'><td align='left' colspan=7><input type='hidden' id='securityId_%%index%%' name='securityId_%%index%%' value=''><button class='btn btn-default' onclick='selectSecurity(%%index%%)'><span class='glyphicon glyphicon-search'></span></button>&nbsp;<span id='securityName_%%index%%'>&nbsp;<span></td><td><select class='form-control no-enter' id='operationType_%%index%%' name='operationType_%%index%%'></select></td><td><input id='operationQty_%%index%%' name='operationQty_%%index%%' class='form-control' typte='text' placeholder='Quantity' value='0' align='center'></input></td><td><input id='operationPrice_%%index%%' name='operationPrice_%%index%%' class='form-control' typte='text' placeholder='Buy price' value='0' align='center'></input></td><td><input id='operationFees_%%index%%' name='operationFees_%%index%%' class='form-control' typte='text' placeholder='Fees' value='0' align='center'></input></td><td><input id='operationTaxes_%%index%%' name='operationTaxes_%%index%%' class='form-control' typte='text' placeholder='Taxes' value='0' align='center'></input></td></tr><tr class='row_%%index%%'><td colspan=2>Operation date</td><td><input name='operationDate_%%index%%' type='text' class='form-control date-form-field' id='operationDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td colspan=2>Value date</td><td colspan=2><input name='valueDate_%%index%%' type='text' class='form-control date-form-field' id='valueDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td colspan=2>Accounting date</td><td colspan=2><input name='accountingDate_%%index%%' type='text' class='form-control date-form-field' id='accountingDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td><button class='btn btn-danger' onclick='removeRow(%%index%%)'><span class='glyphicon glyphicon-remove'></span> Remove</button></td></tr>";
+
+		function onCallError(e) {
+			alert(e.status);
+		}
+
+		function checkValidity() {
+			var valid = true;
+			if (currentIndex==0) {
+				valid = false;
+			} else {
+				for (var index = 0;index<currentIndex; index++) {
+					if ($("#securityId_" + index).val()==''
+							|| $("#operationQty_" + index).val()=='0'
+							|| $("#operationQty_" + index).val()==''
+							|| $("#operationPrice_" + index).val()==''
+							|| $("#operationFees_" + index).val()==''
+							|| $("#operationTaxes_" + index).val()==''
+							|| $("#operationDate_" + index).val()==''
+							|| $("#valueDate_" + index).val()==''
+							|| $("#accountingDate_" + index).val()=='') {
+						valid = false;
+					}
+				}
+			}
+			$("#validationButton").prop("disabled",valid?null:"disabled");
+		}
+
+		function onComputeSuccess(event) {
+			$("#backgroundProgress").addClass("invisible");
+			setEnabled(true);
+		}
+
+		function onComputeError(event) {
+			$("#backgroundProgress").addClass("invisible");
+			setEnabled(true);
+		}
+
+		function computePortfolioStatuses() {
+			var computeForm = new FormData();
+			computeForm.append('container_id', '{{container.id}}');
+			computeForm.append('container_type', '{{container.type.identifier}}');
+			$.ajax({
+				url: '/container_compute_accounts_statuses.html',
+				type: 'POST',
+				data: computeForm,
+				processData: false,
+				contentType: false,
+				success: onComputeSuccess,
+				error: onComputeError
+			});
+		}
+
+		function executeAction(actionName, id, name) {
+			if (actionName=="Select") {
+				$("#securityId_" + workingIndex).val(id);
+				$("#securityName_" + workingIndex).html(name);
+				$("#modal_add_security").modal('toggle');
+				checkValidity();
+			}
+		}
+
+		function updateSecuritiesResults(e) {
+			$("#securitiesList").html(e);
+		}
+
+		function selectSecurity(index) {
+			workingIndex = index;
+			$("#modal_add_security").modal('toggle');
+		}
+
+		function addRow() {
+			$("#buySellTable").append(emptyRow.replaceAll('%%index%%', currentIndex));
+			$("#operationType_" + currentIndex).load('/render_operation_types.html', {"operation_group":"OPE_GROUP_SECURITIES"}, checkValidity);
+			$("#operationDate_" + currentIndex).datepicker({ dateFormat: "yy-mm-dd" });
+			$("#valueDate_" + currentIndex).datepicker({ dateFormat: "yy-mm-dd" });
+			$("#accountingDate_" + currentIndex).datepicker({ dateFormat: "yy-mm-dd" });
+
+			$("#operationDate_" + currentIndex).change(checkValidity);
+			$("#valueDate_" + currentIndex).change(checkValidity);
+			$("#accountingDate_" + currentIndex).change(checkValidity);
+			$("#securityId_" + currentIndex).change(checkValidity);
+			$("#operationPrice_" + currentIndex).change(checkValidity);
+			$("#operationQty_" + currentIndex).change(checkValidity);
+			$("#operationFees_" + currentIndex).change(checkValidity);
+			$("#operationTaxes_" + currentIndex).change(checkValidity);
+
+			selectSecurity(currentIndex);
+
+			currentIndex = currentIndex + 1;
+		}
+
+		function searchSecurities() {
+			var searchForm = new FormData();
+			searchForm.append('searching', $("#searching").val());
+			searchForm.append('container_type', 'CONT_SECURITY');
+			searchForm.append('action', 'Select');
+			$.ajax({
+				url: '/container_search.html',
+				type: 'POST',
+				data: searchForm,
+				processData: false,
+				contentType: false,
+				success: updateSecuritiesResults,
+				error: onCallError
+			});
+		}
+
+		function onOperationError(event) {
+			waiting = waiting - 1;
+			if (waiting==0) {
+				computePortfolioStatuses();
+			}
+		}
+
+		function removeRow(index) {
+			$(".row_" + index).remove();
+		}
+
+		function updateOperationsStatus(event) {
+			waiting = waiting - 1;
+			if (waiting==0) {
+				computePortfolioStatuses();
+			}
+		}
+
+		function validate() {
+			$("#backgroundProgress").removeClass("invisible");
+			setEnabled(false);
+			for (var index = 0;index<currentIndex; index++) {
+				if ($(".row_" +index).length) {
+					waiting = waiting + 1;
+					var operationForm = new FormData();
+					operationForm.append('container_id', {{container.id}});
+					operationForm.append('operation_security', $("#securityId_" + index).val());
+					operationForm.append('operation_type', $("#operationType_" + index).val());
+					operationForm.append('operation_quantity', $("#operationQty_" + index).val());
+					operationForm.append('operation_price', $("#operationPrice_" + index).val());
+					operationForm.append('operation_fees', $("#operationFees_" + index).val());
+					operationForm.append('operation_taxes', $("#operationTaxes_" + index).val());
+					operationForm.append('operation_date', $("#operationDate_" + index).val());
+					operationForm.append('operation_value_date', $("#valueDate_" + index).val());
+					operationForm.append('operation_accounting_date', $("#accountingDate_" + index).val());
+					$.ajax({
+						url: '/container_security_operation_create.html',
+						type: 'POST',
+						data: operationForm,
+						processData: false,
+						contentType: false,
+						success: updateOperationsStatus,
+						error: onOperationError
+					});
+				}
+			}
+		}
+
+		function setEnabled(active) {
+			$(".btn").prop("disabled",active?null:"disabled");
+		}
+
 	</script>
 {% endblock %}
 {% block content %}
@@ -26,38 +191,37 @@
 		</div>
 		<div class="row">&nbsp;</div>
 		<div class="row">
-			<div class="col-lg-2">
-				<select class='form-control no-enter' id='operationType' name='operationType' onchange="operationTypeChanged()">
-					{% with value='' %}
-						{% include 'statics/operation_type_en.html' %}
-					{% endwith %}
-				</select>
-			</div>
-			<div class="col-lg-1">
-				<label for="operationDate">Operation date</label>
-			</div>
-			<div class="col-lg-2">
-				<input name="operationDate" type="text" class="form-control date-form-field" id="operationDate" placeholder="Enter a date" value=""/>
-			</div>
-			<div class="col-lg-1">
-				<label for="valueDate">Value date</label>
-			</div>
-			<div class="col-lg-2">
-				<input name="valueDate" type="text" class="form-control date-form-field" id="valueDate" placeholder="Enter a date" value=""/>
-			</div>
-			<div class="col-lg-1">
-				<label for="accountingDate">Accounting date</label>
-			</div>
-			<div class="col-lg-2">
-				<input name="accountingDate" type="text" class="form-control date-form-field" id="accountingDate" placeholder="Enter a date" value=""/>
-			</div>
+			<button id="addButton" class="btn btn-default col-lg-offset-11 col-lg-1" onclick="addRow()">Add</button>
 		</div>
 		<div class="row">&nbsp;</div>
-		<div class="row">
-			<button class="btn btn-default col-lg-offset-11">Add</button>
-		</div>
-		<div class="row">&nbsp;</div>
-		<table class="table" id="buyTable">
-			<tr><th>Security</th><th>Operation</th><th>Quantity</th><th>Price</th><th>Fees</th><th>Taxes</th><th>Operation date</th><th>Value date</th><th>Accounting date</th></tr>
+		<table class="table" id="buySellTable">
+			<tr><th colspan=7 class='col-lg-7'>Security</th><th class='col-lg-1'>Operation</th><th class='col-lg-1'>Quantity</th><th class='col-lg-1'>Price</th><th class='col-lg-1'>Fees</th><th class='col-lg-1'>Taxes</th></tr>
 		</table>
+		<div class="row">
+			<button id="validationButton" class="btn btn-success col-lg-offset-11 col-lg-1" onclick="validate()">Validate</button>
+		</div>
+		<div class="modal fade" id="modal_add_security" tabindex="-1" role="dialog" aria-labelledby="modal_add_security_label" aria-hidden="true">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_add_security_label">Select target security</h4>
+					</div>
+					<div class="modal-body">
+						<form id="addSecurityForm" role="form" class="form-horizontal" action="/security_search.html" method="POST" onsubmit="">{% csrf_token %}
+							<div class="form-group">
+								<label for="searching" class="col-lg-2 col-lg-offset-1">Looking for:</label>
+								<input id="searching" class="col-lg-6 no-enter" name="searching" type="text" placeholder="Can be a name, ticker or isin">
+								<button type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="searchSecurities()">Search</button>
+							</div>
+						</form>
+						<div id="securitiesList" class="row">
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					</div>
+				</div>
+			</div>
+		</div>
 {% endblock %}

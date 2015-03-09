@@ -18,7 +18,7 @@
 			$.each(positions[$("#positionsDate").val()], function(index, value) {
 				console.log(value);
 				if (index!='increase' && index!='decrease' && index!='increase_fop' && index!='decrease_fop') {
-					newContent += "<tr><td><a href='/container_get.html?container_id=" + value['id'] + "&container_type=" + value['type'] + "'>" + value['name'] + "</a></td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price'] * value['total']).toFixed(2) + "</td><td>" + (value['price_pf'] * value['total']).toFixed(2) + "</td></tr>";
+					newContent += "<tr><td><a href='/container_get.html?container_id=" + value['id'] + "&container_type=" + value['type'] + "'>" + value['name'] + "</a></td><td>" + value['total'].toFixed(2) + "</td><td>" + value['price'].toFixed(2) + "</td><td>" + value['price_date'] + "</td><td>" + (value['price_divisor'] * value['total']).toFixed(2) + "</td><td>" + (value['price_pf_divisor'] * value['total']).toFixed(2) + "</td></tr>";
 				}
 			});
 			if (positions[$("#positionsDate").val()].increase && Object.keys(positions[$("#positionsDate").val()].increase).length>0) {
