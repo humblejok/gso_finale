@@ -115,7 +115,6 @@
 		containerSetup.type = $("#containerType").val();
 		containerSetup.data = toSave;
 		var updateForm = new FormData();
-		console.log(containerSetup);
 		updateForm.append('container_setup', JSON.stringify(containerSetup));
 		updateForm.append('item',urlParams['item']);
 		updateForm.append('type',urlParams['type']);
@@ -230,22 +229,19 @@
 			};
 		} else if(selectedType=='LAYOUT_OBJECT_CUSTOM_STANDARD') {
 			htmlToAppend += "<div id='fieldsList_" + index + "' class='list-group col-lg-offset-1 col-lg-10 pre-scrollable' style='height: 195px;'>";
-			$.each(singleFields, function(valueIndex, value) {
-				if (allFieldsInformation[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
-					htmlToAppend += '<a class="list-group-item main-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '\')">' + value + '</a>';
-				} else {
-					htmlToAppend += '<a class="list-group-item multiple-master main-' + value + '" onclick="onForeignClick(' + index + ',\'' + value + '\')">' + value + '</a>';
+			$.each(allCustomFieldsInformation, function(valueIndex, value) {
+				var keyField = value.name.replaceAll(' ','-');
+				htmlToAppend += '<a class="list-group-item multiple-master main-' + keyField + '" onclick="onForeignClick(' + index + ',\'' + keyField + '\')">' + value.name + '</a>';
 
-					var subCurrentList = [];
-					$.each(allFieldsInformation[value].fields, function(subIndex, subValue) {
-						subCurrentList.push(subIndex);
-					});
-					subCurrentList.sort();
-					$.each(subCurrentList, function (subIndex, subValue) {
-						htmlToAppend += '<a class="list-group-item list-group-item-info multiple-slave hidden main-' + subValue + ' sub-' + value + '" onclick="onFieldClick(' + index + ',\'' + value + '.' + subValue + '\')">' + subValue + '</a>';
-					});
-
-				}
+				var subCurrentList = [];
+				$.each(value.fields_group.fields, function(subIndex, subValue) {
+					subCurrentList.push(subValue.name);
+				});
+				subCurrentList.sort();
+				$.each(subCurrentList, function (subIndex, subValue) {
+					var subKeyField = subValue.replaceAll(' ','-');
+					htmlToAppend += '<a class="list-group-item list-group-item-info multiple-slave hidden main-' + subKeyField + ' sub-' + keyField + '" onclick="onFieldClick(' + index + ',\'' + keyField + '.' + subKeyField + '\')">' + subValue + '</a>';
+				});
 			});
 			htmlToAppend += "</div>";
 		}
@@ -258,7 +254,7 @@
 	}
 	
 
-	function buildWidgets_() {
+	function buildWidgets() {
 		var currentInformation = allItems[$("#containerType").val()];
 		if (currentInformation) {
 			$.each(currentInformation.layout, function (index, layout) {
@@ -280,7 +276,12 @@
 						} else if (currentInformation.data[closureIndex.toString()].type=='LAYOUT_HISTORY_CHART' || currentInformation.data[closureIndex.toString()].type=='LAYOUT_DISTRIBUTION_CHART' || currentInformation.data[closureIndex.toString()].type=='LAYOUT_HISTORICAL_DISTRIBUTION_CHART') {
 							$("#track_default_" + closureIndex).prop('checked', currentInformation.data[index.toString()].data.track_default)
 							$("#track_default_" + closureIndex).change();
+						} else if (currentInformation.data[closureIndex.toString()].type=='LAYOUT_OBJECT_CUSTOM_STANDARD') {
+							$.each(currentInformation.data[closureIndex.toString()].data, function(fieldIndex, field) {
+								onFieldClick(index, field);
+							});
 						}
+
 					});
 					
 				});
@@ -303,21 +304,22 @@
 	function fieldsLoaded(e) {
 		allFieldsInformation = e.static_fields;
 		allCustomFieldsInformation = e.custom_fields;
-		console.log(allCustomFieldsInformation);
+
 		currentItem = 0;
 		allFields = [];
 		singleFields = [];
 		multipleFields = [];
 		callbacks = [];
-		$.each(e.static_fields, function(index, value) {
+
+		$.each(allFieldsInformation, function(index, value) {
 			allFields.push(index);
 		});
 		allFields.sort();
 		$.each(allFields, function(index, value) {
-			if (e.static_fields[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+			if (allFieldsInformation[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
 				singleFields.push(value);
 			} else {
-				if (e.static_fields[value].type==='ForeignKey') {
+				if (allFieldsInformation[value].type==='ForeignKey') {
 					singleFields.push(value);
 				} else {
 					multipleFields.push(value);
@@ -325,7 +327,8 @@
 			}
 		});
 
-		buildWidgets_();
+		buildWidgets();
+
 		if (callbacks) {
 			$.each(callbacks, function(index, callback){
 				callback();

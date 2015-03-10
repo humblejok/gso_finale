@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models.fields import FieldDoesNotExist
 from django.forms.models import model_to_dict
 from seq_common.utils import classes
+from utilities import setup_content
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +74,21 @@ def get_model_foreign_field_class(model_class, field):
     else:
         return None    
     
+def complete_custom_fields_information(container_type):
+    all_data = {}
+    all_custom_fields = setup_content.get_container_type_fields()[container_type]
+    all_fields_information = setup_content.get_object_type_fields()
+    for field in all_custom_fields:
+        for group in all_fields_information[field['type']]:
+            if group['name']==field['name']:
+                group_name = group['name'].replace(' ','-')
+                for field_info in group['fields']:
+                    field_name = field_info['name'].replace(' ','-')
+                    if field_info['type']=='FIELD_TYPE_CHOICE':
+                        field_info['template'] = 'statics/' + field_info['attribute'] + '_en.html'
+                    all_data[group_name + '.' + field_name] = field_info
+    return all_data
+
 def complete_fields_information(model_class, information):
     all_fields = get_static_fields(model_class)
     for field in information:

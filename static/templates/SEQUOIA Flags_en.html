@@ -17,6 +17,16 @@
 			
 		</script>
 	
+		<div class="form-group">
+			<label for="sequoia_inception_date">SEQUOIA Inception date</label>
+			<input name="sequoia_inception_date" type="text" class="form-control no-enter" id="sequoia_inception_date" placeholder="Enter a sequoia inception date" value=""/>
+		</div>
+		<script>
+			
+				$("#sequoia_inception_date").datepicker({ dateFormat: "yy-mm-dd" });
+			
+		</script>
+	
 	<div class="row">
 		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 		<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Create the SEQUOIA Flags and save it">Continue</button>

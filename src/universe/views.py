@@ -38,7 +38,8 @@ from openpyxl.writer.excel import save_virtual_workbook
 import requests
 from providers import mailgun
 import sys
-from utilities.setup_content import get_container_type_fields
+from utilities.setup_content import get_container_type_fields,\
+    get_object_type_fields
 
 
 LOGGER = logging.getLogger(__name__)
@@ -306,6 +307,14 @@ def setup(request):
     context = {'data_set': Attributes.objects.filter(type=item), 'selection_template': 'statics/' + item + '_en.html','global': dumps(all_data) if not all_data.has_key('global') else dumps(all_data['global']), 'user': {} if not all_data.has_key('user') else dumps(all_data['user'])}
     return render(request, 'rendition/' + item + '/' + item_view_type + '/setup.html', context)
 
+def filter_custom_fields(field_type, field_name):
+    values = get_object_type_fields()
+    if values.has_key(field_type):
+        values = values[field_type]
+        for value in values:
+            if value['name']==field_name:
+                return value
+    return None
 
 def object_fields_get(request):
     # TODO: Check user
@@ -321,7 +330,7 @@ def object_fields_get(request):
         object_custom_fields = object_custom_fields[request.POST['container_type']]
     else:
         object_custom_fields = []
-    
+    [object.update({'fields_group':filter_custom_fields(object['type'], object['name'])}) for object in object_custom_fields]
     return HttpResponse('{"static_fields": ' + dumps(object_static_fields) + ', "custom_fields": ' + dumps(object_custom_fields) + ', "status_message": "Found"}',"json")
 
 def object_custom_fields_get(request):

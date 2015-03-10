@@ -64,6 +64,9 @@
 			} else if (layoutInformation.data[index].type=="LAYOUT_HISTORY_CHART") {
 				var rendition_url = "/container_render_history_chart.html";
 				$("#zone_" + index).load(rendition_url, {"track_info": JSON.stringify(layoutInformation.data[index].data), "widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": "{{container.id}}", "container_type": "{{container.type.identifier}}"}, function(responseText, textStatus, jqXHR) { window["showTrack_" + index](); $(".btn").not('#comment').tooltip(); });
+			} else if (layoutInformation.data[index].type=="LAYOUT_OBJECT_CUSTOM_STANDARD") {
+				var rendition_url = "/container_render_custom_standard.html";
+				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_fields": JSON.stringify(layoutInformation.data[index].data)}, function() {$(".btn").not('#comment').tooltip();});
 			}
 		}
 
@@ -81,13 +84,18 @@
 			location.reload();
 		}
 
-		function updateContainer(index) {
+		function updateContainer(index, custom) {
 			console.log(editedData[index]);
 			var updateForm = new FormData();
 			updateForm.append('container_data', JSON.stringify(editedData[index]));
 			updateForm.append('container_id',urlParams['container_id']);
 			updateForm.append('container_type',urlParams['container_type']);
 			updateForm.append('render_name','view');
+			if (custom) {
+				updateForm.append('container_custom',custom?'True':'False');
+			} else {
+				updateForm.append('container_custom','False');
+			}
 			$.ajax({
 				url: '/container_partial_save.html',
 				type: 'POST',
@@ -128,7 +136,7 @@
 		</div>
 	{% for index in layout|get_dict_key:"data" %}
 		{% with template_name=layout|get_dict_key:"data"|get_dict_key:index|get_dict_key:"type" %}
-			{% include 'rendition/container_type/details/edition/'|add:template_name|add:".html" with index=index complete_fields=complete_fields data=layout|get_dict_key:"data"|get_dict_key:index labels=labels container=container %}
+			{% include 'rendition/container_type/details/edition/'|add:template_name|add:".html" with index=index complete_fields=complete_fields custom_fields=custom_fields data=layout|get_dict_key:"data"|get_dict_key:index labels=labels container=container %}
 		{% endwith %}
 	{% endfor %}
 

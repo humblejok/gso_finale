@@ -22,7 +22,7 @@ from seq_common.utils import classes
 
 from finale.settings import STATICS_PATH
 from finale.utils import complete_fields_information, dict_to_json_compliance, \
-    get_model_foreign_field_class
+    get_model_foreign_field_class, complete_custom_fields_information
 from universe.models import Attributes, FieldLabel, \
     PortfolioContainer, MenuEntries, SecurityContainer, AccountContainer, \
     FinancialOperation
@@ -35,6 +35,9 @@ from utilities.track_token import get_track
 from utilities.valuation_content import get_portfolio_valuations, \
     get_valuation_content_display, get_positions_portfolio, get_closest_value, \
     get_closest_date, get_account_history
+from utilities.security_content import get_security_information,\
+    set_security_information
+from utilities.setup_content import get_object_type_fields
 
 
 LOGGER = logging.getLogger(__name__)
@@ -220,9 +223,14 @@ def get(request):
     container = effective_class.objects.get(id=container_id)
     filtering = lambda d, k: d[k]['data']
     fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
+    custom_fields = complete_custom_fields_information(container_type)
+    custom_data = get_security_information(container)
     # TODO: Handle other langage and factorize with other views
     labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
-    context = {'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}), 'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)), 'container_type': container_type, 'layout': setup_content.get_container_type_details()[container_type], 'labels': labels}
+    context = {'custom_fields': custom_fields, 'complete_fields': complete_fields_information(effective_class,  {field:{} for field in fields}),
+               'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),
+               'custom_data': custom_data,
+               'container_type': container_type, 'layout': setup_content.get_container_type_details()[container_type], 'labels': labels}
     return render(request,'rendition/container_type/details/view.html', context)
 
 def render_history_chart(request):
@@ -259,6 +267,28 @@ def render_singles_list(request):
     container = effective_class.objects.get(id=container_id)
     context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': container_fields, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
     return render(request, 'container/view/simple_fields_list.html', context)
+
+def render_custom_standard(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id'][0] if isinstance(request.POST['container_id'], list) else request.POST['container_id']
+    container_type = request.POST['container_type'][0] if isinstance(request.POST['container_type'], list) else request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    container_fields = eval(request.POST['container_fields'])
+    widget_index = request.POST['widget_index'][0] if isinstance(request.POST['widget_index'], list) else request.POST['widget_index']
+    widget_title = request.POST['widget_title'][0] if isinstance(request.POST['widget_title'], list) else request.POST['widget_title']
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+
+    container = effective_class.objects.get(id=container_id)
+    
+    effective_container_fields = complete_custom_fields_information(container_type)
+    
+    additional_info = get_security_information(container)
+                        
+    context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': effective_container_fields, 'container': additional_info, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
+    return render(request, 'container/view/custom_fields_list.html', context)
 
 def render_many_to_many(request):
     # TODO: Check user
@@ -569,6 +599,7 @@ def partial_save(request):
     # TODO: Check user
     user = User.objects.get(id=request.user.id)
     container_id = request.POST['container_id']
+    container_custom = request.POST['container_custom']=='True'
     container_data = request.POST['container_data']
     container_data = json.loads(container_data)
     container_type = request.POST['container_type']
@@ -583,6 +614,9 @@ def partial_save(request):
             entry = foreign.retrieve_or_create('web', None, None, container_data)
             getattr(container, container_data['many-to-many']).add(entry)
             container.save()
+    elif container_custom:
+        for entry in container_data.keys():
+            set_security_information(container, entry, container_data[entry], None)
     else:
         for field_key in container_data.keys():
             #TODO Handle relation
