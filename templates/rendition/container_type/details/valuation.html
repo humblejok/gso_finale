@@ -20,19 +20,21 @@
 			aggregatedData["{{aggregate}}"] = {};
 			$.each(positions, function(position_id, position_details){
 				security = securities[position_id];
-				currentKey = getPropertyFromString(security, "{{aggregate}}");
-				console.log(currentKey);
-				if (!aggregatedData["{{aggregate}}"].hasOwnProperty(currentKey)) {
-					aggregatedData["{{aggregate}}"][currentKey] = [];
+				if ($.inArray(position_id,['decrease','increase','increase_fop','decrease_fop'])==-1) {
+					currentKey = getPropertyFromString(security, "{{aggregate}}");
+					if (!aggregatedData["{{aggregate}}"].hasOwnProperty(currentKey)) {
+						aggregatedData["{{aggregate}}"][currentKey] = [];
+					}
+					aggregatedData["{{aggregate}}"][currentKey].push({'position':position_details, 'security': security});
 				}
-				aggregatedData["{{aggregate}}"][currentKey].push({'position':position_details, 'security': security});
 			});
+
 			aggregationTable = "<table class='table'>";
 			$.each(aggregatedData["{{aggregate}}"], function(key, value){
-				aggregationTable += "<tr><th colspan=8>Securities [" + key + "]</th></tr>";
-				aggregationTable += "<tr><th>&nbsp;</th><th>Quantity</th><th>Buy price</th><th>Market price</th><th>Total (security currency)</th><th>PNL</th><th>Performance</th><th>PNL (since buy)</th></tr>";
+				aggregationTable += "<tr><th colspan=11>Securities [" + key + "]</th></tr>";
+				aggregationTable += "<tr><th>&nbsp;</th><th>Quantity</th><th>Buy price</th><th>Market price</th><th>Total (security currency)</th><th>PNL ({{container.frequency.short_name}})</th><th>Performance ({{container.frequency.short_name}})</th><th>PNL (since buy)</th><th>Performance (since buy)</th><th>FX Performance ({{container.frequency.short_name}})</th><th>FX Performance (since buy)</th></tr>";
 				$.each(aggregatedData["{{aggregate}}"][key], function(index, positionInfo){
-					var pnl_sb = (positionInfo.position.price - positionInfo.position.buy_price) * positionInfo.position.total;
+					var pnl_sb = (positionInfo.position.price - positionInfo.position.buy_price) * positionInfo.position.total / positionInfo.position.price_divisor;
 					var pnl_sb_str = pnl_sb.toFixed(2);
 					if (pnl_sb<0) {
 						pnl_sb_str = "(" + (-pnl_sb).toFixed(2) + ")";
@@ -44,13 +46,25 @@
 						if (previousPositions[String(positionInfo.security.id)].total<positionInfo.position.total) {
 							pnl_previous += (positionInfo.position.total-previousPositions[String(positionInfo.security.id)].total) * (positionInfo.position.price-positionInfo.position.buy_price);
 						}
+						pnl_previous = pnl_previous / positionInfo.position.price_divisor;
 						pnl_previous_str = pnl_previous.toFixed(2);
 						if (pnl_previous<0) {
 							pnl_previous_str = "(" + (-pnl_previous).toFixed(2) + ")";
 						}
 					}
-					var performance = (pnl_previous * 100.0)/(previousPositions[String(positionInfo.security.id)].price * previousPositions[String(positionInfo.security.id)].total);
-					aggregationTable += "<tr><td>" + positionInfo.security.name + "</td><td>" + positionInfo.position.total + "</td><td>" + positionInfo.position.buy_price.toFixed(2) + "</td><td>" + positionInfo.position.price.toFixed(2) + "</td><td>" + (positionInfo.position.total * positionInfo.position.price).toFixed(2) + "</td><td class='" + (pnl_previous>=0.0?"success":"danger") + "'>" + pnl_previous_str +  "</td><td class='" + (performance>=0.0?"success":"danger") + "'>" + performance.toFixed(2) + "%</td><td class='" + (pnl_sb>=0.0?"success":"danger") + "'>" + pnl_sb_str + "</td></tr>";
+					var previous_aum = 0.0;
+					if (previousPositions.hasOwnProperty(String(positionInfo.security.id))) {
+						previous_aum = previousPositions[String(positionInfo.security.id)].price * previousPositions[String(positionInfo.security.id)].total / previousPositions[String(positionInfo.security.id)].price_divisor;
+						previous_spot = previousPositions[String(positionInfo.security.id)].spot_pf;
+					} else {
+						previous_aum = positionInfo.position.buy_price * positionInfo.position.total / positionInfo.position.price_divisor;
+						previous_spot = positionInfo.position.buy_spot;
+					}
+					var performance = (pnl_previous * 100.0)/previous_aum;
+					var performance_sb = (pnl_sb * 100.0) / (positionInfo.position.buy_price * positionInfo.position.total / positionInfo.position.price_divisor);
+					var fx_perf_daily = (((previous_spot / positionInfo.position.spot_pf) - 1.0) * 100.0);
+					var fx_perf_sb = (((previous_spot / positionInfo.position.spot_pf) - 1.0) * 100.0);
+					aggregationTable += "<tr><td>" + positionInfo.security.name + "</td><td>" + positionInfo.position.total + "</td><td>" + positionInfo.position.buy_price.toFixed(2) + "</td><td>" + positionInfo.position.price.toFixed(2) + "</td><td>" + (positionInfo.position.total * positionInfo.position.price / positionInfo.position.price_divisor).toFixed(2) + "</td><td class='" + (pnl_previous>=0.0?"success":"danger") + "'>" + pnl_previous_str +  "</td><td class='" + (performance>=0.0?"success":"danger") + "'>" + performance.toFixed(2) + "%</td><td class='" + (pnl_sb>=0.0?"success":"danger") + "'>" + pnl_sb_str + "</td><td class='" + (performance_sb>=0.0?"success":"danger") + "'>" + performance_sb.toFixed(2) + "%</td><td class='" + (fx_perf_daily>=0.0?"success":"danger") + "'>" + fx_perf_daily.toFixed(2) + "%</td><td class='" + (fx_perf_sb>=0.0?"success":"danger") + "'>" + fx_perf_sb.toFixed(2) + "%</td></tr>";
 				});
 				aggregationTable += "<tr><td colspan=6>&nbsp;</td></tr>";
 			});

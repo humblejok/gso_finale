@@ -36,7 +36,7 @@ from utilities.valuation_content import get_portfolio_valuations, \
     get_valuation_content_display, get_positions_portfolio, get_closest_value, \
     get_closest_date, get_account_history
 from utilities.security_content import get_security_information,\
-    set_security_information
+    set_security_information, enhance_security_information
 from utilities.setup_content import get_object_type_fields
 
 
@@ -223,7 +223,7 @@ def get(request):
     container = effective_class.objects.get(id=container_id)
     filtering = lambda d, k: d[k]['data']
     fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
-    custom_fields = complete_custom_fields_information(container_type)
+    custom_fields = complete_custom_fields_information(container_type, )
     custom_data = get_security_information(container)
     # TODO: Handle other langage and factorize with other views
     labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
@@ -283,11 +283,11 @@ def render_custom_standard(request):
 
     container = effective_class.objects.get(id=container_id)
     
-    effective_container_fields = complete_custom_fields_information(container_type)
+    effective_container_fields = complete_custom_fields_information(container_type, container_fields)
     
-    additional_info = get_security_information(container)
+    custom_data = enhance_security_information(get_security_information(container), effective_container_fields)
                         
-    context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': effective_container_fields, 'container': additional_info, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
+    context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': effective_container_fields, 'custom_data': custom_data, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
     return render(request, 'container/view/custom_fields_list.html', context)
 
 def render_many_to_many(request):
@@ -413,7 +413,6 @@ def partial_delete(request):
         entry = foreign.objects.get(id=item_id)
         getattr(container, container_field).remove(entry)
         container.save()
-        entry.delete()
     return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
 
 def cash_operation(request):
@@ -544,25 +543,31 @@ def security_operation_create(request):
     
     # TODO Handle commission and target account in other currency    
     source = None
-    target = {'security': security, 'quantity': float(operation_quantity), 'price': float(operation_price)}
+    target = {'security': security, 'quantity': float(operation_quantity), 'price': float(operation_price), 'currency': security.currency.short_name}
     details = {'operation_date': operation_date, 'trade_date': operation_date, 'value_date': operation_value_date,
                'spot_rate':1.0,
-               'operation': 'BUY' if operation_type.find('SELL')==-1 else 'BUY', 'impact_pnl': operation_type.find('FOP')==-1, 'currency': security.currency.short_name,
+               'operation': 'BUY' if operation_type.find('SELL')==-1 else 'SELL', 'impact_pnl': operation_type.find('FOP')==-1, 'currency': security.currency.short_name,
                'target_expenses': {
                    'fees': 0.0,
                    'tax': 0.0,
                    'commission': 0.0
                    },
                'source_expenses': {
-                   'fees': operation_fees,
-                   'tax': operation_taxes,
+                   'fees': float(operation_fees),
+                   'tax': float(operation_taxes),
                    'commission': 0.0 #operation_commission
                     }
                }
     operations.create_security_movement(portfolio, source, target, details, None)
-    
-
-    return HttpResponse('{"result": "Finished", "status_message": "Saved"}',"json")
+    custom_data = get_security_information(security, True)
+    if custom_data!=None and custom_data.has_key('SEQUOIA-Flags.SEQUOIA-Product') and custom_data['SEQUOIA-Flags.SEQUOIA-Product']=='STRICT_BOOLEAN_TRUE':
+        finale_alias = security.aliases.filter(alias_type__identifier='ALIAS_FINALE')
+        if finale_alias.exists():
+            associated_portfolio = PortfolioContainer.objects.filter(name=finale_alias[0].alias_value)[0]
+            operation_type = 'OPE_TYPE_SUB' if operation_type.find('SELL')==-1 else 'OPE_TYPE_RED'
+            description = portfolio.name + (' bought ' if operation_type=='OPE_TYPE_SUB' else ' sold ') + str(operation_quantity) + ' @ ' + str(operation_price)
+            operations.create_investment(associated_portfolio, None, target, details, description)
+    return HttpResponse('{"result": ' + str(associated_portfolio.id) + ', "status_message": "Saved"}',"json")
 
 def add_price(request):
     # TODO: Check user
@@ -612,6 +617,8 @@ def partial_save(request):
         foreign = get_model_foreign_field_class(effective_class, container_data['many-to-many'])
         if foreign!=None:
             entry = foreign.retrieve_or_create('web', None, None, container_data)
+            if container_data['id']!=None and container_data['id']!='':
+                getattr(container, container_data['many-to-many']).remove(foreign.objects.get(id=container_data['id']))
             getattr(container, container_data['many-to-many']).add(entry)
             container.save()
     elif container_custom:
@@ -740,8 +747,9 @@ def valuation(request, view_extension):
     if positions!=None:
         positions = get_valuation_content_display(positions['data'])
         current_positions = get_closest_value(positions, working_date, False)
+        current_positions_key = [int(key) for key in current_positions.keys() if key not in ['decrease','increase','increase_fop','decrease_fop']]
         previous_positions = get_closest_value(positions, previous_date, False)
-    securities = SecurityContainer.objects.filter(id__in=current_positions.keys())
+    securities = SecurityContainer.objects.filter(id__in=current_positions_key)
     securities = {str(security.id): dict_to_json_compliance(model_to_dict(security), SecurityContainer) for security in securities}
     
     context = {'container': container, 'container_json': dumps(dict_to_json_compliance(model_to_dict(container), effective_class)),

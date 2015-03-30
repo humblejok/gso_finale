@@ -23,16 +23,18 @@
 					<form id="edit_form_{{index}}" role="form" action="#" method="POST">{% csrf_token %}
 						<div id="optionBody"  class="modal-body">
 							<div class="row">&nbsp;</div>
-							{% for entry in data.data %}
+							{% for entry in custom_fields %}
 							{% with current_field=custom_fields|get_dict_key:entry %}
 							<div class="form-group">
 								<label for="{{entry}}">{% if labels|get_dict_key:entry %}{{labels|get_dict_key:entry}}{% else %}{{entry}}{% endif %}</label>
 								{% if current_field|get_dict_key:'template' %}
 									<select id="{{entry}}" name="{{entry}}" class="form-control">
-									{% include current_field|get_dict_key:'template' %}
+									{% with value=custom_data|get_dict_key:entry %}
+										{% include current_field|get_dict_key:'template' %}
+									{% endwith %}
 									</select>
 								{% else %}
-								<input name="{{entry}}" type="text" class="form-control{% if current_field|get_dict_key:'type' == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{entry}}" placeholder="Enter a {{entry}}" value=""/>
+								<input name="{{entry}}" type="text" class="form-control{% if current_field|get_dict_key:'type' == 'FIELD_TYPE_DATE' %} date-form-field{% endif %}" id="{{entry}}" placeholder="Enter a {{entry}}" value="{{custom_data|get_dict_key:entry}}"/>
 								{% endif %}
 							</div>
 							{% endwith %}

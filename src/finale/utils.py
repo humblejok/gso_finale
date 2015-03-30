@@ -28,18 +28,29 @@ def to_bloomberg_code(code, terminal=False):
     else:
         return code
 
+def get_effective_instance(container):
+    if container!=None:
+        effective_class_name = Attributes.objects.get(identifier=container.type.identifier + '_CLASS', active=True).name
+        effective_class = classes.my_class_import(effective_class_name)
+        effective_container = effective_class.objects.get(id=container.id)
+        return effective_container
+    else:
+        return None
+
 def get_bloomberg_provider():
     bloomberg_company = CompanyContainer.objects.get(name='Bloomberg LP')
     data_provider = Attributes.objects.get(identifier='SCR_DP', active=True)
-    
-    if not RelatedCompany.objects.filter(company=bloomberg_company, role=data_provider).exists():
+    all_bloomberg_providers = RelatedCompany.objects.filter(company=bloomberg_company, role=data_provider)
+    if not all_bloomberg_providers.exists():
         LOGGER.info("Creating Bloomberg LP as a data providing company.")
         bloomberg_provider = RelatedCompany()
         bloomberg_provider.company = bloomberg_company
         bloomberg_provider.role = data_provider
         bloomberg_provider.save()
-    else:
-        bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company, role=data_provider)
+    elif len(all_bloomberg_providers)>1:
+        for index in range(1, len(all_bloomberg_providers)):
+            all_bloomberg_providers[index].delete()
+    bloomberg_provider = RelatedCompany.objects.get(company=bloomberg_company, role=data_provider)
     return bloomberg_provider
 
 def get_universe_from_datasource(datasource):
@@ -74,19 +85,24 @@ def get_model_foreign_field_class(model_class, field):
     else:
         return None    
     
-def complete_custom_fields_information(container_type):
+def complete_custom_fields_information(container_type, filtering_fields=None):
     all_data = {}
-    all_custom_fields = setup_content.get_container_type_fields()[container_type]
-    all_fields_information = setup_content.get_object_type_fields()
-    for field in all_custom_fields:
-        for group in all_fields_information[field['type']]:
-            if group['name']==field['name']:
-                group_name = group['name'].replace(' ','-')
-                for field_info in group['fields']:
-                    field_name = field_info['name'].replace(' ','-')
-                    if field_info['type']=='FIELD_TYPE_CHOICE':
-                        field_info['template'] = 'statics/' + field_info['attribute'] + '_en.html'
-                    all_data[group_name + '.' + field_name] = field_info
+   
+    all_custom_fields = setup_content.get_container_type_fields()
+    if all_custom_fields.has_key(container_type):
+        all_fields_information = setup_content.get_object_type_fields()
+        for field in all_custom_fields[container_type]:
+            if all_fields_information.has_key(field['type']):
+                for group in all_fields_information[field['type']]:
+                    if group['name']==field['name']:
+                        group_name = group['name'].replace(' ','-')
+                        for field_info in group['fields']:
+                            field_name = field_info['name'].replace(' ','-')
+                            full_name = group_name + '.' + field_name
+                            if field_info['type']=='FIELD_TYPE_CHOICE':
+                                field_info['template'] = 'statics/' + field_info['attribute'] + '_en.html'
+                            if filtering_fields==None or full_name in filtering_fields:
+                                all_data[full_name] = field_info
     return all_data
 
 def complete_fields_information(model_class, information):

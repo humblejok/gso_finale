@@ -1,6 +1,6 @@
 {% load universe_tags %}
 <div class="row"><div class="col-lg-10"><h4>{{title}}</h4></div><button type="button" class="btn btn-default col-lg-1 text-center" aria-label="Edit information" data-toggle="modal" data-target="#modal_define_{{index}}"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></button></div>
 {% for field in fields %}
-	<div class="row"><div class="col-lg-5 text-left"><strong>{% if labels|get_dict_key:field %}{{labels|get_dict_key:field}}{% else %}{{field}}{% endif %}</strong></div><div class="col-lg-7 text-left">{{custom_data|get_dict_key:field}}</div></div>
+	<div class="row"><div class="col-lg-5 text-left"><strong>{% if labels|get_dict_key:field %}{{labels|get_dict_key:field}}{% else %}{{field}}{% endif %}</strong></div><div class="col-lg-7 text-left">{% if fields|get_dict_key:field|get_dict_key:'type' == 'FIELD_TYPE_CHOICE' %}{{custom_data|get_dict_key:field|get_dict_key:'name'}}{% else %}{{custom_data|get_dict_key:field}}{% endif %}</div></div>
 {% endfor %}
 </table>

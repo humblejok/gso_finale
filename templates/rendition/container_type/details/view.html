@@ -136,7 +136,7 @@
 		</div>
 	{% for index in layout|get_dict_key:"data" %}
 		{% with template_name=layout|get_dict_key:"data"|get_dict_key:index|get_dict_key:"type" %}
-			{% include 'rendition/container_type/details/edition/'|add:template_name|add:".html" with index=index complete_fields=complete_fields custom_fields=custom_fields data=layout|get_dict_key:"data"|get_dict_key:index labels=labels container=container %}
+			{% include 'rendition/container_type/details/edition/'|add:template_name|add:".html" with index=index complete_fields=complete_fields custom_fields=custom_fields data=layout|get_dict_key:"data"|get_dict_key:index labels=labels container=container custom_data=custom_data %}
 		{% endwith %}
 	{% endfor %}
 

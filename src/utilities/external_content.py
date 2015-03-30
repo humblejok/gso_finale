@@ -15,7 +15,7 @@ from universe.models import SecurityContainer, Attributes, BloombergTrackContain
     RelatedCompany
 
 from finale.utils import get_bloomberg_provider, get_universe_from_datasource,\
-    to_bloomberg_code
+    to_bloomberg_code, get_effective_instance
 from finale.threaded import bloomberg_history_query
 from utilities.track_content import set_track_content
 from seq_common.utils.dates import epoch_time
@@ -35,7 +35,7 @@ custom = client.custom
 
 
 QUERIES = { 'guardian': {'securities': 
-                            {'query': "select * from tit where cod_tiptit not like 'A%%' and cod_tiptit not like 'C%%' and cod_tiptit not in ('Z300', 'ZZZZ') and des_tit<>'N/D' order by des_tit",
+                            {'query': "select * from tit where (cod_tiptit not like 'A%%' OR cod_tiptit='A250') and cod_tiptit not like 'C%%' and cod_tiptit not in ('Z300', 'ZZZZ') and des_tit<>'N/D' order by des_tit",
                              'group_by':['cod_tit','cod_isin', 'cod_bloomberg'], 
                              'name': 'des_tit', 
                              'short_name': 'des_tit_bre',
@@ -258,6 +258,8 @@ def import_external_data(data_source, data_type):
     for result in results:
         # Clean the data        
         new_entry = convert_to_mongo(result)
+        # LOGGER.info('Removing entries with name '  + new_entry[QUERIES[data_source][data_type]['name']])
+        # SecurityContainer.objects.filter(name=new_entry[QUERIES[data_source][data_type]['name']]).delete()
         for group_id in group_by:
             if new_entry[group_id]!=None and new_entry[group_id]!='':
                 # LOADING INTO MONGO
@@ -323,6 +325,9 @@ def import_external_data(data_source, data_type):
                 else:
                     LOGGER.info("Security with " + data_source + " id [" + str(result[group_id]) + "] already exists.")
                     security = security[0]
+                    if not security.associated_companies.filter(role__identifier='SCR_DP').exists():
+                        security.associated_companies.add(bloomberg_provider)
+                        security.save()
                 security.update_alias(external_alias, result[group_id], additional, external_append)
                 security.currency = currency
                 security.frequency = daily
@@ -344,6 +349,7 @@ def import_external_data(data_source, data_type):
         
         all_containers = {}
         for member in universe.members.all():
+            member = get_effective_instance(member)
             if not all_containers.has_key(member.type.identifier):
                 all_containers[member.type.identifier] = []
             try:

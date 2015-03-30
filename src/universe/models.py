@@ -1162,28 +1162,39 @@ class RelatedCompany(CoreModel):
     
     @staticmethod
     def retrieve_or_create(parent, source, key, value):
-        translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
-        if translation.exists():
-            translation = translation[0].short_name
+        if parent!='web':
+            translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
+            if translation.exists():
+                translation = translation[0].short_name
+            else:
+                translation = key
+            working_value = value
         else:
-            translation = key
-        company = CompanyContainer.objects.filter(name=value)
+            translation = value['role']
+            working_value = value['company']
+            
+        company = CompanyContainer.objects.filter(name=working_value)
         if company.exists():
             company = company[0]
         else:
             company = CompanyContainer()
-            company.name = value
+            company.name = working_value
             company.short_name = 'Company...'
             tbv = Attributes.objects.get(active=True, type='status', identifier='STATUS_TO_BE_VALIDATED')
             company.status = tbv
             company.type = Attributes.objects.get(active=True, type='container_type', identifier='CONT_COMPANY')
             company.save()
-            
-        new_relation = RelatedCompany()        
-        new_relation.role = Attributes.objects.get(Q(active=True), Q(type='security_company_role'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
-        new_relation.company = company
-        new_relation.save()
-        return new_relation
+        role = Attributes.objects.get(Q(active=True), Q(type='security_company_role'), Q(identifier=translation) | Q(name=translation) | Q(short_name=translation))
+        relation = RelatedCompany.objects.filter(company__id=company.id, role__id=role.id)
+        if relation.exists():
+            return relation[0]
+        else:
+            new_relation = RelatedCompany()        
+            new_relation.role = role
+            new_relation.company = company
+            new_relation.save()
+            return new_relation
+
 
 class RelatedThird(CoreModel):
     third = models.ForeignKey(PersonContainer)

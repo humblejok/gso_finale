@@ -9,6 +9,7 @@ from utilities.track_content import get_track_content_display, get_track_content
 import logging
 from finale import threaded
 from datetime import datetime as dt
+from utilities.security_content import get_price_divisor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def get_track(security, track_info):
             status__id=final_status.id)
     return track[0] if track.exists() else None
 
-def get_main_track_content(security, ascending = True,  display = False):
+def get_main_track_content(security, ascending = True,  display = False, divisor = 1.0):
     nav_value = Attributes.objects.get(identifier='NUM_TYPE_NAV', active=True)
     final_status = Attributes.objects.get(identifier='NUM_STATUS_FINAL', active=True)
     official_type = Attributes.objects.get(identifier='PRICE_TYPE_OFFICIAL', active=True)
@@ -64,7 +65,7 @@ def get_main_track_content(security, ascending = True,  display = False):
                 frequency__id=security.frequency.id,
                 frequency_reference=security.frequency_reference,
                 status__id=final_status.id)
-            return get_track_content_display(track, ascending, False) if display else get_track_content(track, ascending)
+            return get_track_content_display(track, ascending, False) if display else get_track_content(track, ascending, divisor)
         except:
             LOGGER.warn("No track found for container [" + str(security.id) + "]")
     return None
@@ -83,13 +84,13 @@ def get_closest_value(track_content, value_date):
 
 def get_exchange_rate(source_currency, destination_currency):
     currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
-    if not currency.exists():
-        threaded.bloomberg_data_query('NO_NEED', [source_currency + destination_currency + ' Curncy'], True)
-    currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)
     if currency.exists():
-        return get_main_track_content(currency[0])
+        currency = currency[0]
     else:
-        return None
+        threaded.bloomberg_data_query('NO_NEED', [source_currency + destination_currency + ' Curncy'], True)
+        currency = SecurityContainer.objects.get(name__startswith=source_currency + destination_currency)
+    divisor = get_price_divisor(currency)
+    return get_main_track_content(currency, True, False, divisor)
 
 def get_exchange_rate_price(source_currency, destination_currency, value_date):
     currency = SecurityContainer.objects.filter(name__startswith=source_currency + destination_currency)

@@ -17,7 +17,7 @@ from utilities import valuation_content
 from calendar import monthrange
 from utilities.track_token import get_track
 from utilities.track_content import set_track_content
-from utilities.operations import PRICE_DIVISOR
+from utilities.security_content import get_price_divisor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -239,8 +239,9 @@ class NativeValuationsComputer():
             if current_positions!=None:
                 for position in current_positions:
                     if position not in ['increase', 'decrease', 'increase_fop', 'decrease_fop']:
+                        LOGGER.info("Operation on security with id [" + str(position) + "]")
                         security = SecurityContainer.objects.get(id=position)
-                        divisor = PRICE_DIVISOR[security.type.identifier] if PRICE_DIVISOR.has_key(security.type.identifier) else 1.0
+                        divisor = get_price_divisor(security)
                         amount = current_positions[position]['total'] * current_positions[position]['price'] / divisor
                         amount_portfolio = current_positions[position]['total'] * current_positions[position]['price_pf'] / divisor
                         if not valuation[key_date]['invested'].has_key(security.currency.short_name):

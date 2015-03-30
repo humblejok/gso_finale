@@ -12,13 +12,13 @@ LOGGER = logging.getLogger(__name__)
 
 client = MongoClient(MONGO_URL)
 
-def get_track_content(track, ascending = True):
+def get_track_content(track, ascending = True, divisor = 1.0):
     LOGGER.info('Loading track content')
     container_id = 'trackscontainer_' + str(track.effective_container_id)
     track_id = 'track_' + str(track.id)
     raw_values = client[container_id][track_id].find().sort('_id',1 if ascending else -1)
     LOGGER.info('Track content loaded from ' + container_id + '.' + track_id + ' with ' + str(client[container_id][track_id].count()) + ' elements.')
-    return [{'date':from_epoch(value[u'_id']), 'value': value[u'value']} for value in raw_values]
+    return [{'date':from_epoch(value[u'_id']), 'value': value[u'value']/divisor} for value in raw_values]
 
 def get_track_content_display(track, ascending = True, intraday = False):
     content = get_track_content(track, ascending)

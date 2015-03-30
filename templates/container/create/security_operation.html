@@ -13,6 +13,8 @@
 		var container = {{container_json|safe}};
 		var emptyRow = "<tr align='center' class='row_%%index%%'><td align='left' colspan=7><input type='hidden' id='securityId_%%index%%' name='securityId_%%index%%' value=''><button class='btn btn-default' onclick='selectSecurity(%%index%%)'><span class='glyphicon glyphicon-search'></span></button>&nbsp;<span id='securityName_%%index%%'>&nbsp;<span></td><td><select class='form-control no-enter' id='operationType_%%index%%' name='operationType_%%index%%'></select></td><td><input id='operationQty_%%index%%' name='operationQty_%%index%%' class='form-control' typte='text' placeholder='Quantity' value='0' align='center'></input></td><td><input id='operationPrice_%%index%%' name='operationPrice_%%index%%' class='form-control' typte='text' placeholder='Buy price' value='0' align='center'></input></td><td><input id='operationFees_%%index%%' name='operationFees_%%index%%' class='form-control' typte='text' placeholder='Fees' value='0' align='center'></input></td><td><input id='operationTaxes_%%index%%' name='operationTaxes_%%index%%' class='form-control' typte='text' placeholder='Taxes' value='0' align='center'></input></td></tr><tr class='row_%%index%%'><td colspan=2>Operation date</td><td><input name='operationDate_%%index%%' type='text' class='form-control date-form-field' id='operationDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td colspan=2>Value date</td><td colspan=2><input name='valueDate_%%index%%' type='text' class='form-control date-form-field' id='valueDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td colspan=2>Accounting date</td><td colspan=2><input name='accountingDate_%%index%%' type='text' class='form-control date-form-field' id='accountingDate_%%index%%' placeholder='Enter a date' value='' align='center'/></td><td><button class='btn btn-danger' onclick='removeRow(%%index%%)'><span class='glyphicon glyphicon-remove'></span> Remove</button></td></tr>";
 
+		var otherPortfolioIds = [];
+
 		function onCallError(e) {
 			alert(e.status);
 		}
@@ -39,9 +41,29 @@
 			$("#validationButton").prop("disabled",valid?null:"disabled");
 		}
 
+		function onSubComputeSuccess() {
+			
+		}
+
 		function onComputeSuccess(event) {
 			$("#backgroundProgress").addClass("invisible");
 			setEnabled(true);
+
+			$.each(otherPortfolioIds, function(index, value) {
+				var computeForm = new FormData();
+				computeForm.append('container_id', value);
+				computeForm.append('container_type', '{{container.type.identifier}}');
+				$.ajax({
+					url: '/container_compute_accounts_statuses.html',
+					type: 'POST',
+					data: computeForm,
+					processData: false,
+					contentType: false,
+					success: onSubComputeSuccess,
+					error: onComputeError
+				});
+			});
+
 		}
 
 		function onComputeError(event) {
@@ -132,6 +154,9 @@
 
 		function updateOperationsStatus(event) {
 			waiting = waiting - 1;
+			if ($.inArray(event.result, otherPortfolioIds)==-1) {
+				otherPortfolioIds.push(event.result);
+			}
 			if (waiting==0) {
 				computePortfolioStatuses();
 			}
@@ -139,7 +164,10 @@
 
 		function validate() {
 			$("#backgroundProgress").removeClass("invisible");
+			otherPortfolioIds = [];
+
 			setEnabled(false);
+
 			for (var index = 0;index<currentIndex; index++) {
 				if ($(".row_" +index).length) {
 					waiting = waiting + 1;
