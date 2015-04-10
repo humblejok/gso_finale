@@ -1,0 +1,134 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}{{operation.name}}{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+{% endblock %}
+{% block headeroptions %}
+	<script>
+		function operationRemoved() {
+			alert("Operation deleted");
+		}
+
+		function onCallError() {
+			alert("Operation deletion failed");
+		}
+
+		function removeOperation() {
+			var removeForm = new FormData();
+			removeForm.append('container_id',urlParams['container_id']);
+			removeForm.append('container_type',urlParams['container_type']);
+			removeForm.append('operation_id','{{operation.id}}');
+			$.ajax({
+				url: '/container_operation_remove.html',
+				type: 'POST',
+				data: removeForm,
+				processData: false,
+				contentType: false,
+				success: operationRemoved,
+				error: onCallError
+			});
+		}
+	</script>
+{% endblock %}
+{% block content %}
+{% with perfs=container.frequency|get_frequency_perfs %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1>{{container.name}}
+					<div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							{% with template_name='statics/'|add:container.type.identifier|add:'_view_menus_en.html' %}
+								{% include template_name %}
+							{% endwith %}
+						</ul>
+					</div>
+				</h1>
+	  			<p class="lead">{{operation.name}} with value date {{operation.value_date|date:'Y-m-d'}}<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<div id="main-content" class="row">
+			<form class="form-horizontal" action="/container_operation_update.html" method="POST">{% csrf_token %}
+				<input type='hidden' id='container_id' name='container_id' value='{{container.id}}'>
+				<input type='hidden' id='container_type' name='container_type' value='{{container.type.identifier}}'>				
+				<input type='hidden' id='operation_id' name='operation_id' value='{{operation.id}}'>
+				<div class="form-group">
+					<label for="name" class="col-lg-1">Name</label>
+					<div class="col-lg-11">
+						<input type="text" class="form-control" id="name" name="name" placeholder="Enter name" value="{{operation.name}}">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="short_name" class="col-lg-1">Short name</label>
+					<div class="col-lg-11">
+						<input type="text" class="form-control" id="short_name" name="short_name" placeholder="Enter short name" value="{{operation.short_name}}">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="operation_type" class="col-lg-1">Type</label>
+					<div class="col-lg-5">
+						<select id="operation_type" name="operation_type" class='form-control'>{% with value=operation.operation_type.identifier %}{% include 'statics/operation_type_en.html' %}{% endwith %}</select>
+					</div>
+					<label for="status" class="col-lg-1">Status</label>
+					<div class="col-lg-5">
+						<select id="status" name="status" class='form-control'>{% with value=operation.status.identifier %}{% include 'statics/operation_status_en.html' %}{% endwith %}</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="creation_date" class="col-lg-1">Creation date</label>
+					<div class="col-lg-3">
+						<input type="text" class="form-control date-form-field" id="creation_date" name="creation_date" placeholder="Enter creation date" value="{{operation.creation_date|date:'Y-m-d'}}">
+					</div>
+					<label for="operation_date" class="col-lg-1">Operation date</label>
+					<div class="col-lg-3">
+						<input type="text" class="form-control date-form-field" id="operation_date" name="operation_date" placeholder="Enter operation date" value="{{operation.operation_date|date:'Y-m-d'}}">
+					</div>
+					<label for="value_date" class="col-lg-1">Value date</label>
+					<div class="col-lg-3">
+						<input type="text" class="form-control date-form-field" id="value_date" name="value_date" placeholder="Enter value date" value="{{operation.value_date|date:'Y-m-d'}}">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="source" class="col-lg-1">Source</label>
+					<div class="col-lg-3">
+						<input type="text" class="form-control" id="source" name="source" placeholder="Enter source" value="{{operation.source.name}}">
+					</div>
+					<label for="target" class="col-lg-1">Target</label>
+					<div class="col-lg-3">
+						<input type="text" class="form-control" id="target" name="target" placeholder="Enter target" value="{{operation.target.name}}">
+					</div>
+					<label for="repository" class="col-lg-1">Repository</label>
+					<div class="col-lg-3">
+						<input type="text" class="form-control" id="repository" name="repository" placeholder="Enter repository" value="{{operation.repository.name}}">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="amount" class="col-lg-1">Amount</label>
+					<div class="col-lg-2">
+						<input type="text" class="form-control" id="amount" name="amount" placeholder="Enter amount" value="{{operation.amount}}">
+					</div>
+					<label for="quantity" class="col-lg-1">Quantity</label>
+					<div class="col-lg-2">
+						<input type="text" class="form-control" id="quantity" name="quantity" placeholder="Enter quantity" value="{{operation.quantity}}">
+					</div>
+					<label for="price" class="col-lg-1">Price</label>
+					<div class="col-lg-2">
+						<input type="text" class="form-control" id="price" name="price" placeholder="Enter price" value="{{operation.price}}">
+					</div>
+					<label for="spot" class="col-lg-1">Spot</label>
+					<div class="col-lg-2">
+						<input type="text" class="form-control" id="spot" name="spot" placeholder="Enter spot" value="{{operation.spot}}">
+					</div>
+				</div>
+				<div class="form-group">
+					<div class="col-lg-offset-8 col-lg-4">
+						<button type="button" role="button" class="btn btn-danger col-lg-6" onclick="removeOperation()">Remove</button>
+						<button type="submit" class="btn btn-success col-lg-6">Update</button>
+					</div>
+				</div>
+			</form>
+		</div>
+{% endwith %}
+{% endblock %}

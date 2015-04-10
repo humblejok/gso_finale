@@ -366,8 +366,12 @@ def filters(request):
     return HttpResponse('{"result": ' + results + ', "status_message": "Deleted"}',"json")
 
 def compute_accounts_statuses(request):
-    container_id = request.POST['container_id']
-    container_type = request.POST['container_type']
+    if len(request.GET.keys())>0:
+        container_id = request.GET['container_id']
+        container_type = request.GET['container_type']
+    else:
+        container_id = request.POST['container_id']
+        container_type = request.POST['container_type']
     container_class = container_type + '_CLASS'
     # TODO: Handle error
     effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
@@ -524,6 +528,23 @@ def security_operation(request):
     
     return render(request,'container/create/security_operation.html', context)
 
+def operation_remove(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id']
+    operation_id = request.POST['operation_id']
+    container_type = request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    operation = FinancialOperation.objects.get(id=operation_id)
+    FinancialOperation.objects.filter(associated_operation__id=operation_id).delete()
+    operation.delete()
+    return HttpResponse('{"result": "Operation removed", "status_message": "Removed"}',"json")
+
 def security_operation_create(request):
     user = User.objects.get(id=request.user.id)
     
@@ -560,6 +581,7 @@ def security_operation_create(request):
                }
     operations.create_security_movement(portfolio, source, target, details, None)
     custom_data = get_security_information(security, True)
+    associated_portfolio = None
     if custom_data!=None and custom_data.has_key('SEQUOIA-Flags.SEQUOIA-Product') and custom_data['SEQUOIA-Flags.SEQUOIA-Product']=='STRICT_BOOLEAN_TRUE':
         finale_alias = security.aliases.filter(alias_type__identifier='ALIAS_FINALE')
         if finale_alias.exists():
@@ -567,7 +589,7 @@ def security_operation_create(request):
             operation_type = 'OPE_TYPE_SUB' if operation_type.find('SELL')==-1 else 'OPE_TYPE_RED'
             description = portfolio.name + (' bought ' if operation_type=='OPE_TYPE_SUB' else ' sold ') + str(operation_quantity) + ' @ ' + str(operation_price)
             operations.create_investment(associated_portfolio, None, target, details, description)
-    return HttpResponse('{"result": ' + str(associated_portfolio.id) + ', "status_message": "Saved"}',"json")
+    return HttpResponse('{"result": ' + (str(associated_portfolio.id) if associated_portfolio!=None else '') + ', "status_message": "Saved"}',"json")
 
 def add_price(request):
     # TODO: Check user
@@ -721,6 +743,48 @@ def accounts(request, view_extension):
                'operations': sorted_operations,
                'dates': accounts_dates, 'date': working_date}
     return render(request,'rendition/container_type/details/accounts.' + view_extension, context)
+
+def operation_update(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id']
+    operation_id = request.POST['operation_id']
+    container_type = request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    operation = FinancialOperation.objects.get(id=operation_id)
+    
+    # TODO: Implement full
+    operation.amount = request.POST['amount'] if request.POST['amount']!=None and request.POST['amount']!='None' and request.POST['amount']!='' else None
+    operation.price = request.POST['price'] if request.POST['price']!=None and request.POST['price']!='None' and request.POST['price']!='' else None
+    operation.quantity = request.POST['quantity'] if request.POST['quantity']!=None and request.POST['quantity']!='None' and request.POST['quantity']!='' else None
+    operation.spot = request.POST['spot'] if request.POST['spot']!=None and request.POST['spot']!='None' and request.POST['spot']!='' else None
+    operation.value_date = request.POST['value_date'] if request.POST['value_date']!=None and request.POST['value_date']!='None' and request.POST['value_date']!='' else None
+    operation.save()
+    
+    context = {'container': container, 'operation': operation}
+    return redirect('/container_operation.html?container_type=' + str(container_type) + '&container_id=' + str(container_id) + '&operation_id=' + str(operation_id))
+
+def operation(request, view_extension):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.GET['container_id']
+    operation_id = request.GET['operation_id']
+    container_type = request.GET['container_type']
+    container_class = container_type + '_CLASS'
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+    
+    container = effective_class.objects.get(id=container_id)
+    operation = FinancialOperation.objects.get(id=operation_id)
+    
+    context = {'container': container, 'operation': operation}
+    return render(request,'rendition/container_type/details/operation.' + view_extension, context)
 
 def valuation(request, view_extension):
     # TODO: Check user

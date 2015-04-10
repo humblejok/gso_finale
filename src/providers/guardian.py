@@ -253,7 +253,7 @@ def import_transactions(container):
                 if security.exists():
                     source = None
                     coupon_unit = transaction['rateo'] if transaction['rateo']!=None and transaction['rateo']!=0.0 else (transaction['ctv_tit_dr'] if transaction['ctv_tit_dr']!=None else 0.0)/transaction['qta']
-                    target = {'security': security[0], 'quantity': transaction['qta'], 'price': coupon_unit}
+                    target = {'security': security[0], 'quantity': transaction['qta'], 'price': coupon_unit * 100.0}
                     details = {'operation_date': transaction['data_ins'], 'trade_date': transaction['data_ope'], 'value_date': transaction['data_val'],
                                'spot_rate': transaction['cambiom'] if transaction.has_key('cambiom') and transaction['cambiom']!=None else ((1.0/transaction['cambiod']) if transaction.has_key('cambiod') and transaction['cambiod']!=None else 1.0),
                                'impact_pnl': True, 'currency': transaction['cod_div_reg'], 'account_id': transaction['cod_dep_liq'],

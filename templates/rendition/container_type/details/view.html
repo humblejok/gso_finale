@@ -85,7 +85,6 @@
 		}
 
 		function updateContainer(index, custom) {
-			console.log(editedData[index]);
 			var updateForm = new FormData();
 			updateForm.append('container_data', JSON.stringify(editedData[index]));
 			updateForm.append('container_id',urlParams['container_id']);

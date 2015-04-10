@@ -54,7 +54,7 @@
 				computeForm.append('container_id', value);
 				computeForm.append('container_type', '{{container.type.identifier}}');
 				$.ajax({
-					url: '/container_compute_accounts_statuses.html',
+					url: '/container_accounts_compute.html',
 					type: 'POST',
 					data: computeForm,
 					processData: false,
@@ -76,7 +76,7 @@
 			computeForm.append('container_id', '{{container.id}}');
 			computeForm.append('container_type', '{{container.type.identifier}}');
 			$.ajax({
-				url: '/container_compute_accounts_statuses.html',
+				url: '/container_accounts_compute.html',
 				type: 'POST',
 				data: computeForm,
 				processData: false,

@@ -110,7 +110,7 @@ def create_security_movement(container, source, target, details, label):
     operation.repository = get_account(container, details, security_account_type)
     operation.quantity = target['quantity']
     used_price = target['price']
-    if not details['impact_pnl'] and (used_price==None or used_price!=0.0):
+    if not details['impact_pnl'] and (used_price==None or used_price==0.0):
         track = get_main_track_content(target['security'])
         value = get_closest_value(track, dt.strptime(details['trade_date'], '%Y-%m-%d'))
         if value==None:
@@ -484,14 +484,14 @@ def compute_account_details(portfolio, operation, spots, accounts_history, curre
         if value!=None:
             spot_pf = value['value']
     if is_source:
-        multiplier = -1.0 if target_used or operation.operation_type.identifier in ['OPE_TYPE_BUY'] else 1.0
+        multiplier = -1.0 if target_used or operation.operation_type.identifier in ['OPE_TYPE_BUY', 'OPE_TYPE_BUY_FOP'] else 1.0
     else:
         multiplier = operation.spot if operation.spot!=None else 1.0
     computed_amount = operation.amount * multiplier
     accounts_history[current_account_key][key_date]['assets'] += computed_amount
     accounts_history[current_account_key][key_date]['assets_pf'] = accounts_history[current_account_key][key_date]['assets'] * spot_pf
     accounts_history[current_account_key][key_date]['spot_pf'] = spot_pf
-    if operation.operation_type.identifier not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL']:
+    if operation.operation_type.identifier not in ['OPE_TYPE_BUY', 'OPE_TYPE_SELL', 'OPE_TYPE_BUY_FOP', 'OPE_TYPE_SELL_FOP']:
         operation.source = get_effective_instance(operation.source)
         operation.target = get_effective_instance(operation.target)
         if (operation.source==None or (operation.source.type.identifier=='CONT_ACCOUNT' and not operation.source.account_type.identifier=='ACC_FORWARD')) and (operation.target==None or (operation.target.type.identifier=='CONT_ACCOUNT' and not operation.target.account_type.identifier=='ACC_FORWARD')):
