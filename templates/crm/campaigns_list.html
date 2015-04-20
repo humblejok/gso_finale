@@ -1,0 +1,31 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}CRM - Campaigns{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+				gridster = $(".gridster ul").gridster({
+					widget_margins: [10, 10],
+					widget_base_dimensions: [340, 340],
+					resize: {
+						enabled: false,
+					}
+				}).data('gridster').disable();
+				fillContent();
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">Mass emailing campaigns</h1>
+	  			<p class="lead">The marketing department launched {{campaigns|length}} mass emailing campaign{{campaigns|length|pluralize}}.<br/>
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<table class="table">
+			<tr><th>Campaign name</th><th>Date</th><th>Sent</th><th>Delivered</th><th>Opened</th><th>Imported</th></tr>
+			{% for campaign in campaigns %}
+			<tr><td>{{campaign.name}}</td><td>{{campaign.inception_date}}</td><td>{{campaign.submitted_count}}</td><td>{{campaign.delivered_count}}</td><td>{{campaign.opened_count}}</td><td><span class="glyphicon {% if campaign.imported == 0 %}glyphicon-remove{% else %}glyphicon-ok{% endif %}" aria-hidden="true"></span></td</tr>
+			{% endfor %}
+		</table>
+{% endblock %}

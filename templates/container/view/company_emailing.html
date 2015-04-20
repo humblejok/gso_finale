@@ -1,0 +1,20 @@
+{% load universe_tags %}
+{% for email in member.emails.all %}
+	{% if member.emails.all|length == 1 or email.address_type.identifier == 'EMAIL_CONTACT' %}
+		<tr id="row_{{member.id}}">
+			{% if universe|has_container_type:"CONT_COMPANY" %}<td>{{element.name}}</td>{% endif %}
+			<td>{{member.name}}</td>
+			<td>{{member.type.name}}</td>
+			<td><a href='mailto:{{email.email_address}}' class='{{email.id}}'>{{email.email_address}}</a></td>
+			<td><center><input id="selection_{{member.id}}" class="mail-select" type="checkbox" checked value="{{member.id}}_{{email.id}}"></input></center></td>
+		</tr>
+	{% endif %}
+	{% empty %}
+		<tr id="row_{{member.id}}">
+			{% if universe|has_container_type:"CONT_COMPANY" %}<td>{{element.name}}</td>{% endif %}
+			<td>{{member.name}}</td>
+			<td>{{member.type.name}}</td>
+			<td>-</td>
+			<td><center><input type="checkbox" disabled></center></td>
+		</tr>
+{% endfor %}

@@ -1,0 +1,31 @@
+{% extends "finale_base.html" %}
+{% load universe_tags %}
+{% block title %}CRM - Campaigns{% endblock %}
+{% block readyoptions %}
+				$(".btn").not('#comment').tooltip();
+				gridster = $(".gridster ul").gridster({
+					widget_margins: [10, 10],
+					widget_base_dimensions: [340, 340],
+					resize: {
+						enabled: false,
+					}
+				}).data('gridster').disable();
+				fillContent();
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+{% block content %}
+		<div class="row">
+			<div class="col-lg-11">
+				<h1 class="">{{campaign.name}}</h1>
+	  			<p class="lead">It was launched on {{campaign.created_at}} and generated {{campaign.submitted_count}} message{{campaign.submitted_count|pluralize}}.<br/>{{campaign_events.0}}
+			</div>
+		</div>
+		<div class="row">&nbsp;</div>
+		<table class="table">
+			<tr><th>Campaign name</th><th>Date</th><th>Sent</th><th>Delivered</th><th>Opened</th><th>Imported</th></tr>
+			{% for campaign in campaigns.items %}
+			<tr><td><a href='/crm_get_campaign_details.html?campaign_id={{campaign.id}}'>{{campaign.name}}</a></td><td>{{campaign.created_at}}</td><td>{{campaign.submitted_count}}</td><td>{{campaign.delivered_count}}</td><td>{{campaign.opened_count}}</td><td><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></td></tr>
+			{% endfor %}
+		</table>
+{% endblock %}

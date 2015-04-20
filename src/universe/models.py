@@ -876,7 +876,7 @@ class Alias(CoreModel):
 
     class Meta:
         ordering = ['alias_value']
-    
+
 class Container(CoreModel):
     name = models.CharField(max_length=1024)
     short_name = models.CharField(max_length=512)
@@ -937,6 +937,20 @@ class Container(CoreModel):
 
     class Meta:
         ordering = ['name']
+
+class MailCampaignContainer(Container):
+    owner = models.ForeignKey(User, related_name='mail_campaign_owner_rel')
+    description = models.TextField(null=True, blank=True)
+    external_id = models.CharField(max_length=512)
+    imported = models.BooleanField(default=False)
+    clicked_count = models.IntegerField(default=0)
+    opened_count = models.IntegerField(default=0)
+    submitted_count = models.IntegerField(default=0)
+    unsubscribed_count = models.IntegerField(default=0)
+    bounced_count = models.IntegerField(default=0)
+    complained_count = models.IntegerField(default=0)
+    dropped_count = models.IntegerField(default=0)
+    delivered_count = models.IntegerField(default=0)
 
 class Universe(Container):
     public = models.BooleanField()

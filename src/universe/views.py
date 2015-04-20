@@ -672,6 +672,7 @@ def universe_mass_mail_execute(request):
     user = User.objects.get(id=request.user.id)
     universe_id = request.POST['universe_id']
     mail_subject = request.POST['mail_subject']
+    mail_campaign_id = request.POST['mail_campaign_id']
     mail_test = request.POST['mail_test']
     mail_content = request.POST['mail_content']
     mail_attachments = [os.path.join(WORKING_PATH, attachment) for attachment in eval(request.POST['mail_attachments'].replace('"',''))]
@@ -683,12 +684,15 @@ def universe_mass_mail_execute(request):
     addressees = []
     for mail_id in mail_ids:
         keys = mail_id.split("_")
-        person = PersonContainer.objects.get(id=keys[0])
+        try:
+            contact = PersonContainer.objects.get(id=keys[0])
+        except:
+            contact = CompanyContainer.objects.get(id=keys[0])
         email = Email.objects.get(id=keys[1])
         if email.email_address not in treated_addresses or mail_test=='True':
-            addressees.append((person, email if mail_test!='True' else email_test))
+            addressees.append((contact, email if mail_test!='True' else email_test))
         treated_addresses.append(email.email_address)
-    mailgun.send_message(mail_subject, mail_content, addressees, mail_attachments)
+    mailgun.send_message(mail_subject, mail_content, addressees, mail_attachments, mail_campaign_id)
 
     return HttpResponse('{"result": true, "status_message": "Mails sent"}',"json")
 

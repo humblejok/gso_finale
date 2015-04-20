@@ -87,17 +87,17 @@
 
 		$("#fieldsList").empty();
 
-		$.each(e.result, function(index, value) {
+		$.each(e.static_fields, function(index, value) {
 			currentList.push(index);
 		});
 		currentList.sort();
 		$.each(currentList, function(index, value) {
-			if (e.result[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
+			if (e.static_fields[value].type.lastIndexOf("FIELD_TYPE_", 0)===0) {
 				$("#fieldsList").append('<a class="list-group-item main-' + value + '" onclick="onFieldClick(\'' + value + '\')">' + value + '</a>');
 			} else {
 				$("#fieldsList").append('<a class="list-group-item multiple-master main-' + value + '" onclick="onForeignClick(\'' + value + '\')">' + value + '</a>');
 				var subCurrentList = [];
-				$.each(e.result[value].fields, function(index, value) {
+				$.each(e.static_fields[value].fields, function(index, value) {
 					subCurrentList.push(index);
 				});
 				subCurrentList.sort();

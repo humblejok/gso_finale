@@ -423,7 +423,16 @@ def get_securities_by_isin(data_source, isin):
     database = getattr(client, data_source)
     if data_source=='guardian':
         return database['securities'].find({'cod_isin':isin})
+
+def get_mailgun_data(campaign_id):
+    database = getattr(client, "mailgun")
+    return database.find({'_id': campaign_id})
     
+def set_mailgun_data(campaign_id, campaign_data):
+    database = getattr(client, "mailgun")
+    campaign_data['_id'] = campaign_id
+    database.update({'_id': campaign_id}, campaign_data, True)    
+ 
 def get_sequoia_map():
     results = custom.sequoia_map.find().sort("_id", -1)
     if results.count()>0:

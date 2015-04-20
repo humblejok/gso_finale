@@ -75,6 +75,7 @@
 				mailForm.append('mail_content', rtfEditor.Editor("getText"));
 				mailForm.append('mail_attachments', getSelectedFiles());
 				mailForm.append('mail_ids', getSelectedIds());
+				mailForm.append('mail_campaign_id', $("#campaign").val());
 				$.ajax({
 					url: '/universe_mass_mail_execute.html',
 					type: 'POST',
@@ -184,6 +185,8 @@
 						{% if element.type.identifier == 'CONT_COMPANY' %}
 							{% for member in element.members.all %}
 								{% include 'container/view/person_emailing.html' with member=member.person %}
+								{% empty %}
+								{% include 'container/view/company_emailing.html' with member=element %}
 							{% endfor %}
 						{% elif element.type.identifier == 'CONT_PERSON' %}
 							{% include 'container/view/person_emailing.html' with member=element %}
@@ -205,10 +208,20 @@
 								<label for="subject">Subject</label>
 								<input name="subject" type="text" class="form-control" id="subject" placeholder="Enter a subject" value=""/>
 							</div>
-							<div class="checkbox">
-								<label>
-  									<input id="testMode" name="testMode" type="checkbox" value="True"/> Test mode
-								</label>
+							<div class="row">
+								<div class="checkbox col-lg-3">
+									<label>
+	  									<input id="testMode" name="testMode" type="checkbox" value="True"/> Test mode
+									</label>
+								</div>
+								<div class="form-group col-lg-9">
+									<div class="col-lg-3">
+										<label for="campaign">Campaign identifier</label>
+									</div>
+									<div class="col-lg-8">
+										<input name="campaign" type="text" class="form-control" id="campaign" placeholder="Enter a MAILGUN campaign id" value=""/>
+									</div>
+								</div>
 							</div>
 							<div class="row">
 								<div class="col-lg-6">

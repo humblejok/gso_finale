@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 def import_crm_file(file_name):
     LOGGER.info("Loading data from " + file_name)
     workbook = load_workbook(file_name)
-    sheet = workbook.get_sheet_by_name('Investment managers prospect 20')
+    sheet = workbook.get_sheet_by_name('email list')
     row_index = 1
     # Reading header
     header = []
@@ -46,6 +46,9 @@ def import_crm_file(file_name):
     mobile_work_phone = Attributes.objects.get(active=True, type='phone_type', identifier='PHONE_MOB_WORK')
     land_work_phone = Attributes.objects.get(active=True, type='phone_type', identifier='PHONE_LAND_WORK')
     email_work = Attributes.objects.get(active=True, type='email_type', identifier='EMAIL_WORK')
+    email_contact = Attributes.objects.get(active=True, type='email_type', identifier='EMAIL_CONTACT')
+    
+    unknown_title = Attributes.objects.get(Q(identifier='CMR_UNKNOWN'), Q(type='company_member_role'), Q(active=True))
     
     row_index += 1
     
@@ -82,10 +85,17 @@ def import_crm_file(file_name):
     while row_index<=sheet.get_highest_row():
         LOGGER.info("Working on row:" + str(row_index))
         if sheet.cell(row = row_index, column=company_name_index).value==None or sheet.cell(row = row_index, column=company_name_index).value=='':
-            row_index += 1
-            continue
-        company_name = sheet.cell(row = row_index, column=company_name_index).value.strip()
-        company = CompanyContainer.objects.filter(Q(name=company_name) | Q(short_name=company_name))
+            person_first = sheet.cell(row = row_index, column=person_first_index).value.strip() if sheet.cell(row = row_index, column=person_first_index).value!=None and sheet.cell(row = row_index, column=person_first_index).value!='' else None
+            person_last = sheet.cell(row = row_index, column=person_last_index).value.strip().upper() if sheet.cell(row = row_index, column=person_last_index).value!=None and sheet.cell(row = row_index, column=person_last_index).value!='' else None
+            if person_first!=None and person_last!=None:
+                company_name = person_last + ' ' + person_first
+                company = CompanyContainer.objects.filter(Q(name=company_name) | Q(short_name=company_name))
+            else:
+                row_index += 1
+                continue
+        else:
+            company_name = sheet.cell(row = row_index, column=company_name_index).value.strip()
+            company = CompanyContainer.objects.filter(Q(name=company_name) | Q(short_name=company_name))
         
         is_active = sheet.cell(row = row_index, column=active_index).value.strip().upper()!='DEAD' if sheet.cell(row = row_index, column=active_index).value!=None else True
 
@@ -163,7 +173,8 @@ def import_crm_file(file_name):
         
         person_first = sheet.cell(row = row_index, column=person_first_index).value.strip() if sheet.cell(row = row_index, column=person_first_index).value!=None and sheet.cell(row = row_index, column=person_first_index).value!='' else None
         person_last = sheet.cell(row = row_index, column=person_last_index).value.strip().upper() if sheet.cell(row = row_index, column=person_last_index).value!=None and sheet.cell(row = row_index, column=person_last_index).value!='' else None
-        
+        if person_first!=None and person_last==None:
+            person_last = company_name
         if person_first!=None and person_last!=None:
             persons = PersonContainer.objects.filter(last_name=person_last, first_name=person_first)
             if not persons.exists():
@@ -191,17 +202,23 @@ def import_crm_file(file_name):
                 titles = sheet.cell(row = row_index, column=person_title_index).value.split('/')
                 for title in titles:
                     current_title = Attributes.objects.filter(Q(short_name__iexact=title.strip()) | Q(name__iexact=title.strip()), Q(type='company_member_role'), Q(active=True))
+                    LOGGER.info("Person " + person_last + ' ' + person_first + " is assigned as " + title + ".")
+                    member = CompanyMember()
+                    member.person = person
                     if current_title.exists():
-                        LOGGER.info("Person " + person_last + ' ' + person_first + " is assigned as " + title + ".")
-                        member = CompanyMember()
-                        member.person = person
                         member.role = current_title[0]
-                        member.save()
-                        company.members.add(member)
                     else:
                         LOGGER.warn("Title [" + title + "] doesn't exists please correct your data or add that role to the system." )
+                        member.role = unknown_title
+                    member.save()
+                    company.members.add(member)
             else:
                 LOGGER.warn("Person " + person_last + ' ' + person_first + " has no title within the company.")
+                member = CompanyMember()
+                member.person = person
+                member.role = unknown_title
+                member.save()
+                company.members.add(member)
                 
             if sheet.cell(row = row_index, column=person_mobile_phone_index).value!=None and sheet.cell(row = row_index, column=person_mobile_phone_index).value!='':
                 mobile = Phone()
@@ -224,6 +241,17 @@ def import_crm_file(file_name):
                 email.save()
                 person.emails.add(email)
                 person.save()
+        else:
+            if sheet.cell(row = row_index, column=person_email_index).value!=None and sheet.cell(row = row_index, column=person_email_index).value!='':
+                for email in company.emails.all():
+                    company.emails.remove(email)
+                    company.save()
+                    email.delete()
+                email = Email()
+                email.email_address = sheet.cell(row = row_index, column=person_email_index).value.strip()
+                email.address_type = email_contact
+                email.save()
+                company.emails.add(email)
         company.save()
         universe.members.add(company)
         if company_name not in treated_company:

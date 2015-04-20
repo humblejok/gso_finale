@@ -168,7 +168,7 @@
 		var currentList = [];
 		var preSelection = [];
 
-		allFields = e.result;
+		allFields = e.static_fields;
 
 		$("#selectedfieldsList").empty();
 		$("#selectedfieldsOptions").empty();
@@ -179,7 +179,7 @@
 
 		$("#fieldsList").empty();
 
-		$.each(e.result, function(index, value) {
+		$.each(e.static_fields, function(index, value) {
 			currentList.push(index);
 		});
 		currentList.sort();

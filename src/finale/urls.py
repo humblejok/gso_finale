@@ -98,6 +98,11 @@ urlpatterns = patterns('',
     url(r'^container_accounts_compute.html', 'universe.container.views.compute_accounts_statuses', name='container_compute_accounts_statuses'),
     url(r'^container_render_account_selection.html', 'universe.container.views.render_account_selection', name='container_render_account_selection'),
     url(r'^container_operation_remove.html', 'universe.container.views.operation_remove', name='container_operation_remove'),
+    url(r'^container_campaign_import.html', 'universe.crm.views.campaign_import', name='container_campaign_import'),
+    
+    # CRM views
+    url(r'^crm_get_campaigns.html', 'universe.crm.views.get_campaigns', name='crm_campaigns'),
+    # url(r'^crm_get_campaign_details.html', 'universe.crm.views.get_campaign_details', name='crm_get_campaign_details'),
     
     
     url(r'^track_end_date.html', 'universe.views.track_end_date', name='track_end_date'),
