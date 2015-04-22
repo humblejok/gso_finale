@@ -426,12 +426,12 @@ def get_securities_by_isin(data_source, isin):
 
 def get_mailgun_data(campaign_id):
     database = getattr(client, "mailgun")
-    return database.find({'_id': campaign_id})
+    return database['campaigns'].find_one({'_id': campaign_id})
     
 def set_mailgun_data(campaign_id, campaign_data):
     database = getattr(client, "mailgun")
     campaign_data['_id'] = campaign_id
-    database.update({'_id': campaign_id}, campaign_data, True)    
+    database['campaigns'].update({'_id': campaign_id}, campaign_data, True)    
  
 def get_sequoia_map():
     results = custom.sequoia_map.find().sort("_id", -1)

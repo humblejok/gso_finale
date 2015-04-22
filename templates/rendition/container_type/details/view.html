@@ -23,7 +23,7 @@
 		var gridster;
 
 		var editedData = {};
-
+		
 		function deleteItem(itemId, containerField) {
 			console.log(itemId);
 			var updateForm = new FormData();
@@ -57,20 +57,24 @@
 			gridster.add_widget.apply(gridster, [emptyWidget.replaceAll('%%index%%', index),layout.size_x, layout.size_y]);
 			if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_SINGLES") {
 				var rendition_url = '/container_render_singles_list.html';
-				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_fields": JSON.stringify(layoutInformation.data[index].data)}, function() {$(".btn").not('#comment').tooltip();});
+				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_fields": JSON.stringify(layoutInformation.data[index].data)}, function() {$(".btn").not('#comment').tooltip(); controlLoading(); });
 			} else if (layoutInformation.data[index].type=="LAYOUT_OBJECT_TYPE_LIST") {
 				var rendition_url = "/container_render_many_to_many.html";
-				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_field": layoutInformation.data[index].data[0], "rendition_width": (layout.size_x>1?"large":"small")}, function() { $(".btn").not('#comment').tooltip(); });
+				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_field": layoutInformation.data[index].data[0], "rendition_width": (layout.size_x>1?"large":"small")}, function() { $(".btn").not('#comment').tooltip(); controlLoading(); });
 			} else if (layoutInformation.data[index].type=="LAYOUT_HISTORY_CHART") {
 				var rendition_url = "/container_render_history_chart.html";
-				$("#zone_" + index).load(rendition_url, {"track_info": JSON.stringify(layoutInformation.data[index].data), "widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": "{{container.id}}", "container_type": "{{container.type.identifier}}"}, function(responseText, textStatus, jqXHR) { window["showTrack_" + index](); $(".btn").not('#comment').tooltip(); });
+				$("#zone_" + index).load(rendition_url, {"track_info": JSON.stringify(layoutInformation.data[index].data), "widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": "{{container.id}}", "container_type": "{{container.type.identifier}}"}, function(responseText, textStatus, jqXHR) { window["showTrack_" + index](); $(".btn").not('#comment').tooltip(); controlLoading(); });
 			} else if (layoutInformation.data[index].type=="LAYOUT_OBJECT_CUSTOM_STANDARD") {
 				var rendition_url = "/container_render_custom_standard.html";
-				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_fields": JSON.stringify(layoutInformation.data[index].data)}, function() {$(".btn").not('#comment').tooltip();});
+				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_fields": JSON.stringify(layoutInformation.data[index].data)}, function() {$(".btn").not('#comment').tooltip(); controlLoading(); });
+			} else if (layoutInformation.data[index].type=="LAYOUT_OBJECT_CUSTOM_TEMPLATE") {
+				var rendition_url = "/container_render_custom_template.html";
+				$("#zone_" + index).load(rendition_url, {"widget_index": index, "widget_title": layoutInformation.data[index].title, "container_id": {{container.id}}, "container_type": "{{container.type.identifier}}", "container_template": layoutInformation.data[index].data.template}, function() {$(".btn").not('#comment').tooltip(); controlLoading(); });
 			}
 		}
 
 		function fillContent() {
+			initializeLoading(layoutInformation.layout.length);
 			$.each(layoutInformation.layout, function (index, layout) {
 				addWidget(layout, index.toString(), function() {});
 			});

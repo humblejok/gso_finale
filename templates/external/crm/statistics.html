@@ -1,0 +1,51 @@
+{% load universe_tags %}
+<div class="row">
+	<ul class="nav nav-pills">
+	{% for key in custom_data.stats_keys %}
+		<li role="presentation" class="{% if forloop.first %}active{% endif %}"><a href="#{{key}}Tab" data-toggle="tab">{% if labels|get_dict_key:key %}{{labels|get_dict_key:key}}{% else %}{{key}}{% endif %}</a></li>
+	{% endfor%}
+		<li role="presentation" class="dropdown">
+			<a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-expanded="false">Actions <span class="caret"></span></a>
+			<ul class="dropdown-menu" role="menu">
+				<li><a href="#" onclick="">Mass email</a></li>
+				<li><a href="#">Remove from universes</a></li>
+			</ul>
+		</li>
+	</ul>
+	<div class="tab-content">
+	{% for key in custom_data.stats_keys %}
+		<div class="tab-pane{% if forloop.first %} active{% endif %}" id="{{key}}Tab">
+			<table class="table">
+				<tr>
+					<th>Name</th>
+					<th>Date</th>
+					<th>Email</th>
+					<th>&nbsp;</th>
+				</tr>
+				{% for contact_id in custom_data|get_dict_key:key %}
+				<tr>
+					<td>{{custom_data|get_dict_key:key|get_dict_key:contact_id|get_dict_key:"name"}}</td>
+					<td>{{custom_data|get_dict_key:key|get_dict_key:contact_id|get_dict_key:"date"|date:"Y-M-d H:i"}}</td>
+					<td><a href="mailto:{{custom_data|get_dict_key:key|get_dict_key:contact_id|get_dict_key:'email'}}">Send email</a></td>
+					<td><div class="btn-group">
+						<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">Actions <span class="caret"/></button>
+						<ul class="dropdown-menu" role="menu">
+							{% with container_type=custom_data|get_dict_key:key|get_dict_key:contact_id|get_dict_key:"container_type" %}
+								{% with template_name='statics/'|add:container_type|add:'_view_menus_en.html' %}
+									{% if container_type == 'CONT_PERSON' %}
+										{% include template_name with container=custom_data|get_dict_key:'persons'|get_dict_key:contact_id|get_dict_key:'container' %}
+									{% else %}
+										{% include template_name with container=custom_data|get_dict_key:'companies'|get_dict_key:contact_id|get_dict_key:'container' %}
+									{% endif %}
+								{% endwith %}
+							{% endwith %}
+						</ul>
+						</div>
+					</td>
+				</tr>
+				{% endfor %}
+			</table>
+		</div>
+	{% endfor %}
+	</div>
+</div>

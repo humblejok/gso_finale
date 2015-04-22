@@ -1,9 +1,31 @@
+
 {% extends "finale_base.html" %}
 {% block title %}Financial Lightweight Editor - {{container_label}}s{% endblock %}
 {% block readyoptions %}
 				$(".btn").not('#comment').tooltip();
 {% endblock %}
 {% block headeroptions %}
+<script>
+	function filterList() {
+		var searchName = $("#searchName").val();
+		if (searchName && searchName!="") {
+			$('#resultTable tbody tr').hide();
+			var $rowsNo = $('#resultTable tbody tr').filter(function () {
+				if ($(this).find('th').length>0) {
+					return true;
+				}
+				var filter = false;
+				for(var i=0;i<6;i++) {
+	        		 filter = filter || $(this).find('td').eq(i).text().indexOf(searchName)>=0;
+	        	}
+	        	return filter;
+    		}).show();
+		} else {
+			$('#resultTable tbody tr').show();
+		}
+
+	}
+</script>
 {% endblock %}
 	</head>
 	<body>
@@ -17,27 +39,27 @@
 		<div class="row">
 			<form id="look_form" role="form" action="#" method="POST">{% csrf_token %}
 				<div class="form-group">
-					<label for="name" class="col-lg-1">Look for:</label>
-					<input name="name" type="text" class="form-control" id="name" placeholder="Enter a name or part of a name" value=""/>
+					<label for="searchName" class="col-lg-1">Look for:</label>
+					<input name="searchName" type="text" class="form-control" id="searchName" placeholder="Enter a part of any of the displayed fields" value="" onkeyup="filterList()"/>
 				</div>
 			</form>
 		</div>
 		<div class="row">
 			<div class="col-lg-11">
-				<table id="portfoliosTable" class="table table.striped">
+				<table id="resultTable" class="table table.striped">
 					<tr>
 						
-						<th>name</th>
+						<th>Name</th>
 						
-						<th>currency.short_name</th>
+						<th>Currency</th>
 						
-						<th>frequency.name</th>
+						<th>Frequency</th>
 						
-						<th>inception_date</th>
+						<th>Inception date</th>
 						
-						<th>closed_date</th>
+						<th>Closing date</th>
 						
-						<th>status.name</th>
+						<th>Status</th>
 						
 						<th></th>
 					</tr>

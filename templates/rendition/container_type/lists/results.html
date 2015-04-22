@@ -1,9 +1,31 @@
+{% load universe_tags %}
 {% templatetag openblock %} extends "finale_base.html" {% templatetag closeblock %}
 {% templatetag openblock %} block title {% templatetag closeblock %}Financial Lightweight Editor - {% templatetag openvariable %}container_label{% templatetag closevariable %}s{% templatetag openblock %} endblock {% templatetag closeblock %}
 {% templatetag openblock %} block readyoptions {% templatetag closeblock %}
 				$(".btn").not('#comment').tooltip();
 {% templatetag openblock %} endblock {% templatetag closeblock %}
 {% templatetag openblock %} block headeroptions {% templatetag closeblock %}
+<script>
+	function filterList() {
+		var searchName = $("#searchName").val();
+		if (searchName && searchName!="") {
+			$('#resultTable tbody tr').hide();
+			var $rowsNo = $('#resultTable tbody tr').filter(function () {
+				if ($(this).find('th').length>0) {
+					return true;
+				}
+				var filter = false;
+				for(var i=0;i<{{fields|length}};i++) {
+	        		 filter = filter || $(this).find('td').eq(i).text().indexOf(searchName)>=0;
+	        	}
+	        	return filter;
+    		}).show();
+		} else {
+			$('#resultTable tbody tr').show();
+		}
+
+	}
+</script>
 {% templatetag openblock %} endblock {% templatetag closeblock %}
 	</head>
 	<body>
@@ -17,17 +39,17 @@
 		<div class="row">
 			<form id="look_form" role="form" action="#" method="POST">{% templatetag openblock %} csrf_token {% templatetag closeblock %}
 				<div class="form-group">
-					<label for="name" class="col-lg-1">Look for:</label>
-					<input name="name" type="text" class="form-control" id="name" placeholder="Enter a name or part of a name" value=""/>
+					<label for="searchName" class="col-lg-1">Look for:</label>
+					<input name="searchName" type="text" class="form-control" id="searchName" placeholder="Enter a part of any of the displayed fields" value="" onkeyup="filterList()"/>
 				</div>
 			</form>
 		</div>
 		<div class="row">
 			<div class="col-lg-11">
-				<table id="portfoliosTable" class="table table.striped">
+				<table id="resultTable" class="table table.striped">
 					<tr>
 						{% for field in fields %}
-						<th>{{field}}</th>
+						<th>{% if labels|get_dict_key:field %}{{labels|get_dict_key:field}}{% else %}{{field}}{% endif %}</th>
 						{% endfor %}
 						<th></th>
 					</tr>

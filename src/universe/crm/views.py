@@ -15,6 +15,10 @@ from providers import mailgun
 from universe.models import MailCampaignContainer, Attributes, Container
 from utilities.external_content import set_mailgun_data
 
+def mails_import(request):
+    campaign_id = request.GET['container_id']
+    campaign = get_effective_instance(Container.objects.get(id=campaign_id))
+    mailgun.treat_emails(None, campaign.name)
 
 def campaign_import(request):
     campaign_id = request.GET['container_id']

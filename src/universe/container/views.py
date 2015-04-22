@@ -22,10 +22,11 @@ from seq_common.utils import classes
 
 from finale.settings import STATICS_PATH
 from finale.utils import complete_fields_information, dict_to_json_compliance, \
-    get_model_foreign_field_class, complete_custom_fields_information
+    get_model_foreign_field_class, complete_custom_fields_information,\
+    get_effective_instance
 from universe.models import Attributes, FieldLabel, \
     PortfolioContainer, MenuEntries, SecurityContainer, AccountContainer, \
-    FinancialOperation
+    FinancialOperation, Container
 from utilities import setup_content, operations
 from utilities.compute.valuations import NativeValuationsComputer
 from utilities.computing import get_previous_date
@@ -38,6 +39,7 @@ from utilities.valuation_content import get_portfolio_valuations, \
 from utilities.security_content import get_security_information,\
     set_security_information, enhance_security_information
 from utilities.setup_content import get_object_type_fields
+from utilities.external_content import get_mailgun_data
 
 
 LOGGER = logging.getLogger(__name__)
@@ -80,7 +82,9 @@ def setup_save(request):
             for field in container_setup["data"]:
                 if '.' not in field:
                     data_as_dict[field] = {'name': field}
-        context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
+        filtering = lambda d, k: d[k]['data']
+        fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_setup["type"]]['data'], k) for k in setup_content.get_container_type_details()[container_setup["type"]]['data'].keys()]))
+        context = Context({"fields":container_setup['fields'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"], "labels": dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})})
         template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
         rendition = template.render(context)
         # TODO Implement multi-langage
@@ -111,7 +115,11 @@ def setup_save(request):
             for field in container_setup["data"]:
                 if '.' not in field:
                     data_as_dict[field] = {'name': field}
-        context = Context({"fields":container_setup['data'], "complete_fields": complete_fields_information(effective_class,  data_as_dict), "container" : container_setup["type"]})
+        filtering = lambda d, k: d[k]['data']
+        context = Context({"fields":container_setup['data'],
+                           "complete_fields": complete_fields_information(effective_class,  data_as_dict),
+                           "container" : container_setup["type"],
+                           "labels": dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(langage='en')})})
         template = loader.get_template('rendition/' + item + '/' + item_view_type + '/' + item_render_name + '.html')
         rendition = template.render(context)
         # TODO Implement multi-langage
@@ -223,7 +231,7 @@ def get(request):
     container = effective_class.objects.get(id=container_id)
     filtering = lambda d, k: d[k]['data']
     fields = list(itertools.chain(*[filtering(setup_content.get_container_type_details()[container_type]['data'], k) for k in setup_content.get_container_type_details()[container_type]['data'].keys()]))
-    custom_fields = complete_custom_fields_information(container_type, )
+    custom_fields = complete_custom_fields_information(container_type)
     custom_data = get_security_information(container)
     # TODO: Handle other langage and factorize with other views
     labels = dict_to_json_compliance({label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=fields, langage='en')})
@@ -289,6 +297,37 @@ def render_custom_standard(request):
                         
     context = {'title': widget_title, 'index':widget_index, 'container': container, 'fields': effective_container_fields, 'custom_data': custom_data, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(identifier__in=container_fields, langage='en')}}
     return render(request, 'container/view/custom_fields_list.html', context)
+
+def render_custom_template(request):
+    # TODO: Check user
+    user = User.objects.get(id=request.user.id)
+    container_id = request.POST['container_id'][0] if isinstance(request.POST['container_id'], list) else request.POST['container_id']
+    container_type = request.POST['container_type'][0] if isinstance(request.POST['container_type'], list) else request.POST['container_type']
+    container_class = container_type + '_CLASS'
+    container_template = request.POST['container_template']
+    widget_index = request.POST['widget_index'][0] if isinstance(request.POST['widget_index'], list) else request.POST['widget_index']
+    widget_title = request.POST['widget_title'][0] if isinstance(request.POST['widget_title'], list) else request.POST['widget_title']
+    # TODO: Handle error
+    effective_class_name = Attributes.objects.get(identifier=container_class, active=True).name
+    effective_class = classes.my_class_import(effective_class_name)
+
+    container = effective_class.objects.get(id=container_id)
+    
+    
+    if container_type=='CONT_MAIL_CAMPAIGN':
+        # TODO Assign also application custom data
+        custom_data = get_mailgun_data(container.external_id)
+        for contact_id in custom_data['persons'].keys() + custom_data['companies'].keys():
+            if contact_id!='companies':
+                instance = get_effective_instance(Container.objects.get(id=contact_id))
+                if instance.type.identifier=='CONT_PERSON':
+                    custom_data['persons'][contact_id]['container'] = instance
+                else:
+                    custom_data['companies'][contact_id]['container'] = instance
+    else:
+        custom_data = get_security_information(container)
+    context = {'title': widget_title, 'index':widget_index, 'container': container, 'custom_data': custom_data, 'labels': {label.identifier: label.field_label for label in FieldLabel.objects.filter(langage='en')}}
+    return render(request, container_template, context)
 
 def render_many_to_many(request):
     # TODO: Check user

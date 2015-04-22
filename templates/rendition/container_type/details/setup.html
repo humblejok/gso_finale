@@ -104,6 +104,10 @@
 					"track_type": $("#track_type_" + key).val(), "track_default": $("#track_default_" + key).prop("checked"), "track_frequency": $("#frequency_" + key).val(), "track_datasource":$("#datasource_" + key).val()
 				}
 			}
+			if (blockData[key].type=="LAYOUT_OBJECT_CUSTOM_TEMPLATE") {
+				blockData[key].data = { "template": $("#template_" + key).val() };
+
+			}
 		}
 	}
 
@@ -244,7 +248,12 @@
 				});
 			});
 			htmlToAppend += "</div>";
+		} else if(selectedType=='LAYOUT_OBJECT_CUSTOM_TEMPLATE') {
+			htmlToAppend += "<div class='form-group'><label for='template_%%index%%' class='control-label col-lg-2'>Template path</label><div class='col-lg-9'><input id='template_%%index%%' name='template_%%index%%' class='form-control' type='text'></div></div>";
+			htmlToAppend = htmlToAppend.replaceAll('%%index%%', index);
 		}
+
+
 		$("#content_" + index).append(htmlToAppend);
 
 		callLater();
@@ -264,6 +273,7 @@
 					$("#title_" + closureIndex).val(currentInformation.data[closureIndex.toString()].title);
 					$("#type_" + closureIndex).attr('onchange','changeType(' + closureIndex + ')');
 					$("#type_" + closureIndex).val(currentInformation.data[closureIndex.toString()].type);
+					console.log(currentInformation.data[closureIndex.toString()]);
 					changeType(closureIndex, function() {
 						if (currentInformation.data[closureIndex.toString()].type=='LAYOUT_OBJECT_TYPE_SINGLES') {
 							$.each(currentInformation.data[closureIndex.toString()].data, function(fieldIndex, field) {
@@ -280,6 +290,9 @@
 							$.each(currentInformation.data[closureIndex.toString()].data, function(fieldIndex, field) {
 								onFieldClick(index, field);
 							});
+						} else if (currentInformation.data[closureIndex.toString()].type=='LAYOUT_OBJECT_CUSTOM_TEMPLATE') {
+							console.log(currentInformation.data[index.toString()].data);
+							$("#template_" + closureIndex).val(currentInformation.data[index.toString()].data.template);
 						}
 
 					});

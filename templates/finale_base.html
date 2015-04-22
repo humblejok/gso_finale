@@ -22,6 +22,8 @@
 		<script src="/static/gammasimos.js"></script>
 		<script src="/static/wysiwyg/editor.js"></script>
 		<script>
+			var waitCount = 0;
+
 			function taskFinished(e) {
 				if (e.result) {
 					$("#backgroundProgress").addClass("invisible");
@@ -33,6 +35,25 @@
 			function taskFailed(e) {
 				$("#backgroundProgress").addClass("invisible");
 				alert("Task failed with message: " + e.message);
+			}
+
+			function controlLoading() {
+				waitCount = waitCount - 1;
+				if (waitCount===0) {
+					$("#backgroundProgress").addClass("invisible");
+					$("#generalProgressBar").removeClass("progress-bar-info");
+					$("#generalProgressBar").addClass("progress-bar-danger");
+					$("#generalProgressBar").text("Task is running, please wait!");
+				}
+			}
+
+			function initializeLoading(waitFor) {
+				waitCount = waitFor;
+				$("#backgroundProgress").addClass("invisible");
+				$("#generalProgressBar").text("Loading, please wait!");
+				$("#generalProgressBar").removeClass("progress-bar-danger");
+				$("#generalProgressBar").addClass("progress-bar-info");
+				$("#backgroundProgress").removeClass("invisible");
 			}
 
 			function proceedPageAjax(link, data, callType) {
@@ -76,6 +97,8 @@
 						e.preventDefault();
 					}
 				});
+
+				$(".nav-tabs").tab();
 
 				$(".date-form-field").datepicker({ dateFormat: "yy-mm-dd" });
 
@@ -223,7 +246,7 @@
 			{% if request.user.is_authenticated %}
 				<div class="row">
 					<div id="backgroundProgress" class="progress progress-striped active invisible">
-						<div class="progress-bar progress-bar-danger"  role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">Task is running, please wait!</div>
+						<div id="generalProgressBar" class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">Task is running, please wait!</div>
 					</div>
 				</div>
 				{% block content %}

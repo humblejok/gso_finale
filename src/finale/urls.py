@@ -80,6 +80,8 @@ urlpatterns = patterns('',
     url(r'^container_render_singles_list.html', 'universe.container.views.render_singles_list', name='container_render_singles_list'),
     url(r'^container_render_history_chart.html', 'universe.container.views.render_history_chart', name='container_render_history_chart'),
     url(r'^container_render_custom_standard.html', 'universe.container.views.render_custom_standard', name='container_render_custom_standard'),
+    url(r'^container_render_custom_template.html', 'universe.container.views.render_custom_template', name='container_render_custom_template'),
+    
     url(r'^container_external_import.html', 'universe.container.views.external_import', name='external_import'),
     url(r'^container_valuations_compute.html', 'universe.container.views.valuations_compute', name='valuations_compute'),
     url(r'^container_valuation.html', 'universe.container.views.valuation', name='valuation', kwargs={'view_extension':'html'}),
@@ -99,6 +101,7 @@ urlpatterns = patterns('',
     url(r'^container_render_account_selection.html', 'universe.container.views.render_account_selection', name='container_render_account_selection'),
     url(r'^container_operation_remove.html', 'universe.container.views.operation_remove', name='container_operation_remove'),
     url(r'^container_campaign_import.html', 'universe.crm.views.campaign_import', name='container_campaign_import'),
+    url(r'^container_mails_import.html', 'universe.crm.views.mails_import', name='container_campaign_import'),
     
     # CRM views
     url(r'^crm_get_campaigns.html', 'universe.crm.views.get_campaigns', name='crm_campaigns'),
