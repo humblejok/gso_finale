@@ -41,9 +41,6 @@
 			$("#backgroundProgress").removeClass("invisible");
 			var tempForm = new FormData();
 			tempForm.append('uploaded_file', file);
-			tempForm.append('provider', urlParams['provider'])
-			tempForm.append('action', urlParams['action'])
-			tempForm.append('step', 'crm_file')
 			$.ajax({
 				url: '/file_upload.html',
 				type: 'POST',

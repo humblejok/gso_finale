@@ -106,6 +106,9 @@ def create_security_movement(container, source, target, details, label):
     operation.validator = None
     operation.source = get_account(container, details, current_account_type) if details['impact_pnl'] else None
     operation.target = target['security']
+    if operation.target.status.identifer!='STATUS_ACTIVE':
+        # Status cannot be executed on a pending security
+        operation.status = Attributes.objects.get(identifier='OPE_STATUS_PENDING', active=True) if not details.has_key('status') else details['status']
     operation.spot = details['spot_rate']
     operation.repository = get_account(container, details, security_account_type)
     operation.quantity = target['quantity']

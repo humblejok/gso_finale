@@ -1,5 +1,6 @@
 {% load universe_tags %}
-<form id="object_form" role="form" action="/object_instanciante.html" method="POST">
+{% load i18n %}
+<form id="object_form" role="form" action="/object_instanciate.html" method="POST">
 	{% for field in element.fields %}
 		<div class="form-group">
 			<label for="{{field.name|as_identifier}}">{{field.name}}</label>
@@ -20,7 +21,7 @@
 		</script>
 	{% endfor %}
 	<div class="row">
-		<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-		<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="Create the {{element.name}} and save it">Continue</button>
+		<button type="button" class="btn btn-default" data-dismiss="modal">{% blocktrans %}Close{% endblocktrans %}</button>
+		<button type="submit" class="btn btn-success" role="button" data-toggle="tooltip" data-placement="bottom" title="{% blocktrans %}Create the {{element.name}} and save it{% endblocktrans %}">{% blocktrans %}Continue{% endblocktrans %}</button>
 	</div>
 </form>

@@ -145,7 +145,8 @@ def get_static_fields(clazz, trail = []):
                                                             'fields': get_static_fields(foreign_class, trail + [foreign_class.__name__]),
                                                             'link': linked_to,
                                                             'filter': foreign_class.get_filtering_field() if getattr(foreign_class, 'get_filtering_field', None)!=None else None,
-                                                            'target_class': foreign_class.__module__ + '.' + foreign_class.__name__}
+                                                            'target_class': foreign_class.__module__ + '.' + foreign_class.__name__,
+                                                            'target_type': Attributes.objects.filter(active=True, type=foreign_class.__module__ + '.' + foreign_class.__name__).order_by('id')[0].identifier.replace('_CLASS','')}
                     else:
                         # TODO Get effective type, you'll never know if you won't need it in the future
                         object_static_fields[field_name] = {'type': 'FIELD_TYPE_CHOICE', 'link': linked_to}
